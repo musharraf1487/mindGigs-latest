@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Serif+Display:ital@0;1&display=swap');
+
+:root {
+  /* Light Mode (Default) — Premium palette */
+  --bg-color: #F4F6F9;
+  --surface-color: #FFFFFF;
+  --text-main: #0F172A;
+  --primary-brand: #0F172A;
+  --accent-color: #e0a80b;
+
+  /* Core palette */
+  --wh: #ffffff;
+  --sl: #334155;       /* Slate for subtext */
+  --mu: #64748B;       /* Muted blue-grey */
+  --gold: #F59E0B;
+  --teal: #19b5a6;
+  --rd: #EF4444;
+  --purp: #8B5CF6;
+
+  /* Previously undefined — now fixed */
+  --gl: #22c55e;                       /* Green: success, active, earnings */
+  --gmt: rgba(15, 23, 42, 0.04);       /* Muted tint: row/item backgrounds */
+  --rd-lt: rgba(239, 68, 68, 0.10);    /* Light red: error/cancelled tags */
+
+  /* Spacing & radius tokens */
+  --card-border: rgba(15, 23, 42, 0.08);
+  --rsm: 8px;
+  --rmd: 16px;
+  --rlg: 28px;
+  --rxl: 48px;
+
+  /* Shadow tokens */
+  --sg: 0 8px 40px rgba(15, 23, 42, 0.1);
+  --sc: 0 4px 24px rgba(15, 23, 42, 0.05);
+
+  /* Font families */
+  --fu: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --fd: 'DM Serif Display', serif;
+  --fb: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Semantic aliases */
+  --card-bg: var(--surface-color);
+  --gb: #547792;       /* Slate-blue interactive colour */
+  --gd: var(--text-main);
+  --ch: var(--text-main);
+  --cr: var(--bg-color);
+  --gp: rgba(84, 119, 146, 0.08);
+  --gm: var(--text-main);
+}
+
+/* Dark mode is permanently disabled — body.dark-theme block removed */
+
+
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--fb);
+  background: var(--bg-color);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  zoom: 100%;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+ul {
+  list-style: none;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cr);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gp);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gb);
+}

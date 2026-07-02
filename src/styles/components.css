@@ -1,0 +1,393 @@
+/* ── STAT CARDS ── */
+/* ── STAT CARDS ── */
+.stat-card {
+  background: var(--surface-color);
+  border-radius: var(--rmd);
+  padding: 24px 22px;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--sc);
+}
+
+.stat-card-dark {
+  background: var(--surface-color);
+  /* Use lighter navy */
+  border: 1px solid var(--card-border);
+  border-radius: var(--rmd);
+  padding: 24px 22px;
+}
+
+.stat-label {
+  font-family: var(--fu);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mu);
+  margin-bottom: 10px;
+}
+
+.stat-label-lt {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.stat-val {
+  font-family: var(--fu);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.stat-val-lt {
+  color: var(--text-main);
+}
+
+.stat-change {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.stat-change-gr {
+  color: var(--gl);
+}
+
+.stat-change-tl {
+  color: var(--teal);
+}
+
+.stat-change-rd {
+  color: var(--rd);
+}
+
+/* ── TABLE ── */
+.table-wrap {
+  background: var(--card-bg);
+  border-radius: var(--rmd);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  font-family: var(--fu);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mu);
+  background: var(--gmt);
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(84, 119, 146, 0.1);
+}
+
+.table td {
+  padding: 14px 16px;
+  font-size: 0.875rem;
+  color: var(--sl);
+  border-bottom: 1px solid rgba(84, 119, 146, 0.07);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: rgba(245, 245, 244, 0.05);
+}
+
+.table-dark {
+  background: var(--card-bg);
+  border: 1px solid rgba(245, 245, 244, 0.06);
+  overflow: hidden;
+  border-radius: var(--rmd);
+}
+
+.table-dark th {
+  background: rgba(245, 245, 244, 0.03);
+  color: rgba(245, 245, 244, 0.35);
+  border-color: rgba(245, 245, 244, 0.05);
+}
+
+.table-dark td {
+  color: rgba(245, 245, 244, 0.7);
+  border-color: rgba(245, 245, 244, 0.04);
+}
+
+.table-dark tr:hover td {
+  background: rgba(245, 245, 244, 0.03);
+}
+
+/* ── BOOKING CALENDAR ── */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: var(--rsm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-family: var(--fu);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  color: var(--sl);
+}
+
+.cal-day:hover:not(.cal-empty) {
+  background: var(--gd);
+  color: white;
+  cursor: pointer;
+}
+
+.cal-day.available {
+  background: var(--gmt);
+  color: var(--gm);
+}
+
+.cal-day.selected {
+  background: var(--teal);
+  color: white;
+}
+
+.cal-day.cal-empty,
+.cal-day.cal-past {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.time-slot {
+  padding: 10px;
+  border-radius: var(--rsm);
+  border: 1px solid var(--card-border);
+  font-family: var(--fu);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--card-bg);
+  color: var(--ch);
+}
+
+.time-slot:hover {
+  border-color: var(--teal);
+  background: rgba(25, 181, 166, 0.1);
+}
+
+.time-slot.selected {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: white;
+}
+
+/* ── CHART BAR MOCK ── */
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 120px;
+  padding: 0 4px;
+}
+
+.cbar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  transition: background 0.2s;
+  min-height: 6px;
+}
+
+.cbar-main {
+  background: rgba(255, 178, 122, 0.25);
+}
+
+.cbar-high {
+  background: var(--gl);
+}
+
+.cbar:hover {
+  opacity: 0.7;
+}
+
+/* ── REFERRAL LINK BOX ── */
+.ref-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--rsm);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ref-url {
+  font-family: var(--fu);
+  font-size: 0.82rem;
+  color: var(--gb);
+  font-weight: 600;
+  flex: 1;
+  word-break: break-all;
+}
+
+.ref-copy {
+  flex-shrink: 0;
+}
+
+/* ── PROFILE CARD ── */
+.pub-profile-header {
+  height: 160px;
+  border-radius: var(--rmd) var(--rmd) 0 0;
+  position: relative;
+}
+
+.pub-avatar {
+  position: absolute;
+  bottom: -32px;
+  left: 32px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid var(--cr);
+  background: var(--card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ── STEP WIZARD ── */
+.step-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(84, 119, 146, 0.2);
+  transition: all 0.3s;
+}
+
+.step-dot.active {
+  background: var(--gb);
+  width: 24px;
+  border-radius: 4px;
+}
+
+.step-dot.done {
+  background: var(--gl);
+}
+
+/* ── OFFER TYPE TABS ── */
+.offer-tabs {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid rgba(84, 119, 146, 0.18);
+  border-radius: var(--rsm);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.offer-tab {
+  flex: 1;
+  padding: 10px;
+  font-family: var(--fu);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--mu);
+  transition: all 0.2s;
+}
+
+.offer-tab.active {
+  background: var(--gb);
+  color: var(--cr);
+}
+
+/* ── ACTIVITY FEED ── */
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(84, 119, 146, 0.08);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* ── KEYFRAME ANIMATIONS ── */
+@keyframes pd {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+}
+
+@keyframes fl1 {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes fl2 {
+
+  0%,
+  100% {
+    transform: translateY(-6px);
+  }
+
+  50% {
+    transform: translateY(6px);
+  }
+}

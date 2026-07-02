@@ -1,0 +1,214 @@
+/* ── SIDEBAR LAYOUT ── */
+.dash-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--surface-color);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  z-index: 50;
+  border-right: 1px solid var(--card-border);
+}
+
+.sidebar-admin {
+  background: var(--surface-color);
+}
+
+.sidebar-aff {
+  background: var(--surface-color);
+}
+
+.sidebar-logo {
+  padding: 24px 20px;
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-logo-mark {
+  font-family: var(--fu);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.sidebar-logo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #19b5a6;
+}
+
+.sidebar-role-badge {
+  font-family: var(--fu);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-left: auto;
+}
+
+.role-expert {
+  background: rgba(255, 178, 122, 0.15);
+  color: var(--gl);
+}
+
+.role-admin {
+  background: rgba(232, 197, 71, 0.15);
+  color: var(--gold);
+}
+
+.role-aff {
+  background: rgba(191, 201, 209, 0.15);
+  color: var(--teal);
+}
+
+.sidebar-nav {
+  padding: 16px 12px;
+  flex: 1;
+}
+
+.nav-group-label {
+  font-family: var(--fu);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mu);
+  padding: 12px 8px 6px;
+  opacity: 0.6;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--rsm);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--mu);
+  margin-bottom: 2px;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--gb);
+}
+
+.nav-item.active {
+  background: #0F172A;
+  color: var(--gb);
+  font-weight: 600;
+}
+
+.nav-item-admin.active {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--gb);
+}
+
+.nav-item-aff.active {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--gb);
+}
+
+.nav-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.dash-main {
+  margin-left: 260px;
+  flex: 1;
+  min-height: 100vh;
+  background: var(--cr);
+}
+
+.dash-main-dark {
+  background: var(--cr);
+}
+
+.dash-topbar {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: 0 1px 8px rgba(15, 23, 42, 0.2);
+}
+
+.dash-topbar-title {
+  font-family: var(--fu);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--wh);
+}
+
+.dash-topbar-dark {
+  background: var(--card-bg);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.dash-topbar-dark .dash-topbar-title {
+  color: var(--wh);
+}
+
+.dash-content {
+  padding: 32px;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gp);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  border: 2px solid rgba(255, 155, 81, 0.2);
+}
+
+.topbar-name {
+  font-family: var(--fu);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--sl);
+}

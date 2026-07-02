@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users — readable by owner only, writable by owner or backend
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Experts directory — public read for onboarded experts
+    match /users/{uid} {
+      allow read: if resource.data.role == 'expert' && resource.data.onboardingComplete == true;
+    }
+
+    // Bookings — readable by client or expert involved
+    match /bookings/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.clientId == request.auth.uid ||
+         resource.data.expertId == request.auth.uid);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        (resource.data.clientId == request.auth.uid ||
+         resource.data.expertId == request.auth.uid);
+    }
+
+    // Commissions — readable by expert or affiliate involved
+    match /commissions/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.expertId == request.auth.uid ||
+         resource.data.affiliateId == request.auth.uid);
+    }
+
+    // Referrals — readable by the expert who owns them
+    match /referrals/{id} {
+      allow read: if request.auth != null &&
+        resource.data.expertId == request.auth.uid;
+      allow create: if request.auth != null;
+    }
+
+    // Payout requests — readable/writable by the affiliate/expert who made them
+    match /payoutRequests/{id} {
+      allow read, write: if request.auth != null &&
+        resource.data.affiliateId == request.auth.uid;
+      allow create: if request.auth != null;
+    }
+
+    // Campaigns — readable/writable by the affiliate who owns them
+    match /campaigns/{id} {
+      allow read, write: if request.auth != null &&
+        resource.data.affiliateId == request.auth.uid;
+      allow create: if request.auth != null;
+    }
+
+    // Reviews — public read, authenticated create
+    match /reviews/{id} {
+      allow read: if true;
+      allow create: if request.auth != null;
+    }
+
+    // Platform config — public read, admin write only
+    match /config/{id} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Admin — full access for admin role
+    match /{document=**} {
+      allow read, write: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
