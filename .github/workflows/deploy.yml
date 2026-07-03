@@ -30,7 +30,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.PORT }}
+          port: 18765
           script: |
             rm -rf /home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/*
       - name: Upload dist
@@ -39,6 +39,6 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.PORT }}
+          port: 18765
           source: "dist/*"
           target: "/home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/"
