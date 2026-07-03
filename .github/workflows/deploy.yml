@@ -1,4 +1,4 @@
-name: Deploy React App to SiteGround
+name: Deploy to SiteGround
 
 on:
   push:
@@ -10,29 +10,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Build project
+      - name: Build
         run: npm run build
 
-      - name: Deploy to SiteGround
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          REMOTE_PORT: ${{ secrets.PORT }}
-
-          SOURCE: "dist/"
-          TARGET: "/home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/"
-
-          ARGS: "-rlgoDzvc --delete"
+      - name: Clean public_html
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            rm -rf /home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/*
+      - name: Upload dist
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          source: "dist/*"
+          target: "/home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/"
