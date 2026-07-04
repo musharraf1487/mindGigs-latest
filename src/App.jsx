@@ -83,6 +83,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [signupRole, setSignupRole] = useState('expert');
   const [loginEmailHint, setLoginEmailHint] = useState('');
+  const [preLoginPage, setPreLoginPage] = useState('landingboard');
 
   // Capture referral code from URL on first load
   useEffect(() => {
@@ -159,10 +160,19 @@ export default function App() {
   useEffect(() => {
     if (!userData || page !== 'login') return;
     if (loginRole && userData.role !== loginRole) return;
-    const routes = { expert: 'expert-dashboard', admin: 'admin-dashboard', affiliate: 'affiliate-dashboard', client: 'client-dashboard' };
+    // Experts logging in from a public/marketing page stay right where they were —
+    // the nav just swaps to a "Profile" button. Only an explicit dashboard visit
+    // (or another role's portal) actually navigates to a dashboard screen.
+    if (userData.role === 'expert') {
+      const dest = preLoginPage && !['login', 'signup'].includes(preLoginPage) ? preLoginPage : 'landingboard';
+      setPage(dest);
+      notify('Welcome back!');
+      return;
+    }
+    const routes = { admin: 'admin-dashboard', affiliate: 'affiliate-dashboard', client: 'client-dashboard' };
     const dest = routes[userData.role];
     if (dest) { setPage(dest); notify('Welcome back!'); }
-  }, [userData, page, loginRole]);
+  }, [userData, page, loginRole, preLoginPage]);
 
   const notify = (msg, type = 'success') => {
     const id = Date.now();
@@ -182,6 +192,7 @@ export default function App() {
   };
 
   const nav = (p, ctx) => {
+    if (p === 'login' && page !== 'login') setPreLoginPage(page);
     const newExpertId = ctx?.expertId !== undefined ? ctx.expertId : (p === 'public-profile' ? activeExpertId : null);
     if (ctx?.expertId !== undefined) {
       setActiveExpertId(ctx.expertId);
