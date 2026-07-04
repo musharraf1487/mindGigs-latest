@@ -2,15 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users — readable by owner only, writable by owner or backend
+    // Users — owner can always read/write their own doc; anyone (incl. signed-out
+    // visitors) can read an onboarded expert's doc so profiles are publicly visible.
     match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if (request.auth != null && request.auth.uid == uid) ||
+        (resource.data.role == 'expert' && resource.data.onboardingComplete == true);
       allow write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    // Experts directory — public read for onboarded experts
-    match /users/{uid} {
-      allow read: if resource.data.role == 'expert' && resource.data.onboardingComplete == true;
     }
 
     // Bookings — readable by client or expert involved
