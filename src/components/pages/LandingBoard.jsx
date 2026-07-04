@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useAuth } from '../../context/AuthContext';
 import {
     Check,
     PhoneCall,
@@ -343,6 +344,8 @@ function FloatingSideElements() {
 }
 
 export function LandingBoard({ nav, onLogin, experts }) {
+    const { currentUser, userData } = useAuth();
+    const isLoggedInExpert = !!currentUser && userData?.role === 'expert';
     const [activeCtaIndex, setActiveCtaIndex] = React.useState(0);
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [navHidden, setNavHidden] = React.useState(false);
@@ -451,18 +454,29 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
                     <div className="lb-nav-actions">
 
-                        <button
-                            className="lb-btn-join lb-hidden-sm"
-                            onClick={handleJoinAsExpert}
-                        >
-                            Join as an Expert
-                        </button>
-                        <button
-                            onClick={onLogin}
-                            className="lb-btn-login"
-                        >
-                            Login
-                        </button>
+                        {isLoggedInExpert ? (
+                            <button
+                                className="lb-btn-join lb-hidden-sm"
+                                onClick={() => nav('expert-dashboard')}
+                            >
+                                Profile
+                            </button>
+                        ) : (
+                            <>
+                                <button
+                                    className="lb-btn-join lb-hidden-sm"
+                                    onClick={handleJoinAsExpert}
+                                >
+                                    Join as an Expert
+                                </button>
+                                <button
+                                    onClick={onLogin}
+                                    className="lb-btn-login"
+                                >
+                                    Login
+                                </button>
+                            </>
+                        )}
 
                         {/* Mobile Menu Toggle */}
                         <button
@@ -489,9 +503,15 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                 <a href="#lb-experts" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Experts</a>
                                 <a href="#lb-subscriptions" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Pricing</a>
                                 <hr className="lb-divider" />
-                                <button className="lb-btn-join-full" onClick={handleJoinAsExpert}>
-                                    Join as an Expert
-                                </button>
+                                {isLoggedInExpert ? (
+                                    <button className="lb-btn-join-full" onClick={() => { setIsMenuOpen(false); nav('expert-dashboard'); }}>
+                                        Profile
+                                    </button>
+                                ) : (
+                                    <button className="lb-btn-join-full" onClick={handleJoinAsExpert}>
+                                        Join as an Expert
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     )}

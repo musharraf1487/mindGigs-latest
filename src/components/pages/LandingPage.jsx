@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
+import { useAuth } from '../../context/AuthContext';
 import {
   ArrowRight,
   CheckCircle2,
@@ -250,6 +251,8 @@ function FloatingSideElements() {
 }
 
 export function LandingPage({ nav, onLogin }) {
+  const { currentUser, userData } = useAuth();
+  const isLoggedInExpert = !!currentUser && userData?.role === 'expert';
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [navHidden, setNavHidden] = React.useState(false);
 
@@ -291,12 +294,19 @@ export function LandingPage({ nav, onLogin }) {
           </div>
 
           <div className="lp-nav-actions">
+            {isLoggedInExpert ? (
+              <button className="lp-btn-cta" onClick={() => nav('expert-dashboard')}>
+                Profile <ArrowRight style={{ width: 16, height: 16 }} />
+              </button>
+            ) : (
+              <>
+                <button className="lp-btn-login" onClick={onLogin}>Log In</button>
 
-            <button className="lp-btn-login" onClick={onLogin}>Log In</button>
-
-            <button className="lp-btn-cta" onClick={() => nav('signup')}>
-              Start Earning <ArrowRight style={{ width: 16, height: 16 }} />
-            </button>
+                <button className="lp-btn-cta" onClick={() => nav('signup')}>
+                  Start Earning <ArrowRight style={{ width: 16, height: 16 }} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -594,10 +604,18 @@ export function LandingPage({ nav, onLogin }) {
               Free to start easy to scale.
             </p>
             <div className="lp-cta-actions">
-              <button className="lp-btn-primary" onClick={() => nav('signup')}>
-                Create Profile <ArrowRight style={{ width: 20, height: 20 }} />
-              </button>
-              <button className="lp-btn-login" onClick={onLogin}>Log In</button>
+              {isLoggedInExpert ? (
+                <button className="lp-btn-primary" onClick={() => nav('expert-dashboard')}>
+                  Go to Profile <ArrowRight style={{ width: 20, height: 20 }} />
+                </button>
+              ) : (
+                <>
+                  <button className="lp-btn-primary" onClick={() => nav('signup')}>
+                    Create Profile <ArrowRight style={{ width: 20, height: 20 }} />
+                  </button>
+                  <button className="lp-btn-login" onClick={onLogin}>Log In</button>
+                </>
+              )}
             </div>
             <p className="lp-cta-trust">
               <span> No credit card</span>

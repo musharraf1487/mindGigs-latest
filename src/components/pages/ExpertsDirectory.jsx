@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { ArrowRight, Zap, Star, BarChart2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const CATEGORIES = ['All', 'AI', 'Business', 'Developers', 'Marketers', 'Designers', 'Lawyers', 'Consultants', 'Coaches'];
 
@@ -223,6 +224,8 @@ function ExpertGridCard({ expert, nav }) {
 
 /* ─── Main Export ─── */
 export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
+    const { currentUser, userData } = useAuth();
+    const isLoggedInExpert = !!currentUser && userData?.role === 'expert';
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const gridRef = useRef(null);
@@ -312,17 +315,25 @@ export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
                     <div className="lb-nav-links">
                         <button onClick={() => nav('landingboard')} className="lb-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>Home</button>
                         <span className="lb-nav-link" style={{ opacity: 1, color: '#19b5a6', fontWeight: 700 }}>Experts</span>
-                        <button onClick={() => nav('home')} className="lb-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>Join as Expert</button>
+                        {!isLoggedInExpert && (
+                            <button onClick={() => nav('home')} className="lb-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>Join as Expert</button>
+                        )}
                     </div>
 
                     <div className="lb-nav-actions">
-                        <button className="lb-btn-login" onClick={onLogin}>Log In</button>
-                        <button
-                            className="lb-btn-join lb-hidden-sm"
-                            onClick={() => nav('home')}
-                        >
-                            Join as Expert
-                        </button>
+                        {isLoggedInExpert ? (
+                            <button className="lb-btn-join" onClick={() => nav('expert-dashboard')}>Profile</button>
+                        ) : (
+                            <>
+                                <button className="lb-btn-login" onClick={onLogin}>Log In</button>
+                                <button
+                                    className="lb-btn-join lb-hidden-sm"
+                                    onClick={() => nav('home')}
+                                >
+                                    Join as Expert
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </nav>

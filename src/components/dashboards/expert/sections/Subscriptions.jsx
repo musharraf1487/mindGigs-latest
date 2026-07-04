@@ -134,10 +134,10 @@ export function Subscriptions({ user, expertData, notify }) {
 
   // Initialize plans from the active user profile or fallback to mock
   useEffect(() => {
-    if (user?.offers?.subscriptions) {
-      setPlans(user.offers.subscriptions);
-    } else if (expertData?.offers?.subscriptions) {
-      setPlans(expertData.offers.subscriptions);
+    if (user?.subscriptionsList) {
+      setPlans(user.subscriptionsList);
+    } else if (expertData?.subscriptionsList) {
+      setPlans(expertData.subscriptionsList);
     }
   }, [user, expertData]);
 
@@ -181,7 +181,7 @@ export function Subscriptions({ user, expertData, notify }) {
     if (currentUser) {
       try {
         await updateDoc(doc(db, 'users', currentUser.uid), {
-          'offers.subscriptions': newPlans
+          subscriptionsList: newPlans
         });
         refreshUserData(); // Keep AuthContext data in sync
       } catch (err) {

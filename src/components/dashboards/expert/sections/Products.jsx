@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProfIcon } from '../../../common/ProfIcon';
+import { useAuth } from '../../../../context/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../../../config/firebase';
 
 const ICONS = ['package', 'file', 'chart', 'bot', 'palette', 'dollar'];
 const ICON_LABELS = { package: 'Template', file: 'Document', chart: 'Spreadsheet', bot: 'AI Tool', palette: 'Design', dollar: 'Finance' };
@@ -275,34 +278,60 @@ function StatsModal({ product, onClose }) {
 
 /* ── MAIN COMPONENT ── */
 export function Products({ user, expertData, notify }) {
-  const buildInitial = () => (expertData?.offers?.products || []).map(p => ({
+  const { currentUser, refreshUserData } = useAuth();
+
+  const buildInitial = (list) => (list || []).map(p => ({
     ...p,
-    id: Math.random().toString(36).slice(2),
-    views: Math.floor(Math.random() * 400 + 80),
+    id: p.id || Math.random().toString(36).slice(2),
+    views: p.views ?? Math.floor(Math.random() * 400 + 80),
+    sales: p.sales ?? 0,
     revenue: `$${((parseFloat((p.price || '0').replace(/[^0-9.]/g, '')) || 0) * (p.sales || 0)).toFixed(0)}`,
-    active: true,
+    active: p.active ?? true,
   }));
 
-  const [products, setProducts] = useState(buildInitial);
+  const [products, setProducts] = useState(() => buildInitial(user?.productsList || expertData?.productsList));
   const [showUpload, setShowUpload] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [statsProduct, setStatsProduct] = useState(null);
 
+  // Keep local list in sync whenever the underlying user profile changes
+  useEffect(() => {
+    setProducts(buildInitial(user?.productsList || expertData?.productsList));
+  }, [user, expertData]);
+
+  const saveToFirestore = async (updatedProducts) => {
+    if (!currentUser) return;
+    const productsList = updatedProducts.map(({ id, views, revenue, ...rest }) => rest);
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { productsList });
+      refreshUserData();
+    } catch (err) {
+      console.error('Failed to save products to Firestore:', err);
+      notify && notify('Failed to save changes to database.', 'error');
+    }
+  };
+
   const handleUpload = (form) => {
     const newProduct = { ...form, id: Date.now().toString(36), sales: 0, views: 0, revenue: '$0' };
-    setProducts(prev => [newProduct, ...prev]);
+    const updated = [newProduct, ...products];
+    setProducts(updated);
+    saveToFirestore(updated);
     setShowUpload(false);
     notify && notify('Product published successfully! 🚀');
   };
 
   const handleEdit = (form) => {
-    setProducts(prev => prev.map(p => p.id === editProduct.id ? { ...form, id: p.id } : p));
+    const updated = products.map(p => p.id === editProduct.id ? { ...form, id: p.id } : p);
+    setProducts(updated);
+    saveToFirestore(updated);
     setEditProduct(null);
     notify && notify('Product updated!');
   };
 
   const handleDelete = () => {
-    setProducts(prev => prev.filter(p => p.id !== editProduct.id));
+    const updated = products.filter(p => p.id !== editProduct.id);
+    setProducts(updated);
+    saveToFirestore(updated);
     setEditProduct(null);
     notify && notify('Product deleted.');
   };

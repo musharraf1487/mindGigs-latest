@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useAuth } from '../../../../context/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../../../config/firebase';
 
 const EMPTY_OFFER = {
   title: '',
   price: '',
   duration: '',
-  description: '',
+  desc: '',
   category: 'Session',
   active: true,
 };
@@ -142,8 +145,8 @@ function OfferModal({ offer, onSave, onClose }) {
             <textarea
               className="input"
               rows={3}
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
+              value={form.desc}
+              onChange={e => set('desc', e.target.value)}
               placeholder="Describe what clients get from this offer..."
               style={{ width: '100%', resize: 'vertical', minHeight: 80 }}
             />
@@ -228,34 +231,66 @@ function DeleteConfirmModal({ offer, onConfirm, onClose }) {
   );
 }
 
-export function Offers({ user, expertData, notify }) {
-  const buildInitialOffers = () => {
-    const sessionOffers = (expertData?.offers?.sessions || []).map(o => ({ ...o, category: 'Session', id: Math.random().toString(36).slice(2) }));
-    const subscriptionOffers = (expertData?.offers?.subscriptions || []).map(o => ({ ...o, category: 'Subscription', id: Math.random().toString(36).slice(2) }));
-    const productOffers = (expertData?.offers?.products || []).map(o => ({ ...o, category: 'Product', id: Math.random().toString(36).slice(2) }));
+export function Offers({ user, notify }) {
+  const { currentUser, refreshUserData } = useAuth();
+
+  const buildInitialOffers = (u) => {
+    const sessionOffers = (u?.sessionsList || []).map((o, i) => ({ ...o, category: 'Session', id: o.id || `session-${i}` }));
+    const subscriptionOffers = (u?.subscriptionsList || []).map((o, i) => ({ ...o, category: 'Subscription', id: o.id || `subscription-${i}` }));
+    const productOffers = (u?.productsList || []).map((o, i) => ({ ...o, category: 'Product', id: o.id || `product-${i}` }));
     return [...sessionOffers, ...subscriptionOffers, ...productOffers];
   };
 
-  const [offers, setOffers] = useState(buildInitialOffers);
+  const [offers, setOffers] = useState(() => buildInitialOffers(user));
   const [showCreate, setShowCreate] = useState(false);
   const [editOffer, setEditOffer] = useState(null);   // { index, offer }
   const [deleteOffer, setDeleteOffer] = useState(null); // { index, offer }
 
+  // Keep local list in sync whenever the underlying user profile changes
+  // (e.g. after onboarding, or after a save made from this component).
+  useEffect(() => {
+    setOffers(buildInitialOffers(user));
+  }, [user]);
+
+  const saveToFirestore = async (updatedOffers) => {
+    if (!currentUser) return;
+    const strip = (o) => {
+      const { id, category, ...rest } = o;
+      return rest;
+    };
+    const sessionsList = updatedOffers.filter(o => o.category === 'Session').map(strip);
+    const subscriptionsList = updatedOffers.filter(o => o.category === 'Subscription').map(strip);
+    const productsList = updatedOffers.filter(o => o.category === 'Product').map(strip);
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { sessionsList, subscriptionsList, productsList });
+      refreshUserData();
+    } catch (err) {
+      console.error('Failed to save offers to Firestore:', err);
+      notify && notify('Failed to save changes to database.', 'error');
+    }
+  };
+
   const handleCreate = (form) => {
     const newOffer = { ...form, id: Date.now().toString(36) };
-    setOffers(prev => [newOffer, ...prev]);
+    const updated = [newOffer, ...offers];
+    setOffers(updated);
+    saveToFirestore(updated);
     setShowCreate(false);
     notify && notify('Offer created successfully!', 'success');
   };
 
   const handleEdit = (form) => {
-    setOffers(prev => prev.map(o => o.id === editOffer.offer.id ? { ...form, id: o.id } : o));
+    const updated = offers.map(o => o.id === editOffer.offer.id ? { ...form, id: o.id } : o);
+    setOffers(updated);
+    saveToFirestore(updated);
     setEditOffer(null);
     notify && notify('Offer updated successfully!');
   };
 
   const handleDelete = () => {
-    setOffers(prev => prev.filter(o => o.id !== deleteOffer.offer.id));
+    const updated = offers.filter(o => o.id !== deleteOffer.offer.id);
+    setOffers(updated);
+    saveToFirestore(updated);
     setDeleteOffer(null);
     notify && notify('Offer deleted.');
   };
@@ -319,7 +354,7 @@ export function Offers({ user, expertData, notify }) {
                   </div>
                 )}
                 <p style={{ fontSize: '0.82rem', color: 'var(--mu)', lineHeight: 1.5 }}>
-                  {offer.description || offer.desc || 'No description provided.'}
+                  {offer.desc || 'No description provided.'}
                 </p>
               </div>
               <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: '10px', background: 'rgba(0,0,0,0.01)' }}>
