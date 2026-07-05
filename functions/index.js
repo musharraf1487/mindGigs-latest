@@ -160,7 +160,7 @@ async function processCommissionSplit({ db, saleType, saleAmount, expertId, refe
  *
  * Response: { url } — Stripe Checkout URL
  */
-exports.createCheckoutSession = onRequest(async (req, res) => {
+exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIENT_URL'] }, async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -282,7 +282,7 @@ exports.createCheckoutSession = onRequest(async (req, res) => {
  *
  * Listens for: checkout.session.completed
  */
-exports.stripeWebhook = onRequest(async (req, res) => {
+exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
 
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {

@@ -113,7 +113,8 @@ export function BookingFlow({ nav, notify, expert, session }) {
       );
       // User is now being redirected to Stripe — execution stops here.
     } catch (error) {
-      notify('Failed to create booking. Please try again.', 'error');
+      console.error('Booking/payment error:', error);
+      notify(error?.message || 'Failed to create booking. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
     }
