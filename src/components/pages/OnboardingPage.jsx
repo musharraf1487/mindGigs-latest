@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { db, storage } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { claimHandle, normalizeHandle } from '../../services/handleService';
 import {
   Calendar,
   RefreshCw,
@@ -192,7 +193,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                     style={{ paddingLeft: 120 }}
                     placeholder="yourname"
                     value={handleEdit}
-                    onChange={(e) => setHandleEdit(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+                    onChange={(e) => setHandleEdit(normalizeHandle(e.target.value))}
                   />
                 </div>
                 <span style={{ fontSize: '.72rem', color: 'var(--mu)' }}>Only lowercase letters, numbers, hyphens</span>
@@ -393,11 +394,25 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                       .filter(v => v > 0);
                     const startingPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
+                    const requestedHandle = handleEdit || userData?.handle || '';
+                    if (!requestedHandle) {
+                      notify('Please choose a public username before publishing your profile.', 'warn');
+                      setIsSubmitting(false);
+                      return;
+                    }
+                    // Claiming the handle also syncs referralCode to match it —
+                    // this is the moment the expert's profile (and vanity/referral URL) go public.
+                    const claimedHandle = await claimHandle({
+                      uid: currentUser.uid,
+                      role: 'expert',
+                      oldHandle: userData?.handle || null,
+                      newHandle: requestedHandle,
+                    });
+
                     const expertUpdates = {
                       image: photoUrl,
                       name: userData?.name || currentUser.displayName || 'Expert',
                       headline: headline || '',
-                      handle: handleEdit || userData?.handle || '',
                       category: detectCategory(tags, bio),
                       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
                       bio: bio || '',
@@ -416,7 +431,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
 
                     await updateDoc(doc(db, 'users', currentUser.uid), expertUpdates);
 
-                    const newExpertProfile = { ...userData, ...expertUpdates, id: currentUser.uid };
+                    const newExpertProfile = { ...userData, ...expertUpdates, handle: claimedHandle, referralCode: claimedHandle, id: currentUser.uid };
                     if (addExpert) addExpert(newExpertProfile);
                     if (refreshUserData) await refreshUserData();
 

@@ -39,13 +39,6 @@ export function clearReferralCode() {
   localStorage.removeItem(REFERRAL_KEY);
 }
 
-// ─── Code generation ──────────────────────────────────────────────────────────
-
-export function generateReferralCode(user) {
-  const base = user?.handle || user?.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
-  return base ? base.slice(0, 12) : (user?.uid || '').slice(0, 8);
-}
-
 // ─── Signup referral ──────────────────────────────────────────────────────────
 
 /**

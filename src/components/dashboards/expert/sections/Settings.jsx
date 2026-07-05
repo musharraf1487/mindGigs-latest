@@ -3,7 +3,8 @@ import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../../../../config/firebase';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, deleteUser } from 'firebase/auth';
-import { AlertCircle, Trash2, Key, Shield, User as UserIcon } from 'lucide-react';
+import { AlertCircle, Trash2, Key, Shield, User as UserIcon, Link as LinkIcon } from 'lucide-react';
+import { claimHandle, normalizeHandle, validateHandleFormat, isHandleAvailable } from '../../../../services/handleService';
 
 export function Settings({ user, notify, logout, nav }) {
   const { currentUser, refreshUserData } = useAuth();
@@ -11,6 +12,11 @@ export function Settings({ user, notify, logout, nav }) {
   const [email, setEmail] = useState(user?.email || ''); // We will make email read-only for now to simplify
   const [bio, setBio] = useState(user?.bio || '');
   const [loading, setLoading] = useState(false);
+
+  // Public profile URL / handle
+  const [handle, setHandle] = useState(user?.handle || '');
+  const [handleStatus, setHandleStatus] = useState(null); // null | 'checking' | 'available' | 'taken' | 'invalid'
+  const [savingHandle, setSavingHandle] = useState(false);
 
   // Password Change State
   const [showPassModal, setShowPassModal] = useState(false);
@@ -25,7 +31,46 @@ export function Settings({ user, notify, logout, nav }) {
     setName(user?.name || '');
     setEmail(user?.email || '');
     setBio(user?.bio || '');
+    setHandle(user?.handle || '');
   }, [user]);
+
+  // Debounced availability check as the expert edits their handle
+  useEffect(() => {
+    if (!handle || handle === user?.handle) { setHandleStatus(null); return; }
+    const { valid, reason } = validateHandleFormat(handle);
+    if (!valid) { setHandleStatus('invalid'); return; }
+    setHandleStatus('checking');
+    const t = setTimeout(async () => {
+      try {
+        const available = await isHandleAvailable(normalizeHandle(handle), currentUser?.uid);
+        setHandleStatus(available ? 'available' : 'taken');
+      } catch {
+        setHandleStatus(null);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [handle, user?.handle, currentUser?.uid]);
+
+  const handleSaveHandle = async () => {
+    if (!currentUser) return;
+    setSavingHandle(true);
+    try {
+      const claimed = await claimHandle({
+        uid: currentUser.uid,
+        role: 'expert',
+        oldHandle: user?.handle || null,
+        newHandle: handle,
+      });
+      setHandle(claimed);
+      setHandleStatus(null);
+      await refreshUserData();
+      notify('Public profile URL updated!');
+    } catch (err) {
+      notify(err.message || 'Failed to update username', 'error');
+    } finally {
+      setSavingHandle(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!currentUser) {
@@ -151,6 +196,46 @@ export function Settings({ user, notify, logout, nav }) {
           <button className="btn btn-gr" style={{ padding: '10px 24px' }} onClick={handleSaveProfile} disabled={loading}>
             {loading ? 'Saving...' : 'Save Changes'}
           </button>
+        </div>
+      </div>
+
+      {/* Public Profile URL */}
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <LinkIcon size={20} color="var(--teal)" />
+          <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--gd)' }}>Public Profile URL</h3>
+        </div>
+        <div style={{ padding: '24px' }}>
+          <p style={{ fontSize: '0.82rem', color: 'var(--mu)', marginBottom: 16 }}>
+            Share this link on social media or a business card — it shows your profile and also credits you as the referrer for anyone who signs up through it.
+          </p>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Username</label>
+          <div style={{ position: 'relative', maxWidth: 420 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '.85rem', color: 'var(--mu)' }}>
+              mindgigs.com/
+            </span>
+            <input
+              className="input"
+              style={{ width: '100%', paddingLeft: 120 }}
+              value={handle}
+              onChange={(e) => setHandle(normalizeHandle(e.target.value))}
+              placeholder="yourname"
+            />
+          </div>
+          {handleStatus === 'checking' && <div style={{ fontSize: '0.78rem', color: 'var(--mu)', marginTop: 6 }}>Checking availability…</div>}
+          {handleStatus === 'available' && <div style={{ fontSize: '0.78rem', color: 'var(--teal)', marginTop: 6 }}>✓ Available</div>}
+          {handleStatus === 'taken' && <div style={{ fontSize: '0.78rem', color: '#e84444', marginTop: 6 }}>That username is taken.</div>}
+          {handleStatus === 'invalid' && <div style={{ fontSize: '0.78rem', color: '#e84444', marginTop: 6 }}>Use 3-30 letters, numbers, or hyphens, starting with a letter.</div>}
+          <div style={{ marginTop: 16 }}>
+            <button
+              className="btn btn-gr"
+              style={{ padding: '10px 24px' }}
+              onClick={handleSaveHandle}
+              disabled={savingHandle || !handle || handle === user?.handle || handleStatus === 'taken' || handleStatus === 'invalid' || handleStatus === 'checking'}
+            >
+              {savingHandle ? 'Saving...' : 'Save Username'}
+            </button>
+          </div>
         </div>
       </div>
 

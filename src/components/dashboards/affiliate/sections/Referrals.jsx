@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Users, UserCheck, Clock, DollarSign, Copy, Mail, Plus, Lightbulb, User } from 'lucide-react';
-import { useAuth } from '../../../../context/AuthContext';
 
-function InviteModal({ onClose, notify, username }) {
+function InviteModal({ onClose, notify, referralCode }) {
   const [email, setEmail] = useState('');
-  
+
   const handleSendInvite = (e) => {
     e.preventDefault();
     if (!email) return;
-    const link = `https://mindgigs.com/ref/${username}`;
+    if (!referralCode) { notify?.('Set a username in Settings to get your referral link first.', 'warn'); return; }
+    const link = `https://mindgigs.com/?ref=${referralCode}`;
     const subject = encodeURIComponent("You're invited to join mindGigs as an Expert!");
     const body = encodeURIComponent(`Hi there,\n\nI think you'd be a great fit as an expert on mindGigs. You can monetize your skills and get paid for your time.\n\nSign up using my link: ${link}\n\nBest,`);
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
@@ -17,7 +17,8 @@ function InviteModal({ onClose, notify, username }) {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`https://mindgigs.com/ref/${username}`);
+    if (!referralCode) { notify?.('Set a username in Settings to get your referral link first.', 'warn'); return; }
+    navigator.clipboard.writeText(`https://mindgigs.com/?ref=${referralCode}`);
     notify?.('Invite link copied!', 'success');
   };
 
@@ -57,9 +58,10 @@ function InviteModal({ onClose, notify, username }) {
 }
 
 export function Referrals({ user, affiliateData, notify }) {
-  const { currentUser } = useAuth();
   const [showInvite, setShowInvite] = useState(false);
-  const username = user?.username || currentUser?.displayName?.split(' ')[0]?.toLowerCase() || 'partner';
+  // Only referralCode is looked up server-side for commission attribution —
+  // an invite link built from anything else would silently never attribute.
+  const referralCode = user?.referralCode || null;
 
   const active = affiliateData?.referrals?.filter(r => r.status === 'active').length || 0;
   const pending = affiliateData?.referrals?.filter(r => r.status === 'pending').length || 0;
@@ -68,7 +70,7 @@ export function Referrals({ user, affiliateData, notify }) {
 
   return (
     <div>
-      {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} username={username} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} referralCode={referralCode} />}
 
       {/* Header */}
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>

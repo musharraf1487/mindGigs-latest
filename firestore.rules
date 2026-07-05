@@ -55,6 +55,29 @@ service cloud.firestore {
       allow create: if request.auth != null;
     }
 
+    // Handles — public username registry, used to enforce uniqueness for
+    // expert/affiliate vanity URLs and coupon codes. Public read (needed for
+    // pre-signup availability checks); create is atomic and race-free via
+    // !exists(), so two users can never claim the same handle. Format and
+    // reserved-word checks are enforced here too (not just client-side in
+    // handleService.js's RESERVED_HANDLES — keep both lists in sync) so a
+    // direct SDK/API call can't bypass them.
+    match /handles/{handle} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        handle.matches('^[a-z][a-z0-9-]{2,29}$') &&
+        !(handle in [
+          'home', 'landingboard', 'login', 'signup', 'onboarding', 'experts',
+          'public-profile', 'booking', 'expert-dashboard', 'admin-dashboard',
+          'affiliate-dashboard', 'client-dashboard',
+          'admin', 'api', 'dashboard', 'assets', 'www', 'mindgigs', 'settings',
+          'help', 'support', 'terms', 'privacy', 'pricing', 'blog', 'ref'
+        ]) &&
+        !exists(/databases/$(database)/documents/handles/$(handle));
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
     // Platform config — public read, admin write only
     match /config/{id} {
       allow read: if true;

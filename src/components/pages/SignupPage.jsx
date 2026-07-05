@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { captureReferralCode, getStoredReferralCode } from '../../services/affiliateService';
+import { claimHandle, normalizeHandle } from '../../services/handleService';
 
 function AuthShell({ children, nav }) {
   return (
@@ -95,7 +94,7 @@ const ROLE_CONFIG = {
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function SignupPage({ nav, notify, role = 'expert' }) {
-  const { signup, loginWithGoogle, currentUser } = useAuth();
+  const { signup, loginWithGoogle, currentUser, userData, refreshUserData } = useAuth();
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -125,7 +124,7 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
     try {
       await signup(email, pass, role, {
         name,
-        handle: username || name.toLowerCase().replace(/\s+/g, ''),
+        handle: username || normalizeHandle(name),
         onboardingComplete: role !== 'expert',
       });
       notify(cfg.successMsg);
@@ -157,7 +156,7 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
               style={{ paddingLeft: 120 }}
               placeholder="yourname"
               value={pendingHandle}
-              onChange={(e) => setPendingHandle(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+              onChange={(e) => setPendingHandle(normalizeHandle(e.target.value))}
             />
           </div>
         </div>
@@ -169,11 +168,22 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
             setSavingHandle(true);
             try {
               const uid = currentUser?.uid;
-              if (uid) await updateDoc(doc(db, 'users', uid), { handle: pendingHandle });
+              if (uid) {
+                // One-time: this step is completing signup, so the affiliate's
+                // referral code is also set to match the handle they just chose.
+                await claimHandle({
+                  uid,
+                  role: 'affiliate',
+                  oldHandle: userData?.handle || null,
+                  newHandle: pendingHandle,
+                  syncReferralCode: true,
+                });
+                await refreshUserData?.();
+              }
               notify(cfg.successMsg);
               nav(cfg.redirect);
             } catch (err) {
-              notify('Failed to save handle: ' + (err.message || 'Unknown error'), 'error');
+              notify(err.message || 'Failed to save handle: Unknown error', 'error');
             } finally {
               setSavingHandle(false);
             }
@@ -227,7 +237,7 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
               style={{ paddingLeft: 120 }}
               placeholder="yourname"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(normalizeHandle(e.target.value))}
             />
           </div>
         </div>

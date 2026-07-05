@@ -21,11 +21,17 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [email, setEmail] = useState(userData?.email || '');
+  const [couponCode, setCouponCode] = useState('');
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingId, setBookingId] = useState(null);
   const [weeklySlots, setWeeklySlots] = useState(null);
   const [takenSlots, setTakenSlots] = useState({});
+
+  // Pre-fill any coupon/referral code captured from a shared link, editable by the client
+  useEffect(() => {
+    setCouponCode(getStoredReferralCode() || '');
+  }, []);
 
   // Fetch the expert's availability settings and already-booked slots
   useEffect(() => {
@@ -98,7 +104,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
         sessionTitle: sessionTitle,
         price: parsePriceCents(sessionPrice),
         clientEmail: email,
-        referralCode: getStoredReferralCode() || null,
+        referralCode: (couponCode || '').trim() || null,
       });
 
       setBookingId(newBookingId);
@@ -408,6 +414,15 @@ export function BookingFlow({ nav, notify, expert, session }) {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label className="label">Coupon Code (optional)</label>
+              <input
+                className="input"
+                placeholder="Have a coupon code?"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
               />
             </div>
             <div className="field">

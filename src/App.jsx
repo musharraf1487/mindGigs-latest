@@ -17,6 +17,7 @@ import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { captureReferralCode } from './services/affiliateService';
+import { RESERVED_HANDLES, normalizeHandle } from './services/handleService';
 
 import './styles/globals.css';
 import './styles/utilities.css';
@@ -84,6 +85,12 @@ export default function App() {
   const [signupRole, setSignupRole] = useState('expert');
   const [loginEmailHint, setLoginEmailHint] = useState('');
   const [preLoginPage, setPreLoginPage] = useState('landingboard');
+  // A bare path like mindgigs.com/username may be an expert's vanity URL —
+  // held here until the experts list loads and we can resolve it by handle.
+  const [pendingSlug, setPendingSlug] = useState(() => {
+    const slug = normalizeHandle(window.location.pathname.replace(/^\/+|\/+$/g, ''));
+    return slug && !RESERVED_HANDLES.has(slug) ? slug : null;
+  });
 
   // Capture referral code from URL on first load
   useEffect(() => {
@@ -148,6 +155,26 @@ export default function App() {
         const liveNames = new Set(live.map(e => (e.name || '').toLowerCase()));
         const toAdd = SHOWCASE_EXPERTS.filter(se => !liveNames.has(se.name.toLowerCase()));
         setExperts([...live, ...toAdd]);
+
+        // Resolve a pending vanity-URL slug against the freshly-loaded expert
+        // list. Only runs once — cleared below regardless of outcome, so a
+        // later re-fetch (e.g. after login) can't re-trigger vanity routing
+        // after the user has already navigated elsewhere.
+        if (pendingSlug) {
+          const match = live.find(e => e.handle === pendingSlug);
+          if (match) {
+            captureReferralCode(pendingSlug);
+            setActiveExpert(match);
+            setActiveExpertId(match.id);
+            setPage('public-profile');
+            window.history.replaceState(
+              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', activeSession: null },
+              '',
+              '/' + pendingSlug
+            );
+          }
+          setPendingSlug(null);
+        }
       } catch (err) {
         console.error('Error fetching experts:', err);
         setExperts(SHOWCASE_EXPERTS);
@@ -194,10 +221,14 @@ export default function App() {
   const nav = (p, ctx) => {
     if (p === 'login' && page !== 'login') setPreLoginPage(page);
     const newExpertId = ctx?.expertId !== undefined ? ctx.expertId : (p === 'public-profile' ? activeExpertId : null);
+    // Resolved once and reused below for both the active-expert state and the
+    // address-bar path, so the two can never disagree on which expert this is.
+    const resolvedForNav = ctx?.expertId !== undefined
+      ? (ctx.expert || experts.find(e => String(e.id) === String(ctx.expertId)))
+      : (p === 'public-profile' ? (activeExpert || experts.find(e => String(e.id) === String(newExpertId))) : null);
     if (ctx?.expertId !== undefined) {
       setActiveExpertId(ctx.expertId);
-      const found = ctx.expert || experts.find(e => String(e.id) === String(ctx.expertId));
-      if (found) setActiveExpert(found);
+      if (resolvedForNav) setActiveExpert(resolvedForNav);
     }
     if (p === 'login' && ctx?.role) setLoginRole(ctx.role);
     if (p === 'login' && ctx?.emailHint !== undefined) setLoginEmailHint(ctx.emailHint || '');
@@ -208,6 +239,18 @@ export default function App() {
     if (ctx?.session !== undefined) setActiveSession(ctx.session);
     else if (p !== 'booking') setActiveSession(null);
 
+    // Give an expert's public profile a real, shareable address-bar path.
+    // Every other page keeps today's behavior (URL left untouched) to avoid
+    // disturbing existing back/forward navigation for the rest of the app.
+    // Navigating to/from a profile always resets the path (even with no
+    // resolvable handle) so the address bar never shows a stale expert's URL.
+    let urlPath = window.location.href;
+    if (p === 'public-profile') {
+      urlPath = resolvedForNav?.handle ? '/' + resolvedForNav.handle : '/';
+    } else if (page === 'public-profile') {
+      urlPath = '/';
+    }
+
     window.history.pushState({
       page: p,
       expertId: newExpertId,
@@ -215,7 +258,7 @@ export default function App() {
       loginRole: p === 'login' ? (ctx?.role || loginRole) : loginRole,
       signupRole: p === 'signup' ? (ctx?.role || signupRole) : signupRole,
       activeSession: p === 'booking' ? (ctx?.session || activeSession) : null,
-    }, '', window.location.href);
+    }, '', urlPath);
     setPage(p);
   };
 

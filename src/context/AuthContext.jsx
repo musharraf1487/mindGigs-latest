@@ -7,15 +7,15 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { saveAccountToStorage } from '../components/common/AccountSwitcher';
 import {
-  generateReferralCode,
   processSignupReferral,
   getStoredReferralCode,
   clearReferralCode,
 } from '../services/affiliateService';
+import { claimHandle, validateHandleFormat, isHandleAvailable, normalizeHandle } from '../services/handleService';
 
 const AuthContext = createContext();
 
@@ -30,27 +30,52 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function signup(email, password, role = 'expert', additionalData = {}) {
-    const { user } = await createUserWithEmailAndPassword(auth, email, password);
+    const claimsHandle = ['expert', 'affiliate'].includes(role);
+    const requestedHandle = additionalData.handle ? normalizeHandle(additionalData.handle) : '';
 
-    const referralCode = role === 'expert' ? generateReferralCode({ ...additionalData, uid: user.uid }) : null;
+    // Pre-check before creating the Auth user, to avoid orphaned accounts on a doomed handle.
+    if (claimsHandle && requestedHandle) {
+      const { valid, reason } = validateHandleFormat(requestedHandle);
+      if (!valid) throw new Error(reason);
+      const available = await isHandleAvailable(requestedHandle, null);
+      if (!available) throw new Error('That username is taken. Please choose another.');
+    }
+
+    const { user } = await createUserWithEmailAndPassword(auth, email, password);
 
     const userDoc = {
       uid: user.uid,
       email: user.email,
       role,
       name: additionalData.name || '',
-      handle: additionalData.handle || '',
       onboardingComplete: role !== 'expert',
       createdAt: new Date().toISOString(),
-      referralCode: referralCode || null,
+      referralCode: null,
       referredBy: null,
       tier: role === 'expert' ? 1 : null,
       affiliateEarnings: 0,
       pendingPayout: 0,
       ...additionalData,
+      // Never persist the raw, unclaimed handle here — claimHandle() below is
+      // the only code path allowed to write `handle`, so users.handle can
+      // never diverge from (or exist without) a matching handles/ registry doc.
+      handle: '',
     };
 
     await setDoc(doc(db, 'users', user.uid), userDoc);
+
+    if (claimsHandle && requestedHandle) {
+      try {
+        // syncReferralCode: true covers both roles here — this is the one-time
+        // signup-completion moment, so an affiliate's coupon code is also set
+        // to match now; it stays fixed on later handle edits (see Settings).
+        const claimed = await claimHandle({ uid: user.uid, role, oldHandle: null, newHandle: requestedHandle, syncReferralCode: true });
+        userDoc.handle = claimed;
+        userDoc.referralCode = claimed;
+      } catch (err) {
+        console.error('Handle claim failed after signup:', err);
+      }
+    }
 
     // Process referral if user arrived via a referral link
     const storedCode = getStoredReferralCode();
@@ -97,26 +122,38 @@ export function AuthProvider({ children }) {
       setUserRole(data.role);
       setUserData(data);
     } else {
-      const handle = user.displayName
-        ? user.displayName.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000)
+      const claimsHandle = ['expert', 'affiliate'].includes(expectedRole);
+      const fallbackHandle = user.displayName
+        ? normalizeHandle(user.displayName) + Math.floor(Math.random() * 1000)
         : '';
-      const referralCode = expectedRole === 'expert' ? generateReferralCode({ name: user.displayName, uid: user.uid }) : null;
       const userDoc = {
         uid: user.uid,
         email: user.email,
         role: expectedRole,
         name: user.displayName || '',
-        handle,
+        // Never persist the raw, unclaimed fallback handle — claimHandle()
+        // below is the only code path allowed to write `handle`.
+        handle: '',
         onboardingComplete: expectedRole !== 'expert',
         createdAt: new Date().toISOString(),
         image: user.photoURL || '',
-        referralCode: referralCode || null,
+        referralCode: null,
         referredBy: null,
         tier: expectedRole === 'expert' ? 1 : null,
         affiliateEarnings: 0,
         pendingPayout: 0,
       };
       await setDoc(docRef, userDoc);
+
+      if (claimsHandle && fallbackHandle) {
+        try {
+          const claimed = await claimHandle({ uid: user.uid, role: expectedRole, oldHandle: null, newHandle: fallbackHandle, syncReferralCode: true });
+          userDoc.handle = claimed;
+          userDoc.referralCode = claimed;
+        } catch (err) {
+          console.error('Handle claim failed after Google signup:', err);
+        }
+      }
 
       const storedCode = getStoredReferralCode();
       if (storedCode) {

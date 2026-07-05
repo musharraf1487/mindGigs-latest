@@ -14,7 +14,11 @@ export function Overview({ user, affiliateData, notify }) {
     { label: 'Pending Payout', val: `$${affiliateData?.pendingPayout || '0'}`, ch: 'Ready to withdraw', color: 'var(--gb)', icon: 'clock' },
   ];
 
-  const username = user?.username || user?.name?.split(' ')[0]?.toLowerCase() || 'zaid';
+  // Only referralCode is looked up server-side for commission attribution —
+  // falling back to `handle` here would show a plausible-looking link that
+  // silently never attributes a sale to this affiliate.
+  const referralCode = user?.referralCode || null;
+  const referralLink = referralCode ? `https://mindgigs.com/?ref=${referralCode}` : null;
 
   return (
     <div>
@@ -53,12 +57,14 @@ export function Overview({ user, affiliateData, notify }) {
             <ProfIcon icon="link" size={14} /> Your Affiliate Link
           </div>
           <div className="ref-box" style={{ marginTop: 0 }}>
-            <span className="ref-url">https://mindgigs.com/ref/{username}</span>
+            <span className="ref-url">{referralLink || 'Set a username in Settings to get your link'}</span>
           </div>
         </div>
         <button
+          disabled={!referralLink}
           onClick={() => {
-            navigator.clipboard.writeText(`https://mindgigs.com/ref/${username}`);
+            if (!referralLink) return;
+            navigator.clipboard.writeText(referralLink);
             notify?.('Affiliate link copied!', 'success');
           }}
           style={{
