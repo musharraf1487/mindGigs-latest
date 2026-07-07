@@ -23,7 +23,6 @@ import { getStoredReferralCode } from '../../services/affiliateService';
 export function PublicProfile({ nav, notify, expert }) {
   const { currentUser } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(null);
-  const [couponCode, setCouponCode] = useState(() => getStoredReferralCode() || '');
 
   const parsePriceCents = (priceStr) => {
     const num = parseFloat(String(priceStr ?? '').replace(/[^0-9.]/g, ''));
@@ -45,7 +44,7 @@ export function PublicProfile({ nav, notify, expert }) {
         sub.title,
         amount,
         currentUser.email,
-        (couponCode || '').trim() || null
+        getStoredReferralCode() || null
       );
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
@@ -68,7 +67,7 @@ export function PublicProfile({ nav, notify, expert }) {
         product.title,
         amount,
         currentUser.email,
-        (couponCode || '').trim() || null
+        getStoredReferralCode() || null
       );
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
@@ -254,20 +253,6 @@ export function PublicProfile({ nav, notify, expert }) {
               {expert.bio}
             </p>
           </div>
-        </div>
-
-        {/* Coupon code — applies to any purchase made below */}
-        <div className="card" style={{ padding: '18px 24px', marginBottom: 24 }}>
-          <label style={{ display: 'block', fontSize: '.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>
-            Coupon Code (optional)
-          </label>
-          <input
-            className="input"
-            style={{ maxWidth: 320 }}
-            placeholder="Have a coupon code?"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
-          />
         </div>
 
         {/* 1:1 Sessions */}
