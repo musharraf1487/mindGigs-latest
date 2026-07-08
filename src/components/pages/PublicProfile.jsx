@@ -131,6 +131,16 @@ export function PublicProfile({ nav, notify, expert }) {
     handleBuyNow(book);
   };
 
+  const handleCustomCta = (c) => {
+    if (c.ctaType === 'book') {
+      nav('booking', { session: { title: c.title, price: c.price || 'Contact for pricing', duration: c.duration || 'Flexible' } });
+    } else if (c.ctaType === 'custom' && c.link) {
+      window.open(c.link, '_blank', 'noopener,noreferrer');
+    } else {
+      notify('Contact the expert to inquire.');
+    }
+  };
+
   if (!expert) return null;
 
   const initials = (expert.name || 'E')
@@ -141,68 +151,11 @@ export function PublicProfile({ nav, notify, expert }) {
     .toUpperCase();
   const firstName = expert.name?.split(' ')[0] || 'this expert';
 
-  const sessions = expert.sessionsList || [
-    {
-      title: '60-min Strategy Deep Dive',
-      duration: '60 min',
-      price: '$250',
-      desc: 'Deep dive into your product strategy, roadmap, or fundraising pitch with actionable takeaways.',
-    },
-    {
-      title: '15-min Quick Call',
-      duration: '15 min',
-      price: '$40',
-      desc: 'Fast, focused answer to your most pressing question.',
-    },
-  ];
-
-  const subscriptions = expert.subscriptionsList || expert.subscriptions || [
-    {
-      id: 'sub-adv',
-      title: 'Strategic Advisory Access',
-      price: '199',
-      desc: 'For serious professionals who want personalized guidance.',
-      features: [
-        'Small-group advisory calls',
-        'Personalized growth roadmap',
-        'Direct expert feedback',
-        'Quarterly performance review',
-      ],
-    },
-  ];
-
-  const products = expert.productsList || [
-    { title: 'Pitch Deck Template', price: '$79', desc: 'Proven template used by 142 founders.', sold: '142' },
-    { title: 'SaaS Metrics Dashboard', price: '$49', desc: 'Track all key SaaS metrics in one place.', sold: '98' },
-    { title: 'Fundraising Playbook', price: '$129', desc: 'Step-by-step guide for raising a seed round.', sold: '76' },
-  ];
-
-  const books = expert.booksList || [
-    {
-      title: "The Founder's Playbook",
-      author: null,
-      tagline: 'A practical guide to building and scaling early-stage startups.',
-      format: 'Paperback',
-      price: '$24',
-      cta: 'Buy Now',
-    },
-    {
-      title: 'Raising Smart Money',
-      author: expert.name,
-      tagline: 'How to approach investors with confidence and clarity.',
-      format: 'Kindle',
-      price: '$14',
-      cta: 'Buy on Amazon',
-    },
-    {
-      title: 'Metrics That Matter',
-      author: null,
-      tagline: 'The SaaS metrics every founder should track from day one.',
-      format: 'Hardcover',
-      price: '$29',
-      cta: 'Buy Now',
-    },
-  ];
+  const sessions = expert.sessionsList || [];
+  const subscriptions = expert.subscriptionsList || expert.subscriptions || [];
+  const products = expert.productsList || [];
+  const books = expert.booksList || [];
+  const customOfferings = expert.customOfferingsList || [];
 
   return (
     <div style={{ background: 'var(--cr)', minHeight: '100vh' }}>
@@ -341,6 +294,7 @@ export function PublicProfile({ nav, notify, expert }) {
         </div>
 
         {/* 1:1 Sessions */}
+        {sessions.length > 0 && (
         <div style={{ marginTop: 56 }}>
           <SectionHeader
             icon={<Calendar size={18} color="var(--teal)" />}
@@ -387,8 +341,10 @@ export function PublicProfile({ nav, notify, expert }) {
             ))}
           </div>
         </div>
+        )}
 
         {/* Subscriptions */}
+        {subscriptions.length > 0 && (
         <div style={{ marginTop: 56 }}>
           <SectionHeader
             icon={<RefreshCw size={18} color="var(--teal)" />}
@@ -482,8 +438,10 @@ export function PublicProfile({ nav, notify, expert }) {
             ))}
           </div>
         </div>
+        )}
 
         {/* Digital Products */}
+        {products.length > 0 && (
         <div style={{ marginTop: 56 }}>
           <SectionHeader
             icon={<Package size={18} color="var(--teal)" />}
@@ -544,8 +502,10 @@ export function PublicProfile({ nav, notify, expert }) {
             ))}
           </div>
         </div>
+        )}
 
         {/* Books */}
+        {books.length > 0 && (
         <div style={{ marginTop: 56 }}>
           <SectionHeader
             icon={<BookOpen size={18} color="var(--teal)" />}
@@ -608,9 +568,10 @@ export function PublicProfile({ nav, notify, expert }) {
             ))}
           </div>
         </div>
+        )}
 
         {/* Custom Offerings */}
-        {expert.customOfferingsList?.length > 0 && (
+        {customOfferings.length > 0 && (
           <div style={{ marginTop: 56 }}>
             <SectionHeader
               icon={<Sparkles size={18} color="var(--teal)" />}
@@ -618,7 +579,7 @@ export function PublicProfile({ nav, notify, expert }) {
               title="Additional ways to work together"
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {expert.customOfferingsList.map((c) => (
+              {customOfferings.map((c) => (
                 <div key={c.title} className="card" style={{ padding: '28px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', fontSize: '1.05rem', marginBottom: 4 }}>{c.title}</div>
@@ -633,13 +594,19 @@ export function PublicProfile({ nav, notify, expert }) {
                     {c.price && (
                       <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price}</div>
                     )}
-                    <button className="btn btn-gr btn-sm" onClick={() => notify('Contact the expert to inquire.')}>
-                      Inquire →
+                    <button className="btn btn-gr btn-sm" onClick={() => handleCustomCta(c)}>
+                      {c.ctaType === 'book' ? 'Book Now' : c.ctaType === 'custom' ? (c.ctaLabel || 'Learn More') : 'Contact Me'} →
                     </button>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {sessions.length === 0 && subscriptions.length === 0 && products.length === 0 && books.length === 0 && customOfferings.length === 0 && (
+          <div style={{ marginTop: 56, textAlign: 'center', padding: '48px 24px', color: 'var(--mu)' }}>
+            <div style={{ fontSize: '.95rem' }}>{firstName} hasn't published any offerings yet. Check back soon!</div>
           </div>
         )}
 
