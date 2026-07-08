@@ -4,11 +4,7 @@ import {
   RefreshCw,
   Package,
   Share2,
-  Phone,
-  MessageSquare,
-  Download,
   BookOpen,
-  Presentation,
   Twitter,
   Linkedin,
   FileText,
@@ -19,6 +15,58 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
 import { getStoredReferralCode } from '../../services/affiliateService';
+
+const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
+
+function SectionHeader({ icon, eyebrow, title }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+      <div
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 10,
+          background: BADGE_BG,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </div>
+      <div>
+        <div
+          style={{
+            fontFamily: 'var(--fu)',
+            fontSize: '.68rem',
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: 'var(--teal)',
+            textTransform: 'uppercase',
+          }}
+        >
+          {eyebrow}
+        </div>
+        <div style={{ fontFamily: 'var(--fu)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--gd)', marginTop: 2 }}>
+          {title}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PRODUCT_GRADIENTS = [
+  'linear-gradient(135deg, var(--gd), var(--teal))',
+  'linear-gradient(135deg, var(--gb), var(--gd))',
+  'linear-gradient(135deg, var(--teal), var(--gd))',
+];
+
+const BOOK_GRADIENTS = [
+  'linear-gradient(160deg, var(--gd), var(--gb))',
+  'linear-gradient(160deg, var(--teal), var(--gd))',
+  'linear-gradient(160deg, var(--gb), var(--teal))',
+];
 
 export function PublicProfile({ nav, notify, expert }) {
   const { currentUser } = useAuth();
@@ -75,7 +123,87 @@ export function PublicProfile({ nav, notify, expert }) {
     }
   };
 
+  const handleBuyBook = (book) => {
+    if (book.link) {
+      window.open(book.link, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    handleBuyNow(book);
+  };
+
   if (!expert) return null;
+
+  const initials = (expert.name || 'E')
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const firstName = expert.name?.split(' ')[0] || 'this expert';
+
+  const sessions = expert.sessionsList || [
+    {
+      title: '60-min Strategy Deep Dive',
+      duration: '60 min',
+      price: '$250',
+      desc: 'Deep dive into your product strategy, roadmap, or fundraising pitch with actionable takeaways.',
+    },
+    {
+      title: '15-min Quick Call',
+      duration: '15 min',
+      price: '$40',
+      desc: 'Fast, focused answer to your most pressing question.',
+    },
+  ];
+
+  const subscriptions = expert.subscriptionsList || expert.subscriptions || [
+    {
+      id: 'sub-adv',
+      title: 'Strategic Advisory Access',
+      price: '199',
+      desc: 'For serious professionals who want personalized guidance.',
+      features: [
+        'Small-group advisory calls',
+        'Personalized growth roadmap',
+        'Direct expert feedback',
+        'Quarterly performance review',
+      ],
+    },
+  ];
+
+  const products = expert.productsList || [
+    { title: 'Pitch Deck Template', price: '$79', desc: 'Proven template used by 142 founders.', sold: '142' },
+    { title: 'SaaS Metrics Dashboard', price: '$49', desc: 'Track all key SaaS metrics in one place.', sold: '98' },
+    { title: 'Fundraising Playbook', price: '$129', desc: 'Step-by-step guide for raising a seed round.', sold: '76' },
+  ];
+
+  const books = expert.booksList || [
+    {
+      title: "The Founder's Playbook",
+      author: null,
+      tagline: 'A practical guide to building and scaling early-stage startups.',
+      format: 'Paperback',
+      price: '$24',
+      cta: 'Buy Now',
+    },
+    {
+      title: 'Raising Smart Money',
+      author: expert.name,
+      tagline: 'How to approach investors with confidence and clarity.',
+      format: 'Kindle',
+      price: '$14',
+      cta: 'Buy on Amazon',
+    },
+    {
+      title: 'Metrics That Matter',
+      author: null,
+      tagline: 'The SaaS metrics every founder should track from day one.',
+      format: 'Hardcover',
+      price: '$29',
+      cta: 'Buy Now',
+    },
+  ];
+
   return (
     <div style={{ background: 'var(--cr)', minHeight: '100vh' }}>
       {/* Nav */}
@@ -83,8 +211,7 @@ export function PublicProfile({ nav, notify, expert }) {
         style={{
           background: '#fff',
           borderBottom: '1px solid rgba(84,119,146,0.1)',
-          padding: '0 48px',
-          height: 64,
+          padding: '20px 40px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -109,7 +236,7 @@ export function PublicProfile({ nav, notify, expert }) {
             mind<span style={{ color: 'var(--teal)' }}>G</span>igs
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
           <button
             className="btn btn-gh btn-sm"
             onClick={() => {
@@ -127,361 +254,281 @@ export function PublicProfile({ nav, notify, expert }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 780, margin: '0 auto', padding: '40px 24px' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 0' }}>
         {/* Profile Header */}
-        <div className="card" style={{ overflow: 'hidden', marginBottom: 24 }}>
-          <div
-            style={{
-              height: 140,
-              background: 'linear-gradient(135deg, var(--gd), var(--gb))',
-              position: 'relative',
-            }}
-          >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ position: 'relative', width: 200, height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div
               style={{
                 position: 'absolute',
-                bottom: -32,
-                left: 32,
-                width: 72,
-                height: 72,
-                borderRadius: '50%',
-                background: 'var(--teal)',
-                border: '4px solid #fff',
+                inset: -24,
+                borderRadius: 24,
+                background: 'radial-gradient(circle, rgba(25,148,136,0.22) 0%, rgba(15,23,42,0.12) 55%, rgba(15,23,42,0) 75%)',
+                filter: 'blur(2px)',
+              }}
+            />
+            <div
+              style={{
+                position: 'relative',
+                width: 200,
+                height: 250,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, var(--gd), var(--teal))',
+                boxShadow: '0 12px 32px rgba(15,23,42,0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.8rem',
-                fontWeight: 700,
-                color: '#fff',
-                boxShadow: '0 4px 16px rgba(0,0,0,.12)',
                 overflow: 'hidden',
               }}
             >
               {expert.image ? (
-                <img
-                  src={expert.image}
-                  alt={expert.name}
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                />
+                <img src={expert.image} alt={expert.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                expert.name?.charAt(0).toUpperCase() || 'E'
+                <span style={{ fontFamily: 'var(--fu)', fontSize: 72, fontWeight: 700, color: '#fff' }}>{initials}</span>
               )}
             </div>
           </div>
-          <div style={{ padding: '44px 32px 28px' }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-                gap: 12,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontFamily: 'var(--fu)',
-                    fontWeight: 800,
-                    fontSize: '1.4rem',
-                    color: 'var(--gd)',
-                  }}
+
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontFamily: 'var(--fu)', fontSize: '2rem', fontWeight: 800, color: 'var(--gd)', letterSpacing: '-0.02em' }}>
+              {expert.name}
+            </div>
+            {expert.headline && (
+              <div style={{ fontSize: '.92rem', color: 'var(--sl)', fontWeight: 500, marginTop: 6 }}>{expert.headline}</div>
+            )}
+            <div style={{ marginTop: 6, fontFamily: 'var(--fu)', fontSize: '.94rem', color: 'var(--teal)', fontWeight: 500 }}>
+              mindgigs.com/{expert.handle}
+            </div>
+          </div>
+
+          {(expert.tags?.length > 0 || expert.twitter || expert.linkedin) && (
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 16 }}>
+              {expert.tags?.map((t) => (
+                <span key={t} className="tag tag-gr">{t}</span>
+              ))}
+              {expert.twitter && (
+                <a
+                  href={expert.twitter.startsWith('http') ? expert.twitter : `https://${expert.twitter}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '.85rem', color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  {expert.name}
-                </div>
-                {expert.headline && (
-                  <div style={{ fontSize: '.88rem', color: 'var(--sl)', fontWeight: 500, marginBottom: 4 }}>
-                    {expert.headline}
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontSize: '.82rem',
-                    color: 'var(--gb)',
-                    fontWeight: 500,
-                    marginBottom: 10,
-                  }}
+                  <Twitter size={16} /> Twitter
+                </a>
+              )}
+              {expert.linkedin && (
+                <a
+                  href={expert.linkedin.startsWith('http') ? expert.linkedin : `https://${expert.linkedin}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '.85rem', color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  mindgigs.com/{expert.handle}
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {expert.tags?.map((t) => (
-                    <span key={t} className="tag tag-gr">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {(expert.twitter || expert.linkedin) && (
-                <div style={{ display: 'flex', gap: 16 }}>
-                  {expert.twitter && (
-                    <a
-                      href={expert.twitter.startsWith('http') ? expert.twitter : `https://${expert.twitter}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: '.85rem', color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
-                      onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                      onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                    >
-                      <Twitter size={16} /> Twitter
-                    </a>
-                  )}
-                  {expert.linkedin && (
-                    <a
-                      href={expert.linkedin.startsWith('http') ? expert.linkedin : `https://${expert.linkedin}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: '.85rem', color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
-                      onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                      onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                    >
-                      <Linkedin size={16} /> LinkedIn
-                    </a>
-                  )}
-                </div>
+                  <Linkedin size={16} /> LinkedIn
+                </a>
               )}
             </div>
-            <p
-              style={{
-                fontSize: '.92rem',
-                color: 'var(--sl)',
-                lineHeight: 1.75,
-                marginTop: 16,
-                maxWidth: 580,
-              }}
-            >
-              {expert.bio}
-            </p>
-          </div>
+          )}
+
+          {expert.bio && (
+            <div className="card" style={{ marginTop: 20, width: '100%', padding: '24px 32px' }}>
+              <p style={{ fontSize: '.94rem', color: 'var(--sl)', lineHeight: 1.6 }}>{expert.bio}</p>
+            </div>
+          )}
         </div>
 
         {/* 1:1 Sessions */}
-          <div style={{ marginBottom: 32 }}>
-            <h3
-              style={{
-                fontFamily: 'var(--fu)',
-                fontWeight: 700,
-                color: 'var(--gd)',
-                marginBottom: 16,
-                fontSize: '1.1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <Calendar size={18} color="var(--teal)" /> 1:1 Sessions
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {(
-                expert.sessionsList || [
-                  {
-                    title: '60-min Strategy Deep Dive',
-                    duration: '60 min',
-                    price: '$250',
-                    desc: 'Deep dive into your product strategy, roadmap, or fundraising pitch with actionable takeaways.',
-                  },
-                  {
-                    title: '15-min Quick Call',
-                    duration: '15 min',
-                    price: '$40',
-                    desc: 'Fast, focused answer to your most pressing question.',
-                  },
-                ]
-              ).map((s) => (
-                <div
-                  key={s.title}
-                  className="card"
-                  style={{
-                    padding: 20,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 16,
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--fu)',
-                        fontWeight: 700,
-                        color: 'var(--gd)',
-                        marginBottom: 4,
-                      }}
-                    >
-                      {s.title}
-                    </div>
-                    <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Clock size={12} /> {s.duration}
-                    </div>
-                    <div style={{ fontSize: '.83rem', color: 'var(--sl)' }}>{s.desc}</div>
+        <div style={{ marginTop: 56 }}>
+          <SectionHeader
+            icon={<Calendar size={18} color="var(--teal)" />}
+            eyebrow="1:1 Sessions"
+            title={`Book time with ${firstName}`}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {sessions.map((s) => (
+              <div
+                key={s.title}
+                className="card"
+                style={{
+                  padding: '28px 32px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 20,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <div style={{ fontFamily: 'var(--fu)', fontSize: '1.05rem', fontWeight: 600, color: 'var(--gd)' }}>
+                    {s.title}
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--fu)',
-                        fontSize: '1.3rem',
-                        fontWeight: 800,
-                        color: 'var(--gd)',
-                        marginBottom: 10,
-                      }}
-                    >
-                      {s.price}
-                    </div>
-                    <button className="btn btn-gr btn-sm" onClick={() => nav('booking', { session: s })}>
-                      Book Now
-                    </button>
-                    <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem', marginTop: 8 }} onClick={(e) => { e.preventDefault(); nav('signup'); }}>
-                      Do you want to become an Affiliate?
-                    </a>
+                  <div style={{ fontSize: '.8rem', color: 'var(--mu)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Clock size={13} /> {s.duration}
+                  </div>
+                  <div style={{ fontSize: '.9rem', color: 'var(--sl)', marginTop: 10, lineHeight: 1.55, maxWidth: 480 }}>
+                    {s.desc}
                   </div>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
+                  <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
+                    {s.price}
+                  </div>
+                  <button className="btn btn-gr btn-sm" onClick={() => nav('booking', { session: s })}>
+                    Book Now
+                  </button>
+                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup'); }}>
+                    Do you want to become an Affiliate?
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
         {/* Subscriptions */}
-          <div style={{ marginBottom: 32 }}>
-            <h3
-              style={{
-                fontFamily: 'var(--fu)',
-                fontWeight: 700,
-                color: 'var(--gd)',
-                marginBottom: 16,
-                fontSize: '1.1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <RefreshCw size={18} color="var(--teal)" /> Subscriptions
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {(expert.subscriptionsList || expert.subscriptions || [
-                {
-                  id: 'sub-adv',
-                  title: 'Strategic Advisory Access',
-                  price: '199',
-                  desc: 'For serious professionals who want personalized guidance.',
-                  features: [
-                    "Small-group advisory calls",
-                    "Personalized growth roadmap",
-                    "Direct expert feedback",
-                    "Quarterly performance review"
-                  ]
-                }
-              ]).map((sub) => (
-                <div key={sub.id || sub.title} className="card" style={{ padding: 24, background: 'var(--gmt)', border: '1.5px solid rgba(255,155,81,.15)' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      flexWrap: 'wrap',
-                      gap: 16,
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          fontFamily: 'var(--fu)',
-                          fontWeight: 700,
-                          color: 'var(--gd)',
-                          fontSize: '1.05rem',
-                          marginBottom: 12,
-                        }}
-                      >
-                        {sub.title}
-                      </div>
-                      {sub.desc && (
-                        <p style={{ fontSize: '.83rem', color: 'var(--sl)', marginBottom: sub.features?.length ? 12 : 0 }}>
-                          {sub.desc}
-                        </p>
-                      )}
-                      {sub.features?.length > 0 && (
-                        <ul style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {sub.features.map((b) => (
-                            <li key={b} style={{ fontSize: '.83rem', color: 'var(--sl)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <Check size={14} color="var(--teal)" /> {b}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'var(--fu)', fontSize: '2rem', fontWeight: 800, color: 'var(--gd)' }}>
-                        {sub.price ? (String(sub.price).includes('$') ? String(sub.price).split('/')[0] : `$${sub.price}`) : '$—'}
-                      </div>
-                      <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginBottom: 12 }}>/month</div>
-                      <button
-                        className="btn btn-gr"
-                        disabled={checkoutLoading === `sub-${sub.title}`}
-                        onClick={() => handleSubscribe(sub)}
-                      >
-                        {checkoutLoading === `sub-${sub.title}` ? 'Redirecting...' : 'Subscribe →'}
-                      </button>
-                      <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem', marginTop: 12 }} onClick={(e) => { e.preventDefault(); nav('signup'); }}>
-                        Do you want to become an Affiliate?
-                      </a>
-                    </div>
+        <div style={{ marginTop: 56 }}>
+          <SectionHeader
+            icon={<RefreshCw size={18} color="var(--teal)" />}
+            eyebrow="Subscriptions"
+            title="Ongoing advisory access"
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {subscriptions.map((sub) => (
+              <div
+                key={sub.id || sub.title}
+                className="card"
+                style={{
+                  position: 'relative',
+                  padding: 32,
+                  borderTop: '3px solid var(--teal)',
+                  display: 'flex',
+                  gap: 24,
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -11,
+                    left: 32,
+                    background: 'var(--teal)',
+                    color: '#fff',
+                    fontSize: '.65rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    padding: '4px 12px',
+                    borderRadius: 999,
+                  }}
+                >
+                  Featured
+                </span>
+                <div style={{ flex: 1, minWidth: 280 }}>
+                  <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.2rem' }}>
+                    {sub.title}
                   </div>
+                  {sub.desc && (
+                    <p style={{ fontSize: '.9rem', color: 'var(--sl)', marginTop: 6, lineHeight: 1.55, maxWidth: 420 }}>
+                      {sub.desc}
+                    </p>
+                  )}
+                  {sub.features?.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginTop: 18 }}>
+                      {sub.features.map((f) => (
+                        <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.9rem', color: 'var(--sl)' }}>
+                          <span
+                            style={{
+                              width: 19,
+                              height: 19,
+                              borderRadius: '50%',
+                              background: 'var(--teal)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Check size={11} color="#fff" strokeWidth={3} />
+                          </span>
+                          {f}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 14, minWidth: 140 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: 'var(--fu)', fontSize: '1.9rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
+                      {sub.price ? (String(sub.price).includes('$') ? String(sub.price).split('/')[0] : `$${sub.price}`) : '$—'}
+                    </div>
+                    <div style={{ fontSize: '.8rem', color: 'var(--mu)' }}>/month</div>
+                  </div>
+                  <button
+                    className="btn btn-gr"
+                    disabled={checkoutLoading === `sub-${sub.title}`}
+                    onClick={() => handleSubscribe(sub)}
+                  >
+                    {checkoutLoading === `sub-${sub.title}` ? 'Redirecting...' : 'Subscribe →'}
+                  </button>
+                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup'); }}>
+                    Do you want to become an Affiliate?
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
         {/* Digital Products */}
-          <div style={{ marginBottom: 40 }}>
-            <h3
-              style={{
-                fontFamily: 'var(--fu)',
-                fontWeight: 700,
-                color: 'var(--gd)',
-                marginBottom: 16,
-                fontSize: '1.1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <Package size={18} color="var(--teal)" /> Digital Products
-            </h3>
-            <div className="grid-3">
-              {(
-                expert.productsList || [
-                  { title: 'Pitch Deck Template', price: '$79', desc: 'Proven template used by 142 founders.' },
-                  { title: 'SaaS Metrics Dashboard', price: '$49', desc: 'Track all key SaaS metrics in one place.' },
-                  { title: 'Fundraising Playbook', price: '$129', desc: 'Step-by-step guide for raising a seed round.' },
-                ]
-              ).map((p) => (
-                <div key={p.title} className="card" style={{ padding: 20 }}>
-                  <div
-                    style={{
-                      height: 60,
-                      background: 'rgba(25, 181, 166, 0.05)',
-                      borderRadius: 'var(--rsm)',
-                      marginBottom: 14,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--teal)',
-                    }}
-                  >
-                    <FileText size={24} />
+        <div style={{ marginTop: 56 }}>
+          <SectionHeader
+            icon={<Package size={18} color="var(--teal)" />}
+            eyebrow="Digital Products"
+            title="Templates & guides"
+          />
+          <div className="grid-3">
+            {products.map((p, i) => (
+              <div key={p.title} className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '16/9',
+                    background: PRODUCT_GRADIENTS[i % PRODUCT_GRADIENTS.length],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <FileText size={30} color="#fff" opacity={0.9} />
+                  {p.sold && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 10,
+                        right: 10,
+                        background: 'rgba(255,255,255,0.92)',
+                        color: 'var(--gd)',
+                        fontSize: '.68rem',
+                        fontWeight: 700,
+                        padding: '4px 10px',
+                        borderRadius: 999,
+                      }}
+                    >
+                      {p.sold} sold
+                    </span>
+                  )}
+                </div>
+                <div style={{ padding: '22px 22px 24px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', fontSize: '1rem' }}>{p.title}</div>
+                    <div style={{ fontSize: '.86rem', color: 'var(--sl)', marginTop: 6, lineHeight: 1.5 }}>{p.desc}</div>
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--fu)',
-                      fontWeight: 700,
-                      color: 'var(--gd)',
-                      fontSize: '.88rem',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {p.title}
-                  </div>
-                  <div style={{ fontSize: '.78rem', color: 'var(--sl)', marginBottom: 14 }}>{p.desc}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'var(--fu)', fontWeight: 800, color: 'var(--gd)' }}>
+                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--fu)', fontSize: '1.15rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
                       {p.price}
                     </span>
                     <button
@@ -493,31 +540,98 @@ export function PublicProfile({ nav, notify, expert }) {
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-          
+        </div>
+
+        {/* Books */}
+        <div style={{ marginTop: 56 }}>
+          <SectionHeader
+            icon={<BookOpen size={18} color="var(--teal)" />}
+            eyebrow="Books"
+            title="Published work"
+          />
+          <div className="grid-3">
+            {books.map((b, i) => (
+              <div key={b.title} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div
+                  style={{
+                    width: 88,
+                    aspectRatio: '2/3',
+                    borderRadius: 6,
+                    background: BOOK_GRADIENTS[i % BOOK_GRADIENTS.length],
+                    boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <BookOpen size={22} color="#fff" opacity={0.85} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--fu)', fontSize: '1rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.3 }}>
+                      {b.title}
+                    </div>
+                    {b.author && (
+                      <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginTop: 3 }}>by {b.author}</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '.84rem', color: 'var(--sl)', lineHeight: 1.5 }}>{b.tagline}</div>
+                  <div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        background: 'rgba(15,23,42,0.05)',
+                        color: 'var(--sl)',
+                        fontSize: '.72rem',
+                        fontWeight: 600,
+                        padding: '4px 11px',
+                        borderRadius: 999,
+                      }}
+                    >
+                      {b.format}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
+                    <span style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
+                      {b.price}
+                    </span>
+                    <button className="btn btn-pr btn-sm" onClick={() => handleBuyBook(b)}>
+                      {b.cta || 'Buy Now'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Custom Offerings */}
         {expert.customOfferingsList?.length > 0 && (
-          <div style={{ marginBottom: 40 }}>
-            <h3 style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', marginBottom: 16, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Sparkles size={18} color="var(--teal)" /> Custom Offerings
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ marginTop: 56 }}>
+            <SectionHeader
+              icon={<Sparkles size={18} color="var(--teal)" />}
+              eyebrow="Custom Offerings"
+              title="Additional ways to work together"
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {expert.customOfferingsList.map((c) => (
-                <div key={c.title} className="card" style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', marginBottom: 4 }}>{c.title}</div>
+                <div key={c.title} className="card" style={{ padding: '28px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', fontSize: '1.05rem', marginBottom: 4 }}>{c.title}</div>
                     {c.type && (
-                      <span style={{ display: 'inline-block', background: 'rgba(25,181,166,0.08)', color: 'var(--teal)', fontSize: '.72rem', fontWeight: 700, padding: '2px 10px', borderRadius: 99, marginBottom: 6 }}>
+                      <span style={{ display: 'inline-block', background: BADGE_BG, color: 'var(--teal)', fontSize: '.72rem', fontWeight: 700, padding: '2px 10px', borderRadius: 99, marginBottom: 6 }}>
                         {c.type}
                       </span>
                     )}
-                    {c.desc && <div style={{ fontSize: '.83rem', color: 'var(--sl)' }}>{c.desc}</div>}
+                    {c.desc && <div style={{ fontSize: '.9rem', color: 'var(--sl)' }}>{c.desc}</div>}
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                     {c.price && (
-                      <div style={{ fontFamily: 'var(--fu)', fontSize: '1.3rem', fontWeight: 800, color: 'var(--gd)', marginBottom: 10 }}>{c.price}</div>
+                      <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price}</div>
                     )}
                     <button className="btn btn-gr btn-sm" onClick={() => notify('Contact the expert to inquire.')}>
                       Inquire →
@@ -530,21 +644,65 @@ export function PublicProfile({ nav, notify, expert }) {
         )}
 
         {/* Profile Footer CTA */}
-        <div style={{ background: 'var(--gd)', borderRadius: 'var(--rlg)', padding: 40, textAlign: 'center' }}>
+        <div
+          style={{
+            marginTop: 64,
+            marginBottom: 64,
+            borderRadius: 'var(--rlg)',
+            padding: '56px 32px',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            background: 'var(--gd)',
+            backgroundImage:
+              'radial-gradient(circle at 30% 20%, rgba(84,119,146,0.45) 0%, rgba(15,23,42,0) 55%), radial-gradient(circle at 80% 90%, rgba(25,181,166,0.28) 0%, rgba(15,23,42,0) 50%)',
+          }}
+        >
           <h3
             style={{
               fontFamily: 'var(--fd)',
-              fontSize: '1.8rem',
+              fontSize: '2.1rem',
+              fontWeight: 700,
               color: '#fff',
-              marginBottom: 12,
+              letterSpacing: '-0.01em',
+              position: 'relative',
             }}
           >
             Start Monetizing Your Knowledge
           </h3>
-          <p style={{ fontSize: '.9rem', color: 'rgba(255,255,255,.65)', marginBottom: 24 }}>
-            Join Priya and thousands of experts earning recurring income on mindGigs.
+          <p
+            style={{
+              fontSize: '.97rem',
+              color: 'rgba(255,255,255,.65)',
+              marginTop: 14,
+              maxWidth: 480,
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              lineHeight: 1.6,
+              position: 'relative',
+            }}
+          >
+            Join {firstName} and thousands of experts earning recurring income on mindGigs.
           </p>
-          <button className="btn btn-gr btn-lg" onClick={() => nav('signup')}>
+          <button
+            style={{
+              marginTop: 26,
+              padding: '14px 32px',
+              borderRadius: 999,
+              border: 'none',
+              background: '#fff',
+              color: 'var(--gd)',
+              fontSize: '.95rem',
+              fontFamily: 'var(--fu)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'background .2s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#e9ebee')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+            onClick={() => nav('signup')}
+          >
             Create Your Profile — Free →
           </button>
         </div>
