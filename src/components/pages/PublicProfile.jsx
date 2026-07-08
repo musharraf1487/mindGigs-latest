@@ -520,7 +520,8 @@ export function PublicProfile({ nav, notify, expert }) {
                     width: 88,
                     aspectRatio: '2/3',
                     borderRadius: 6,
-                    background: BOOK_GRADIENTS[i % BOOK_GRADIENTS.length],
+                    overflow: 'hidden',
+                    background: b.coverUrl ? '#eef1f4' : BOOK_GRADIENTS[i % BOOK_GRADIENTS.length],
                     boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
                     display: 'flex',
                     alignItems: 'center',
@@ -528,7 +529,11 @@ export function PublicProfile({ nav, notify, expert }) {
                     flexShrink: 0,
                   }}
                 >
-                  <BookOpen size={22} color="#fff" opacity={0.85} />
+                  {b.coverUrl ? (
+                    <img src={b.coverUrl} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <BookOpen size={22} color="#fff" opacity={0.85} />
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                   <div>

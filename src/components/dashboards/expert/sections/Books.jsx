@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, BookOpen } from 'lucide-react';
+import { Trash2, BookOpen, X } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../config/firebase';
+import { db, storage } from '../../../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const FORMATS = ['Paperback', 'Kindle', 'Hardcover'];
 const CTA_OPTIONS = ['Buy Now', 'Buy on Amazon'];
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
 const EMPTY_BOOK = {
   title: '',
@@ -15,19 +17,87 @@ const EMPTY_BOOK = {
   price: '',
   cta: 'Buy Now',
   link: '',
+  coverUrl: null,
   active: true,
 };
 
-function BookModal({ book, onSave, onClose, onDelete }) {
+function BookCoverThumb({ coverUrl, size = 64 }) {
+  return (
+    <div
+      style={{
+        width: size,
+        aspectRatio: '2/3',
+        borderRadius: 6,
+        overflow: 'hidden',
+        flexShrink: 0,
+        background: coverUrl ? '#fff' : 'linear-gradient(135deg, var(--gd), var(--gb))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+      }}
+    >
+      {coverUrl ? (
+        <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <BookOpen size={size * 0.34} color="#fff" opacity={0.85} />
+      )}
+    </div>
+  );
+}
+
+function BookModal({ book, onSave, onClose, onDelete, notify }) {
+  const { currentUser } = useAuth();
   const isNew = !book;
   const [form, setForm] = useState(book || EMPTY_BOOK);
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(book?.coverUrl || null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
-  const handleSubmit = (e) => {
+  const handleFile = (file) => {
+    if (!file || !ACCEPTED_TYPES.includes(file.type)) {
+      notify && notify('Please upload a PNG or JPEG image.', 'warn');
+      return;
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const removeCover = (e) => {
+    e.stopPropagation();
+    setCoverFile(null);
+    setCoverPreview(null);
+    set('coverUrl', null);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
-    onSave(form);
+    setUploading(true);
+    try {
+      let coverUrl = form.coverUrl || null;
+      if (coverFile && currentUser) {
+        const storageRef = ref(storage, `books/${currentUser.uid}/${Date.now()}-${coverFile.name}`);
+        await uploadBytes(storageRef, coverFile);
+        coverUrl = await getDownloadURL(storageRef);
+      }
+      onSave({ ...form, coverUrl });
+    } catch (err) {
+      console.error('Failed to upload cover image:', err);
+      notify && notify('Failed to upload cover image. Please try again.', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -47,6 +117,52 @@ function BookModal({ book, onSave, onClose, onDelete }) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: 28 }}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>
+              Cover Image <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PNG or JPG, optional)</span>
+            </label>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('book-cover-input').click()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 16, padding: 16,
+                border: `2px dashed ${dragging ? 'var(--teal)' : 'rgba(0,0,0,0.12)'}`,
+                borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                background: dragging ? 'rgba(26,184,160,0.04)' : 'rgba(0,0,0,0.01)',
+              }}
+            >
+              <input
+                id="book-cover-input"
+                type="file"
+                accept="image/png,image/jpeg"
+                style={{ display: 'none' }}
+                onChange={(e) => handleFile(e.target.files[0])}
+              />
+              <div style={{ position: 'relative' }}>
+                <BookCoverThumb coverUrl={coverPreview} />
+                {coverPreview && (
+                  <button
+                    type="button"
+                    onClick={removeCover}
+                    style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <X size={12} color="var(--sl)" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gd)' }}>
+                  {coverPreview ? 'Change cover image' : 'Upload cover image'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 4 }}>
+                  Drag & drop or click to browse · portrait 2:3 looks best
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Book Title <span style={{ color: '#e84444' }}>*</span></label>
             <input className="input" type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. The Founder's Playbook" required style={{ width: '100%' }} />
@@ -115,7 +231,9 @@ function BookModal({ book, onSave, onClose, onDelete }) {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="button" onClick={onClose} className="btn btn-gh" style={{ flex: 1 }}>Cancel</button>
-            <button type="submit" className="btn btn-gr" style={{ flex: 2 }}>{isNew ? 'Add Book' : 'Save Changes'}</button>
+            <button type="submit" className="btn btn-gr" style={{ flex: 2 }} disabled={uploading}>
+              {uploading ? 'Uploading...' : isNew ? 'Add Book' : 'Save Changes'}
+            </button>
           </div>
 
           {!isNew && onDelete && (
@@ -190,8 +308,8 @@ export function Books({ user, expertData, notify }) {
 
   return (
     <>
-      {showCreate && <BookModal book={null} onSave={handleCreate} onClose={() => setShowCreate(false)} />}
-      {editBook && <BookModal book={editBook} onSave={handleEdit} onClose={() => setEditBook(null)} onDelete={handleDelete} />}
+      {showCreate && <BookModal book={null} onSave={handleCreate} onClose={() => setShowCreate(false)} notify={notify} />}
+      {editBook && <BookModal book={editBook} onSave={handleEdit} onClose={() => setEditBook(null)} onDelete={handleDelete} notify={notify} />}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
         <div>
@@ -208,12 +326,16 @@ export function Books({ user, expertData, notify }) {
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = ''; }}
             >
-              <div style={{ height: 130, background: 'linear-gradient(135deg, rgba(26,184,160,0.07), rgba(84,119,146,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <BookOpen size={40} color="var(--teal)" />
+              <div style={{ height: 150, background: book.coverUrl ? '#eef1f4' : 'linear-gradient(135deg, rgba(26,184,160,0.07), rgba(84,119,146,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {book.coverUrl ? (
+                  <img src={book.coverUrl} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <BookOpen size={40} color="var(--teal)" />
+                )}
                 {!book.active && (
                   <span style={{ position: 'absolute', top: 10, right: 10, fontSize: '0.65rem', background: 'rgba(0,0,0,0.08)', color: 'var(--sl)', padding: '3px 8px', borderRadius: 20, fontWeight: 700 }}>Inactive</span>
                 )}
-                <span style={{ position: 'absolute', bottom: 10, left: 10, fontSize: '0.65rem', background: 'rgba(26,184,160,0.15)', color: 'var(--teal)', padding: '3px 8px', borderRadius: 20, fontWeight: 700 }}>{book.format}</span>
+                <span style={{ position: 'absolute', bottom: 10, left: 10, fontSize: '0.65rem', background: 'rgba(0,0,0,0.55)', color: '#fff', padding: '3px 8px', borderRadius: 20, fontWeight: 700 }}>{book.format}</span>
               </div>
               <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
