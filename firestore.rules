@@ -4,10 +4,22 @@ service cloud.firestore {
 
     // Users — owner can always read/write their own doc; anyone (incl. signed-out
     // visitors) can read an onboarded expert's doc so profiles are publicly visible.
+    //
+    // Admin is intentionally excluded from normal self-service write access:
+    // the platform has exactly one admin, provisioned out-of-band (Firebase
+    // Console / Admin SDK), which bypasses these rules entirely. No client
+    // write — signup, Google sign-in, or a raw SDK call from devtools — may
+    // ever create a doc with role == 'admin', and role can never be changed
+    // by an update (no legitimate client flow needs to change it, so this
+    // blocks self-escalation as well as accidental/malicious demotion).
     match /users/{uid} {
       allow read: if (request.auth != null && request.auth.uid == uid) ||
         (resource.data.role == 'expert' && resource.data.onboardingComplete == true);
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.role != 'admin';
+      allow update: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.role == resource.data.role;
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     // Bookings — readable by client or expert involved

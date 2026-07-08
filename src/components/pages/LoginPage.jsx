@@ -204,56 +204,60 @@ export function LoginPage({ role, nav, onSwitchRole, notify, emailHint }) {
         </div>
       )}
 
-      <button
-        className="btn"
-        style={{
-          width: '100%',
-          background: 'var(--surface-color)',
-          color: 'var(--text-main)',
-          border: '1px solid var(--card-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 12,
-          padding: '12px',
-          borderRadius: '8px',
-          fontWeight: 600,
-          marginBottom: 16,
-          boxShadow: 'var(--sc)',
-          transition: 'all 0.2s ease',
-          cursor: 'pointer',
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.background = 'var(--bg-color)';
-          e.currentTarget.style.borderColor = '#19b5a6';
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.background = 'var(--surface-color)';
-          e.currentTarget.style.borderColor = 'var(--card-border)';
-        }}
-        onClick={async () => {
-          setLoading(true);
-          try {
-            await loginWithGoogle(role || 'expert');
-          } catch (err) {
-            console.error('Google Login Error:', err);
-            notify(err.message?.replace('Firebase: ', '') || 'Failed to sign in with Google.', 'error');
-          } finally {
-            setLoading(false);
-          }
-        }}
-      >
-        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20 }} />
-        Sign in with Google
-      </button>
+      {role !== 'admin' && (
+        <>
+          <button
+            className="btn"
+            style={{
+              width: '100%',
+              background: 'var(--surface-color)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--card-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              padding: '12px',
+              borderRadius: '8px',
+              fontWeight: 600,
+              marginBottom: 16,
+              boxShadow: 'var(--sc)',
+              transition: 'all 0.2s ease',
+              cursor: 'pointer',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'var(--bg-color)';
+              e.currentTarget.style.borderColor = '#19b5a6';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'var(--surface-color)';
+              e.currentTarget.style.borderColor = 'var(--card-border)';
+            }}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await loginWithGoogle(role || 'expert');
+              } catch (err) {
+                console.error('Google Login Error:', err);
+                notify(err.message?.replace('Firebase: ', '') || 'Failed to sign in with Google.', 'error');
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20 }} />
+            Sign in with Google
+          </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
-        <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
-        <span style={{ fontSize: '.75rem', color: 'var(--sl)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Or continue with email
-        </span>
-        <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
+            <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
+            <span style={{ fontSize: '.75rem', color: 'var(--sl)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Or continue with email
+            </span>
+            <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
+          </div>
+        </>
+      )}
 
       <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
         <div className="field">
@@ -296,15 +300,21 @@ export function LoginPage({ role, nav, onSwitchRole, notify, emailHint }) {
           {loading ? 'Signing In...' : 'Sign In →'}
         </button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: 20, fontSize: '.82rem', color: 'var(--mu)' }}>
-        Don't have an account?{' '}
-        <span
-          style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
-          onClick={() => nav('signup', { role: role || 'expert' })}
-        >
-          Create one →
-        </span>
-      </p>
+      {role === 'admin' ? (
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: '.8rem', color: 'var(--mu)' }}>
+          Admin access is invite-only.
+        </p>
+      ) : (
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: '.82rem', color: 'var(--mu)' }}>
+          Don't have an account?{' '}
+          <span
+            style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
+            onClick={() => nav('signup', { role: role || 'expert' })}
+          >
+            Create one →
+          </span>
+        </p>
+      )}
     </AuthShell>
   );
 }

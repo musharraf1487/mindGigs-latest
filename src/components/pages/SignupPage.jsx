@@ -80,16 +80,6 @@ const ROLE_CONFIG = {
     successMsg: 'Affiliate account created! Welcome to the program.',
     redirect: 'affiliate-dashboard',
   },
-  admin: {
-    badge: 'Admin Access',
-    title: 'Create Admin Account',
-    sub: 'Platform management and oversight access.',
-    showHandle: false,
-    showReferral: false,
-    btnLabel: 'Create Admin Account →',
-    successMsg: 'Admin account created successfully.',
-    redirect: 'admin-dashboard',
-  },
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -109,6 +99,17 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
     const stored = getStoredReferralCode();
     if (stored) setRefCode(stored);
   }, []);
+
+  // Admin has no self-service signup — there is exactly one admin account,
+  // provisioned out-of-band. Bounce away from this route entirely rather than
+  // silently falling back to the expert config, in case it's ever reached
+  // (e.g. via manipulated browser history state).
+  useEffect(() => {
+    if (role === 'admin') {
+      notify('Admin access is invite-only and cannot be created here.', 'warn');
+      nav('landingboard');
+    }
+  }, [role]);
   const [pendingHandle, setPendingHandle] = useState('');
   const [savingHandle, setSavingHandle] = useState(false);
 
@@ -194,6 +195,8 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
       </AuthShell>
     );
   }
+
+  if (role === 'admin') return null;
 
   return (
     <AuthShell nav={nav}>
