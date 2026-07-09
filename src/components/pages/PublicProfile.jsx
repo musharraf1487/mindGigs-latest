@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   RefreshCw,
@@ -13,6 +13,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
 import { getStoredReferralCode } from '../../services/affiliateService';
 
@@ -68,9 +70,31 @@ const BOOK_GRADIENTS = [
   'linear-gradient(160deg, var(--gb), var(--teal))',
 ];
 
-export function PublicProfile({ nav, notify, expert }) {
+export function PublicProfile({ nav, notify, expert: expertProp }) {
   const { currentUser } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(null);
+
+  // Different entry points (Featured Experts carousel, ExpertsDirectory,
+  // vanity URLs, etc.) have historically passed in different, sometimes
+  // reduced, expert objects — causing this "same" page to render differently
+  // depending on how you got here. This page is now the single source of
+  // truth: it always re-fetches the full, live doc by ID, using whatever was
+  // passed in only as an instant-paint placeholder while that load completes.
+  const [expert, setExpert] = useState(expertProp);
+
+  useEffect(() => {
+    setExpert(expertProp);
+    const expertId = expertProp?.id || expertProp?.uid;
+    if (!expertId || String(expertId).startsWith('showcase-')) return;
+    const unsub = onSnapshot(
+      doc(db, 'users', expertId),
+      (snap) => {
+        if (snap.exists()) setExpert({ ...snap.data(), id: snap.id });
+      },
+      (err) => console.error('PublicProfile: failed to load live expert data', err)
+    );
+    return () => unsub();
+  }, [expertProp?.id, expertProp?.uid]);
 
   const parsePriceCents = (priceStr) => {
     const num = parseFloat(String(priceStr ?? '').replace(/[^0-9.]/g, ''));

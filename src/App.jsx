@@ -223,8 +223,16 @@ export default function App() {
     const newExpertId = ctx?.expertId !== undefined ? ctx.expertId : (p === 'public-profile' ? activeExpertId : null);
     // Resolved once and reused below for both the active-expert state and the
     // address-bar path, so the two can never disagree on which expert this is.
+    //
+    // The canonical `experts` list (fully-loaded Firestore docs) always wins
+    // over a caller-supplied `ctx.expert` — some entry points (e.g. the
+    // LandingBoard "Featured Experts" carousel) keep their own reduced,
+    // display-only projection of an expert and used to pass that straight
+    // through, causing the same profile to render differently depending on
+    // which button led here. `ctx.expert` is now only a fallback for experts
+    // not yet present in that list (e.g. still loading, or showcase-only).
     const resolvedForNav = ctx?.expertId !== undefined
-      ? (ctx.expert || experts.find(e => String(e.id) === String(ctx.expertId)))
+      ? (experts.find(e => String(e.id) === String(ctx.expertId)) || ctx.expert)
       : (p === 'public-profile' ? (activeExpert || experts.find(e => String(e.id) === String(newExpertId))) : null);
     if (ctx?.expertId !== undefined) {
       setActiveExpertId(ctx.expertId);
