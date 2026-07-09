@@ -134,7 +134,7 @@ export function PublicProfile({ nav, notify, expert }) {
   };
 
   const handleCustomCta = (c) => {
-    if (c.ctaType === 'book') {
+    if (c.ctaType === 'book' || c.ctaType === 'contact') {
       nav('booking', { session: { title: c.title, price: c.price || 'Contact for pricing', duration: c.duration || 'Flexible' } });
     } else if (c.ctaType === 'custom' && c.link) {
       window.open(c.link, '_blank', 'noopener,noreferrer');
@@ -606,7 +606,7 @@ export function PublicProfile({ nav, notify, expert }) {
                       <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price}</div>
                     )}
                     <button className="btn btn-gr btn-sm" onClick={() => handleCustomCta(c)}>
-                      {c.ctaType === 'book' ? 'Book Now' : c.ctaType === 'custom' ? (c.ctaLabel || 'Learn More') : 'Contact Me'} →
+                      {c.ctaType === 'book' ? 'Book Now' : c.ctaType === 'custom' ? (c.ctaLabel || 'Learn More') : 'Book a Call'} →
                     </button>
                   </div>
                 </div>

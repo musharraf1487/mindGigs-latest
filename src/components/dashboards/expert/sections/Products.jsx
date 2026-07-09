@@ -16,6 +16,7 @@ const EMPTY_PRODUCT = {
   category: 'Template',
   fileUrl: null,
   fileName: null,
+  deliveryLink: '',
   sales: 0,
   views: 0,
   revenue: '$0',
@@ -49,6 +50,10 @@ function ProductModal({ product, onSave, onClose, onDelete, notify }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
+    if (!form.deliveryLink.trim() && !productFile && !form.fileUrl) {
+      notify && notify('Please add a delivery link or upload a file — buyers need one to receive this by email.', 'warn');
+      return;
+    }
     setUploading(true);
     try {
       let fileUrl = form.fileUrl || null;
@@ -124,8 +129,8 @@ function ProductModal({ product, onSave, onClose, onDelete, notify }) {
           </div>
 
           {/* File Upload Zone */}
-          <div style={{ marginBottom: 24 }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>Product File {isNew && <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(optional for now)</span>}</label>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>Product File <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(or paste a link below instead)</span></label>
             <div
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -152,6 +157,17 @@ function ProductModal({ product, onSave, onClose, onDelete, notify }) {
                   <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 4 }}>PDF, ZIP, XLSX, PPTX, DOCX, CSV (max 50MB)</div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Delivery Link */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>
+              Delivery Link <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(Google Drive, Notion, Gumroad, etc. — required if no file uploaded)</span>
+            </label>
+            <input className="input" type="url" value={form.deliveryLink} onChange={e => set('deliveryLink', e.target.value)} placeholder="https://drive.google.com/..." style={{ width: '100%' }} />
+            <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>
+              This (or your uploaded file) is what gets emailed to buyers automatically right after purchase.
             </div>
           </div>
 

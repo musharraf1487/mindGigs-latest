@@ -84,6 +84,10 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
+    if (form.cta === 'Buy Now' && !form.deliveryLink.trim()) {
+      notify && notify('Please add a delivery link — it\'s what gets emailed to buyers after purchase.', 'warn');
+      return;
+    }
     setUploading(true);
     try {
       let coverUrl = form.coverUrl || null;
@@ -223,11 +227,11 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
           {form.cta === 'Buy Now' && (
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>
-                Delivery Link <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PDF, Google Drive, Dropbox, etc.)</span>
+                Delivery Link <span style={{ color: '#e84444' }}>*</span> <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PDF, Google Drive, Dropbox, etc.)</span>
               </label>
-              <input className="input" type="url" value={form.deliveryLink} onChange={(e) => set('deliveryLink', e.target.value)} placeholder="https://drive.google.com/..." style={{ width: '100%' }} />
+              <input className="input" type="url" value={form.deliveryLink} onChange={(e) => set('deliveryLink', e.target.value)} placeholder="https://drive.google.com/..." required style={{ width: '100%' }} />
               <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>
-                Sent to buyers by email right after purchase. Leave blank and buyers won't get an automatic delivery email.
+                This is what gets emailed to buyers automatically right after purchase.
               </div>
             </div>
           )}

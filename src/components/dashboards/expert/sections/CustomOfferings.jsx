@@ -6,7 +6,7 @@ import { db } from '../../../../config/firebase';
 
 const CTA_TYPES = [
   { id: 'book', label: 'Book Now' },
-  { id: 'contact', label: 'Contact Me' },
+  { id: 'contact', label: 'Book a Call' },
   { id: 'custom', label: 'Custom Link' },
 ];
 
@@ -102,7 +102,7 @@ function OfferingModal({ offering, onSave, onClose, onDelete }) {
 
           {form.ctaType === 'contact' && (
             <p style={{ fontSize: '0.78rem', color: 'var(--mu)', marginBottom: 20, lineHeight: 1.5 }}>
-              Clicking "Contact Me" prompts the client to reach out to you directly to discuss details.
+              Clicking "Book a Call" sends the client into your booking flow with this title and price pre-filled.
             </p>
           )}
 
@@ -157,7 +157,7 @@ function OfferingModal({ offering, onSave, onClose, onDelete }) {
 const ctaDisplayLabel = (o) => {
   if (o.ctaType === 'book') return 'Book Now';
   if (o.ctaType === 'custom') return o.ctaLabel || 'Learn More';
-  return 'Contact Me';
+  return 'Book a Call';
 };
 
 export function CustomOfferings({ user, expertData, notify }) {
