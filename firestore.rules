@@ -61,6 +61,15 @@ service cloud.firestore {
       allow create: if request.auth != null;
     }
 
+    // Purchases — readable by the buyer or the expert who sold the item.
+    // Docs are only ever written by the stripeWebhook Cloud Function (Admin
+    // SDK bypasses these rules), so no client create/update/delete is needed.
+    match /purchases/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.buyerId == request.auth.uid ||
+         resource.data.expertId == request.auth.uid);
+    }
+
     // Reviews — public read, authenticated create
     match /reviews/{id} {
       allow read: if true;

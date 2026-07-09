@@ -204,6 +204,106 @@ async function sendConfirmationEmail(booking) {
   console.log(`[Resend] Confirmation email sent to ${booking.clientEmail}`);
 }
 
+// ─── Helper: Resend purchase confirmation email (books / digital products) ───
+async function sendPurchaseConfirmationEmail({ buyerEmail, itemTitle, deliveryLink, expertId, price }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Resend] RESEND_API_KEY not set — skipping purchase confirmation email');
+    return;
+  }
+  if (!buyerEmail) {
+    console.warn('[sendPurchaseConfirmationEmail] No buyerEmail on purchase — skipping confirmation email');
+    return;
+  }
+  if (!deliveryLink) {
+    console.warn('[sendPurchaseConfirmationEmail] No deliveryLink on purchase — skipping email to avoid a broken download link');
+    return;
+  }
+
+  let expertName = 'the expert';
+  try {
+    if (expertId) {
+      const expertSnap = await db.collection('users').doc(expertId).get();
+      if (expertSnap.exists && expertSnap.data().name) expertName = expertSnap.data().name;
+    }
+  } catch (err) {
+    console.error('[sendPurchaseConfirmationEmail] Failed to look up expert name:', err);
+  }
+
+  const resend = new Resend(apiKey);
+  const title = itemTitle || 'Your purchase';
+  const priceLabel = typeof price === 'number' ? `$${(price / 100).toFixed(2)}` : null;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+    <!-- Header -->
+    <div style="background:#1ab8a0;padding:32px 40px;">
+      <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">mindGigs</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:4px;">Expert Sessions</div>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px;">
+      <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0 0 8px;">Your purchase is confirmed</h1>
+      <p style="font-size:14px;color:#6b7280;margin:0 0 32px;">Thanks for your purchase. Your download is ready below.</p>
+
+      <!-- Purchase details box -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:32px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;${priceLabel ? 'border-bottom:1px solid #e5e7eb;' : ''}">
+          <span style="font-size:13px;color:#6b7280;">Item</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${title}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Seller</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${expertName}</span>
+        </div>
+        ${priceLabel ? `<div style="display:flex;justify-content:space-between;padding:10px 0;">
+          <span style="font-size:13px;color:#6b7280;">Price</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${priceLabel}</span>
+        </div>` : ''}
+      </div>
+
+      <!-- Download button -->
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${deliveryLink}"
+           style="display:inline-block;background:#1ab8a0;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+          Download Now
+        </a>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#9ca3af;margin:0 0 32px;">
+        Save this email — this link is your permanent access to your purchase.
+      </p>
+
+      <!-- Footer note -->
+      <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
+        <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.6;">
+          If your download link isn't working, contact us at
+          <a href="mailto:support@mindgigs.com" style="color:#1ab8a0;">support@mindgigs.com</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+
+  await resend.emails.send({
+    from: 'bookings@mindgigs.com',
+    to: buyerEmail,
+    subject: `Your purchase: ${title} is ready`,
+    html,
+  });
+
+  console.log(`[Resend] Purchase confirmation email sent to ${buyerEmail}`);
+}
+
 // ─── Helper: CORS headers ─────────────────────────────────────────────────────
 function setCors(res) {
   const clientUrl = process.env.CLIENT_URL || 'https://mindgigs.com';
@@ -304,7 +404,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
   const clientUrl = process.env.CLIENT_URL || 'https://mindgigs.com';
 
   try {
-    const { saleType = 'booking', bookingId, amount, email, title, expertId, referralCode } = req.body;
+    const { saleType = 'booking', bookingId, amount, email, title, expertId, referralCode, deliveryLink, buyerId } = req.body;
 
     if (!amount || !email) {
       return res.status(400).json({ error: 'amount and email are required' });
@@ -388,6 +488,9 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
           saleType: 'product',
           expertId,
           referralCode: referralCode || '',
+          itemTitle: title,
+          deliveryLink: deliveryLink || '',
+          buyerId: buyerId || '',
         },
         success_url: `${clientUrl}?payment=success`,
         cancel_url:  `${clientUrl}?payment=cancelled`,
@@ -438,7 +541,7 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
   }
 
   const session = event.data.object;
-  const { bookingId, saleType = 'booking', expertId, referralCode } = session.metadata || {};
+  const { bookingId, saleType = 'booking', expertId, referralCode, itemTitle, deliveryLink, buyerId } = session.metadata || {};
   const saleAmount = session.amount_total;
 
   if (saleAmount == null) {
@@ -503,6 +606,33 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
         } catch (err) {
           console.error('[Resend] Failed to send confirmation email:', err);
         }
+      }
+    }
+
+    // ── 1e. Record digital product/book purchase + send delivery email (product type only) ──
+    if (saleType === 'product') {
+      const buyerEmail = session.customer_details?.email || session.customer_email || null;
+
+      try {
+        await db.collection('purchases').add({
+          buyerId: buyerId || null,
+          buyerEmail,
+          expertId: expertId || null,
+          itemTitle: itemTitle || 'Digital Item',
+          deliveryLink: deliveryLink || null,
+          price: saleAmount,
+          stripeSessionId: session.id,
+          createdAt: new Date().toISOString(),
+        });
+        console.log(`[Purchases] Recorded purchase of "${itemTitle || 'item'}" (session ${session.id})`);
+      } catch (err) {
+        console.error('[Purchases] Failed to record purchase:', err);
+      }
+
+      try {
+        await sendPurchaseConfirmationEmail({ buyerEmail, itemTitle, deliveryLink, expertId, price: saleAmount });
+      } catch (err) {
+        console.error('[Resend] Failed to send purchase confirmation email:', err);
       }
     }
 

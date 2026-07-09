@@ -115,7 +115,9 @@ export function PublicProfile({ nav, notify, expert }) {
         product.title,
         amount,
         currentUser.email,
-        getStoredReferralCode() || null
+        getStoredReferralCode() || null,
+        product.deliveryLink || null,
+        currentUser.uid
       );
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');

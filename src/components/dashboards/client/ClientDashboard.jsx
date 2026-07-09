@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Home, Calendar, RefreshCw, Package, Settings as SettingsIcon, LogOut, User, Search, Star, AlertTriangle, CheckCircle, Check } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getClientBookings, cancelBooking } from '../../../services/bookingService';
+import { getClientPurchases } from '../../../services/purchaseService';
 import { isSessionJoinable } from '../../../services/availabilityService';
 import { submitReview, hasReviewedBooking } from '../../../services/reviewService';
 import { AccountSwitcher } from '../../common/AccountSwitcher';
@@ -403,18 +404,62 @@ function Subscriptions({ notify, nav }) {
 }
 
 function Purchases({ notify }) {
+    const { currentUser } = useAuth();
+    const [purchases, setPurchases] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchPurchases() {
+            if (!currentUser?.uid) {
+                setLoading(false);
+                return;
+            }
+            try {
+                const data = await getClientPurchases(currentUser.uid);
+                setPurchases(data);
+            } catch (err) {
+                console.error('Failed to fetch purchases:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchPurchases();
+    }, [currentUser]);
+
     return (
         <div>
             <div style={{ marginBottom: 20 }}>
                 <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.05rem' }}>My Purchases</div>
                 <div style={{ fontSize: '.8rem', color: 'var(--mu)', marginTop: 3 }}>Digital products you own</div>
             </div>
-            <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--mu)' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📦</div>
-                <div style={{ fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>No purchases yet</div>
-                <p style={{ fontSize: '.85rem', marginBottom: 20 }}>Digital products purchased from experts will appear here.</p>
-                <button className="btn btn-gr btn-sm" onClick={() => notify('Browse expert profiles to find digital products.', 'info')}>Explore Products →</button>
-            </div>
+            {purchases.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {purchases.map((p) => (
+                        <div key={p.id} className="card" style={{ padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                            <div>
+                                <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '0.92rem' }}>{p.itemTitle}</div>
+                                <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginTop: 4 }}>
+                                    {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : ''} · ${((p.price || 0) / 100).toFixed(2)}
+                                </div>
+                            </div>
+                            {p.deliveryLink ? (
+                                <a href={p.deliveryLink} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                                    <button className="btn btn-gr btn-sm">Download →</button>
+                                </a>
+                            ) : (
+                                <span style={{ fontSize: '.75rem', color: 'var(--mu)' }}>Check your email for access</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : !loading ? (
+                <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--mu)' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📦</div>
+                    <div style={{ fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>No purchases yet</div>
+                    <p style={{ fontSize: '.85rem', marginBottom: 20 }}>Digital products purchased from experts will appear here.</p>
+                    <button className="btn btn-gr btn-sm" onClick={() => notify('Browse expert profiles to find digital products.', 'info')}>Explore Products →</button>
+                </div>
+            ) : null}
         </div>
     );
 }

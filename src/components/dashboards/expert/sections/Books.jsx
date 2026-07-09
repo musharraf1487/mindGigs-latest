@@ -17,6 +17,7 @@ const EMPTY_BOOK = {
   price: '',
   cta: 'Buy Now',
   link: '',
+  deliveryLink: '',
   coverUrl: null,
   active: true,
 };
@@ -216,6 +217,18 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Retailer Link</label>
               <input className="input" type="url" value={form.link} onChange={(e) => set('link', e.target.value)} placeholder="https://amazon.com/..." style={{ width: '100%' }} />
+            </div>
+          )}
+
+          {form.cta === 'Buy Now' && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>
+                Delivery Link <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PDF, Google Drive, Dropbox, etc.)</span>
+              </label>
+              <input className="input" type="url" value={form.deliveryLink} onChange={(e) => set('deliveryLink', e.target.value)} placeholder="https://drive.google.com/..." style={{ width: '100%' }} />
+              <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>
+                Sent to buyers by email right after purchase. Leave blank and buyers won't get an automatic delivery email.
+              </div>
             </div>
           )}
 
