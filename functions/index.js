@@ -16,6 +16,7 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const Stripe = require('stripe');
+const { Resend } = require('resend');
 
 initializeApp();
 const db = getFirestore();
@@ -55,7 +56,7 @@ async function createDailyRoom(bookingId, dateStr, timeStr) {
       },
       body: JSON.stringify({
         name: roomName,
-        privacy: 'public',
+        privacy: 'private',
         properties: { exp, enable_prejoin_ui: true },
       }),
     });
@@ -71,6 +72,136 @@ async function createDailyRoom(bookingId, dateStr, timeStr) {
     console.error('[Daily.co] fetch error:', err);
     return null;
   }
+}
+
+// ─── Helper: Google Calendar link generation ──────────────────────────────────
+function generateCalendarLink(booking) {
+  if (!booking || !booking.date || !booking.time) return null;
+
+  // Reconstruct a real Date from the freeform "date"/"time" strings (no year on booking.date, so assume current year)
+  const year = new Date().getFullYear();
+  const start = new Date(`${booking.date}, ${year} ${booking.time}`);
+  if (isNaN(start.getTime())) return null;
+
+  const end = new Date(start.getTime() + 60 * 60 * 1000); // 60-minute session
+
+  const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; // YYYYMMDDTHHmmssZ
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Session with ${booking.expertName || 'Expert'}`,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details: `Join your session: ${booking.dailyRoomUrl || ''}`,
+    location: 'Online (Google Meet)',
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+// ─── Helper: Resend confirmation email ────────────────────────────────────────
+async function sendConfirmationEmail(booking) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Resend] RESEND_API_KEY not set — skipping confirmation email');
+    return;
+  }
+  if (!booking || !booking.clientEmail) {
+    console.warn('[Resend] Booking has no clientEmail — skipping confirmation email');
+    return;
+  }
+  if (!booking.dailyRoomUrl) {
+    console.warn('[sendConfirmationEmail] No dailyRoomUrl on booking — skipping email to avoid broken Join Session link.');
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const expertName = booking.expertName || 'Expert';
+  const sessionTitle = booking.sessionTitle || 'Session';
+  const date = booking.date || '';
+  const time = booking.time || '';
+  const dailyRoomUrl = booking.dailyRoomUrl || '#';
+  const calendarLink = booking.calendarLink || '#';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+    <!-- Header -->
+    <div style="background:#1ab8a0;padding:32px 40px;">
+      <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">mindGigs</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:4px;">Expert Sessions</div>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px;">
+      <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0 0 8px;">Your session is confirmed</h1>
+      <p style="font-size:14px;color:#6b7280;margin:0 0 32px;">Here are your session details. Keep this email handy.</p>
+
+      <!-- Session details box -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:32px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Expert</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${expertName}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Session</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${sessionTitle}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Date</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${date}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;">
+          <span style="font-size:13px;color:#6b7280;">Time</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${time}</span>
+        </div>
+      </div>
+
+      <!-- Join button -->
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${dailyRoomUrl}"
+           style="display:inline-block;background:#1ab8a0;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+          Join Session
+        </a>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#9ca3af;margin:0 0 32px;">
+        This link activates 15 minutes before your session
+      </p>
+
+      <!-- Calendar button -->
+      <div style="text-align:center;margin-bottom:40px;">
+        <a href="${calendarLink}"
+           style="display:inline-block;background:#ffffff;color:#1ab8a0;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;text-decoration:none;border:2px solid #1ab8a0;">
+          Add to Google Calendar
+        </a>
+      </div>
+
+      <!-- Footer note -->
+      <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
+        <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.6;">
+          If you need to reschedule or have questions, contact us at
+          <a href="mailto:support@mindgigs.com" style="color:#1ab8a0;">support@mindgigs.com</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+
+  await resend.emails.send({
+    from: 'bookings@mindgigs.com',
+    to: booking.clientEmail,
+    subject: `Your session with ${expertName} is confirmed`,
+    html,
+  });
+
+  console.log(`[Resend] Confirmation email sent to ${booking.clientEmail}`);
 }
 
 // ─── Helper: CORS headers ─────────────────────────────────────────────────────
@@ -282,7 +413,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
  *
  * Listens for: checkout.session.completed
  */
-exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] }, async (req, res) => {
+exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'RESEND_API_KEY'] }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
 
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
@@ -339,6 +470,38 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
             dailyRoomName: room.name || '',
           });
           console.log(`[Daily.co] Room created: ${room.url}`);
+        }
+      }
+
+      // ── 1b. Re-fetch the booking (now includes dailyRoomUrl) for calendar + email ──
+      let freshBookingData = null;
+      try {
+        const freshSnap = await db.collection('bookings').doc(bookingId).get();
+        if (freshSnap.exists) freshBookingData = freshSnap.data();
+      } catch (err) {
+        console.error('[stripeWebhook] Failed to re-fetch booking for calendar/email:', err);
+      }
+
+      // ── 1c. Generate Google Calendar link ───────────────────────────────
+      let calendarLink = null;
+      if (freshBookingData) {
+        try {
+          calendarLink = generateCalendarLink(freshBookingData);
+          if (calendarLink) {
+            await db.collection('bookings').doc(bookingId).update({ calendarLink });
+            console.log(`[Calendar] Link generated for booking ${bookingId}`);
+          }
+        } catch (err) {
+          console.error('[Calendar] Failed to generate calendar link:', err);
+        }
+      }
+
+      // ── 1d. Send Resend confirmation email ──────────────────────────────
+      if (freshBookingData) {
+        try {
+          await sendConfirmationEmail({ ...freshBookingData, calendarLink: calendarLink || freshBookingData.calendarLink });
+        } catch (err) {
+          console.error('[Resend] Failed to send confirmation email:', err);
         }
       }
     }
