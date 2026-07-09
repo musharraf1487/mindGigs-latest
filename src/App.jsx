@@ -209,7 +209,7 @@ export default function App() {
 
   const logout = async () => {
     await firebaseLogout();
-    setPage('home');
+    setPage('landingboard');
     notify('Logged out successfully.');
   };
 
