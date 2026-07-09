@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ProfIcon } from '../../../common/ProfIcon';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../config/firebase';
+import { db, storage } from '../../../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const ICONS = ['package', 'file', 'chart', 'bot', 'palette', 'dollar'];
 const ICON_LABELS = { package: 'Template', file: 'Document', chart: 'Spreadsheet', bot: 'AI Tool', palette: 'Design', dollar: 'Finance' };
@@ -22,17 +23,20 @@ const EMPTY_PRODUCT = {
 };
 
 /* ── UPLOAD / EDIT MODAL ── */
-function ProductModal({ product, onSave, onClose, onDelete }) {
+function ProductModal({ product, onSave, onClose, onDelete, notify }) {
+  const { currentUser } = useAuth();
   const isNew = !product;
   const [form, setForm] = useState(product || EMPTY_PRODUCT);
+  const [productFile, setProductFile] = useState(null);
   const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleFile = (file) => {
     if (!file) return;
+    setProductFile(file);
     set('fileName', file.name);
-    set('fileUrl', URL.createObjectURL(file));
   };
 
   const handleDrop = (e) => {
@@ -42,13 +46,27 @@ function ProductModal({ product, onSave, onClose, onDelete }) {
     if (file) handleFile(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
-    // Auto-compute revenue for new products based on price × sales
-    const price = parseFloat(form.price.replace(/[^0-9.]/g, '')) || 0;
-    const rev = (price * (form.sales || 0)).toFixed(0);
-    onSave({ ...form, revenue: `$${rev}` });
+    setUploading(true);
+    try {
+      let fileUrl = form.fileUrl || null;
+      if (productFile && currentUser) {
+        const storageRef = ref(storage, `products/${currentUser.uid}/${Date.now()}-${productFile.name}`);
+        await uploadBytes(storageRef, productFile);
+        fileUrl = await getDownloadURL(storageRef);
+      }
+      // Auto-compute revenue for new products based on price × sales
+      const price = parseFloat(form.price.replace(/[^0-9.]/g, '')) || 0;
+      const rev = (price * (form.sales || 0)).toFixed(0);
+      onSave({ ...form, fileUrl, revenue: `$${rev}` });
+    } catch (err) {
+      console.error('Failed to upload product file:', err);
+      notify && notify('Failed to upload product file. Please try again.', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -151,7 +169,9 @@ function ProductModal({ product, onSave, onClose, onDelete }) {
           {/* Actions */}
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="button" onClick={onClose} className="btn btn-gh" style={{ flex: 1 }}>Cancel</button>
-            <button type="submit" className="btn btn-gr" style={{ flex: 2 }}>{isNew ? '🚀 Publish Product' : 'Save Changes'}</button>
+            <button type="submit" className="btn btn-gr" style={{ flex: 2 }} disabled={uploading}>
+              {uploading ? 'Uploading...' : isNew ? '🚀 Publish Product' : 'Save Changes'}
+            </button>
           </div>
 
           {/* Delete (edit mode only) */}
@@ -338,8 +358,8 @@ export function Products({ user, expertData, notify }) {
 
   return (
     <>
-      {showUpload && <ProductModal product={null} onSave={handleUpload} onClose={() => setShowUpload(false)} />}
-      {editProduct && <ProductModal product={editProduct} onSave={handleEdit} onClose={() => setEditProduct(null)} onDelete={handleDelete} />}
+      {showUpload && <ProductModal product={null} onSave={handleUpload} onClose={() => setShowUpload(false)} notify={notify} />}
+      {editProduct && <ProductModal product={editProduct} onSave={handleEdit} onClose={() => setEditProduct(null)} onDelete={handleDelete} notify={notify} />}
       {statsProduct && <StatsModal product={statsProduct} onClose={() => setStatsProduct(null)} />}
 
       {/* Header */}

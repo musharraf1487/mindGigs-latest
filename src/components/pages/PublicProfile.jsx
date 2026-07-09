@@ -116,7 +116,7 @@ export function PublicProfile({ nav, notify, expert }) {
         amount,
         currentUser.email,
         getStoredReferralCode() || null,
-        product.deliveryLink || null,
+        product.deliveryLink || product.fileUrl || null,
         currentUser.uid
       );
     } catch (err) {
