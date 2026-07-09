@@ -343,9 +343,17 @@ function FloatingSideElements() {
     );
 }
 
+const ROLE_DASHBOARD_ROUTE = {
+    expert: 'expert-dashboard',
+    client: 'client-dashboard',
+    affiliate: 'affiliate-dashboard',
+    admin: 'admin-dashboard',
+};
+
 export function LandingBoard({ nav, onLogin, experts }) {
     const { currentUser, userData } = useAuth();
-    const isLoggedInExpert = !!currentUser && userData?.role === 'expert';
+    const isLoggedIn = !!currentUser && !!userData?.role;
+    const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
     const [activeCtaIndex, setActiveCtaIndex] = React.useState(0);
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [navHidden, setNavHidden] = React.useState(false);
@@ -454,10 +462,10 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
                     <div className="lb-nav-actions">
 
-                        {isLoggedInExpert ? (
+                        {isLoggedIn ? (
                             <button
                                 className="lb-btn-join lb-hidden-sm"
-                                onClick={() => nav('expert-dashboard')}
+                                onClick={() => nav(dashboardRoute)}
                             >
                                 Profile
                             </button>
@@ -503,8 +511,8 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                 <a href="#lb-experts" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Experts</a>
                                 <a href="#lb-subscriptions" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Pricing</a>
                                 <hr className="lb-divider" />
-                                {isLoggedInExpert ? (
-                                    <button className="lb-btn-join-full" onClick={() => { setIsMenuOpen(false); nav('expert-dashboard'); }}>
+                                {isLoggedIn ? (
+                                    <button className="lb-btn-join-full" onClick={() => { setIsMenuOpen(false); nav(dashboardRoute); }}>
                                         Profile
                                     </button>
                                 ) : (

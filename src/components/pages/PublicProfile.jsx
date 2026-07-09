@@ -151,11 +151,15 @@ export function PublicProfile({ nav, notify, expert }) {
     .toUpperCase();
   const firstName = expert.name?.split(' ')[0] || 'this expert';
 
-  const sessions = expert.sessionsList || [];
-  const subscriptions = expert.subscriptionsList || expert.subscriptions || [];
-  const products = expert.productsList || [];
-  const books = expert.booksList || [];
-  const customOfferings = expert.customOfferingsList || [];
+  // Each dashboard section (Sessions/Subscriptions/Products/Books/CustomOfferings)
+  // has a "Listed for Sale" toggle that writes `active`; only listed items should
+  // ever reach the public profile.
+  const isListed = (item) => item.active !== false;
+  const sessions = (expert.sessionsList || []).filter(isListed);
+  const subscriptions = (expert.subscriptionsList || expert.subscriptions || []).filter(isListed);
+  const products = (expert.productsList || []).filter(isListed);
+  const books = (expert.booksList || []).filter(isListed);
+  const customOfferings = (expert.customOfferingsList || []).filter(isListed);
 
   return (
     <div style={{ background: 'var(--cr)', minHeight: '100vh' }}>
@@ -333,7 +337,7 @@ export function PublicProfile({ nav, notify, expert }) {
                   <button className="btn btn-gr btn-sm" onClick={() => nav('booking', { session: s })}>
                     Book Now
                   </button>
-                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup'); }}>
+                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
                     Do you want to become an Affiliate?
                   </a>
                 </div>
@@ -430,7 +434,7 @@ export function PublicProfile({ nav, notify, expert }) {
                   >
                     {checkoutLoading === `sub-${sub.title}` ? 'Redirecting...' : 'Subscribe →'}
                   </button>
-                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup'); }}>
+                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
                     Do you want to become an Affiliate?
                   </a>
                 </div>

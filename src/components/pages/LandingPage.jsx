@@ -250,9 +250,17 @@ function FloatingSideElements() {
   );
 }
 
+const ROLE_DASHBOARD_ROUTE = {
+  expert: 'expert-dashboard',
+  client: 'client-dashboard',
+  affiliate: 'affiliate-dashboard',
+  admin: 'admin-dashboard',
+};
+
 export function LandingPage({ nav, onLogin }) {
   const { currentUser, userData } = useAuth();
-  const isLoggedInExpert = !!currentUser && userData?.role === 'expert';
+  const isLoggedIn = !!currentUser && !!userData?.role;
+  const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [navHidden, setNavHidden] = React.useState(false);
 
@@ -294,8 +302,8 @@ export function LandingPage({ nav, onLogin }) {
           </div>
 
           <div className="lp-nav-actions">
-            {isLoggedInExpert ? (
-              <button className="lp-btn-cta" onClick={() => nav('expert-dashboard')}>
+            {isLoggedIn ? (
+              <button className="lp-btn-cta" onClick={() => nav(dashboardRoute)}>
                 Profile <ArrowRight style={{ width: 16, height: 16 }} />
               </button>
             ) : (
@@ -604,8 +612,8 @@ export function LandingPage({ nav, onLogin }) {
               Free to start easy to scale.
             </p>
             <div className="lp-cta-actions">
-              {isLoggedInExpert ? (
-                <button className="lp-btn-primary" onClick={() => nav('expert-dashboard')}>
+              {isLoggedIn ? (
+                <button className="lp-btn-primary" onClick={() => nav(dashboardRoute)}>
                   Go to Profile <ArrowRight style={{ width: 20, height: 20 }} />
                 </button>
               ) : (

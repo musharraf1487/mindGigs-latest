@@ -223,9 +223,17 @@ function ExpertGridCard({ expert, nav }) {
 }
 
 /* ─── Main Export ─── */
+const ROLE_DASHBOARD_ROUTE = {
+    expert: 'expert-dashboard',
+    client: 'client-dashboard',
+    affiliate: 'affiliate-dashboard',
+    admin: 'admin-dashboard',
+};
+
 export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
     const { currentUser, userData } = useAuth();
-    const isLoggedInExpert = !!currentUser && userData?.role === 'expert';
+    const isLoggedIn = !!currentUser && !!userData?.role;
+    const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const gridRef = useRef(null);
@@ -315,14 +323,14 @@ export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
                     <div className="lb-nav-links">
                         <button onClick={() => nav('landingboard')} className="lb-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>Home</button>
                         <span className="lb-nav-link" style={{ opacity: 1, color: '#19b5a6', fontWeight: 700 }}>Experts</span>
-                        {!isLoggedInExpert && (
+                        {!isLoggedIn && (
                             <button onClick={() => nav('home')} className="lb-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>Join as Expert</button>
                         )}
                     </div>
 
                     <div className="lb-nav-actions">
-                        {isLoggedInExpert ? (
-                            <button className="lb-btn-join" onClick={() => nav('expert-dashboard')}>Profile</button>
+                        {isLoggedIn ? (
+                            <button className="lb-btn-join" onClick={() => nav(dashboardRoute)}>Profile</button>
                         ) : (
                             <>
                                 <button className="lb-btn-login" onClick={onLogin}>Log In</button>
