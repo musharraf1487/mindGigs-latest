@@ -19,6 +19,13 @@ import { initiateSubscriptionPayment, initiateProductPayment } from '../../servi
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 
+const ROLE_DASHBOARD_ROUTE = {
+  expert: 'expert-dashboard',
+  client: 'client-dashboard',
+  affiliate: 'affiliate-dashboard',
+  admin: 'admin-dashboard',
+};
+
 function SectionHeader({ icon, eyebrow, title }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -70,7 +77,9 @@ const BOOK_GRADIENTS = [
 ];
 
 export function PublicProfile({ nav, notify, expert: expertProp }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
+  const isLoggedIn = !!currentUser && !!userData?.role;
+  const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
   const [checkoutLoading, setCheckoutLoading] = useState(null);
 
   // Different entry points (Featured Experts carousel, ExpertsDirectory,
@@ -237,9 +246,15 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
           >
             <Share2 size={14} /> Share
           </button>
-          <button className="btn btn-gr btn-sm" onClick={() => nav('signup')}>
-            Create Your Profile
-          </button>
+          {isLoggedIn ? (
+            <button className="btn btn-gr btn-sm" onClick={() => nav(dashboardRoute)}>
+              Profile
+            </button>
+          ) : (
+            <button className="btn btn-gr btn-sm" onClick={() => nav('signup')}>
+              Create Your Profile
+            </button>
+          )}
         </div>
       </div>
 
@@ -734,9 +749,9 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = '#e9ebee')}
             onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-            onClick={() => nav('signup')}
+            onClick={() => nav(isLoggedIn ? dashboardRoute : 'signup')}
           >
-            Create Your Profile — Free →
+            {isLoggedIn ? 'Go to Profile →' : 'Create Your Profile — Free →'}
           </button>
         </div>
       </div>

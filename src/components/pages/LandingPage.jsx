@@ -350,8 +350,8 @@ export function LandingPage({ nav, onLogin }) {
 
             {/* CTA Buttons */}
             <div className="lp-hero-actions">
-              <button className="lp-btn-hero-primary" onClick={() => nav('signup')}>
-                Start Earning
+              <button className="lp-btn-hero-primary" onClick={() => nav(isLoggedIn ? dashboardRoute : 'signup')}>
+                {isLoggedIn ? 'Go to Profile' : 'Start Earning'}
               </button>
             </div>
           </motion.div>
