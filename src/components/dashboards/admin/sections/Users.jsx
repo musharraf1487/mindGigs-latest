@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
-import { Users as UsersIcon, User, Link, Shield, Mail, Plus, Search, UserCheck, UserX, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../../../context/AuthContext';
+import { adminDeleteUser } from '../../../../services/adminService';
+import { Users as UsersIcon, User, Link, Shield, Mail, Plus, Search, UserCheck, UserX, RefreshCw, Trash2 } from 'lucide-react';
 
 function InviteModal({ onClose, notify }) {
   const [email, setEmail] = useState('');
@@ -63,6 +65,7 @@ function InviteModal({ onClose, notify }) {
 }
 
 export function Users({ user, adminData, notify }) {
+  const { currentUser } = useAuth();
   const [liveUsers, setLiveUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,6 +73,7 @@ export function Users({ user, adminData, notify }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showInvite, setShowInvite] = useState(false);
   const [suspending, setSuspending] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   // Real-time Firestore listener
   useEffect(() => {
@@ -120,6 +124,28 @@ export function Users({ user, adminData, notify }) {
       notify('Failed to update user status', 'error');
     } finally {
       setSuspending(null);
+    }
+  };
+
+  const handleDelete = async (u) => {
+    if (u.id === currentUser?.uid) {
+      notify('You cannot delete your own admin account.', 'error');
+      return;
+    }
+    const confirmed = window.confirm(
+      `Permanently remove ${u.name}'s profile (${u.email})? This deletes their account and cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(u.id);
+    try {
+      await adminDeleteUser(u.id);
+      setLiveUsers((prev) => prev.filter((x) => x.id !== u.id));
+      notify(`${u.name}'s profile has been removed.`, 'success');
+    } catch (e) {
+      notify(e.message || 'Failed to delete user profile.', 'error');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -237,20 +263,35 @@ export function Users({ user, adminData, notify }) {
                   </td>
                   <td style={{ color: 'var(--mu)', fontSize: '0.82rem' }}>{u.joined}</td>
                   <td>
-                    <button
-                      disabled={suspending === u.id}
-                      onClick={() => handleSuspend(u)}
-                      style={{
-                        padding: '5px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                        background: u.status === 'suspended' ? 'rgba(26,184,160,0.08)' : 'rgba(232,68,68,0.07)',
-                        color: u.status === 'suspended' ? 'var(--teal)' : '#e84444',
-                        border: u.status === 'suspended' ? '1px solid rgba(26,184,160,0.18)' : '1px solid rgba(232,68,68,0.15)',
-                        display: 'flex', alignItems: 'center', gap: 4,
-                      }}>
-                      {suspending === u.id ? '...' : u.status === 'suspended'
-                        ? <><UserCheck size={11} /> Reactivate</>
-                        : <><UserX size={11} /> Suspend</>}
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        disabled={suspending === u.id}
+                        onClick={() => handleSuspend(u)}
+                        style={{
+                          padding: '5px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                          background: u.status === 'suspended' ? 'rgba(26,184,160,0.08)' : 'rgba(232,68,68,0.07)',
+                          color: u.status === 'suspended' ? 'var(--teal)' : '#e84444',
+                          border: u.status === 'suspended' ? '1px solid rgba(26,184,160,0.18)' : '1px solid rgba(232,68,68,0.15)',
+                          display: 'flex', alignItems: 'center', gap: 4,
+                        }}>
+                        {suspending === u.id ? '...' : u.status === 'suspended'
+                          ? <><UserCheck size={11} /> Reactivate</>
+                          : <><UserX size={11} /> Suspend</>}
+                      </button>
+                      {u.id !== currentUser?.uid && (
+                        <button
+                          disabled={deleting === u.id}
+                          onClick={() => handleDelete(u)}
+                          title="Permanently remove this profile"
+                          style={{
+                            padding: '5px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                            background: 'rgba(232,68,68,0.07)', color: '#e84444', border: '1px solid rgba(232,68,68,0.15)',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                          }}>
+                          {deleting === u.id ? '...' : <><Trash2 size={11} /> Delete</>}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

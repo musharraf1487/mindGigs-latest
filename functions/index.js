@@ -1,9 +1,10 @@
 /**
  * mindGigs — Firebase Cloud Functions
  *
- * Two functions:
+ * Functions:
  *   createCheckoutSession  — called by frontend, creates a Stripe Checkout session
  *   stripeWebhook          — called by Stripe after payment, source of truth for all money logic
+ *   adminDeleteUser        — called by the Admin Dashboard, permanently removes a user profile
  *
  * Environment variables (set via Firebase CLI):
  *   STRIPE_SECRET_KEY      — your Stripe secret key (sk_live_...)
@@ -15,6 +16,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 const Stripe = require('stripe');
 const { Resend } = require('resend');
 
@@ -677,5 +679,74 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
   } catch (err) {
     console.error('[stripeWebhook] Error processing payment:', err);
     return res.status(200).json({ received: true, error: err.message });
+  }
+});
+
+// ─── adminDeleteUser ───────────────────────────────────────────────────────────
+/**
+ * Called by the Admin Dashboard to permanently remove a user profile from the
+ * platform. Firestore security rules can't grant this on their own — deleting
+ * the underlying Firebase Auth account requires the Admin SDK — so this runs
+ * server-side with two checks before touching anything:
+ *   1. The request carries a valid Firebase ID token (caller is signed in).
+ *   2. That caller's own Firestore user doc has role === 'admin'.
+ *
+ * Request body: { targetUid }
+ * Headers:      Authorization: Bearer <Firebase ID token>
+ *
+ * Response: { success, deletedUid, name }
+ */
+exports.adminDeleteUser = onRequest({ secrets: ['CLIENT_URL'] }, async (req, res) => {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) return res.status(401).json({ error: 'Missing Authorization token' });
+
+  let callerUid;
+  try {
+    callerUid = (await getAuth().verifyIdToken(idToken)).uid;
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
+  }
+
+  const callerSnap = await db.collection('users').doc(callerUid).get();
+  if (!callerSnap.exists || callerSnap.data().role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const { targetUid } = req.body || {};
+  if (!targetUid) return res.status(400).json({ error: 'targetUid is required' });
+  if (targetUid === callerUid) {
+    return res.status(400).json({ error: 'Cannot delete your own admin account.' });
+  }
+
+  try {
+    const targetSnap = await db.collection('users').doc(targetUid).get();
+    const targetData = targetSnap.exists ? targetSnap.data() : null;
+
+    const writes = [db.collection('users').doc(targetUid).delete()];
+    if (targetData?.handle) {
+      writes.push(db.collection('handles').doc(targetData.handle).delete());
+    }
+    await Promise.all(writes);
+
+    try {
+      await getAuth().deleteUser(targetUid);
+    } catch (err) {
+      // Auth record may not exist (e.g. doc created manually) — Firestore
+      // removal above already succeeded, so this alone isn't fatal.
+      if (err.code !== 'auth/user-not-found') {
+        console.error('[adminDeleteUser] Failed to delete Auth account:', err);
+      }
+    }
+
+    console.log(`[adminDeleteUser] ${callerUid} deleted profile ${targetUid} (${targetData?.name || 'unknown'})`);
+    return res.status(200).json({ success: true, deletedUid: targetUid, name: targetData?.name || null });
+  } catch (err) {
+    console.error('[adminDeleteUser] Error:', err);
+    return res.status(500).json({ error: 'Failed to delete user profile.' });
   }
 });
