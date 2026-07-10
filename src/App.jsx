@@ -136,7 +136,10 @@ export default function App() {
           if (hasRealImage) return e;
           return { ...e, image: null };
         });
-        setExperts(live);
+        // Admin can toggle a profile off (defaults to on) to pull it from
+        // public listings without deleting or otherwise disabling the account
+        // — direct vanity-URL links below still resolve against the full list.
+        setExperts(live.filter(e => e.profileActive !== false));
 
         // Resolve a pending vanity-URL slug against the freshly-loaded expert
         // list. Only runs once — cleared below regardless of outcome, so a

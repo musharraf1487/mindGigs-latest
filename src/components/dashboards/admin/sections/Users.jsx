@@ -74,6 +74,7 @@ export function Users({ user, adminData, notify }) {
   const [showInvite, setShowInvite] = useState(false);
   const [suspending, setSuspending] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [togglingProfile, setTogglingProfile] = useState(null);
 
   // Real-time Firestore listener
   useEffect(() => {
@@ -124,6 +125,20 @@ export function Users({ user, adminData, notify }) {
       notify('Failed to update user status', 'error');
     } finally {
       setSuspending(null);
+    }
+  };
+
+  const handleToggleProfile = async (u) => {
+    const isActive = u.profileActive !== false;
+    const newValue = !isActive;
+    setTogglingProfile(u.id);
+    try {
+      await updateDoc(doc(db, 'users', u.id), { profileActive: newValue });
+      notify(`${u.name}'s profile is now ${newValue ? 'visible' : 'hidden'} in expert listings.`, newValue ? 'success' : 'warn');
+    } catch (e) {
+      notify('Failed to update profile visibility', 'error');
+    } finally {
+      setTogglingProfile(null);
     }
   };
 
@@ -235,6 +250,7 @@ export function Users({ user, adminData, notify }) {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Profile</th>
                 <th>Joined</th>
                 <th>Actions</th>
               </tr>
@@ -260,6 +276,33 @@ export function Users({ user, adminData, notify }) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: 600, background: u.status === 'suspended' ? 'rgba(232,68,68,0.08)' : 'rgba(26,184,160,0.08)', color: u.status === 'suspended' ? '#e84444' : 'var(--teal)' }}>
                       {u.status === 'suspended' ? <UserX size={10} /> : <UserCheck size={10} />} {u.status}
                     </span>
+                  </td>
+                  <td>
+                    {u.role === 'expert' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div
+                          onClick={() => togglingProfile !== u.id && handleToggleProfile(u)}
+                          title={u.profileActive === false ? 'Hidden from expert listings' : 'Visible in expert listings'}
+                          style={{
+                            width: 38, height: 21, borderRadius: 11, cursor: togglingProfile === u.id ? 'wait' : 'pointer',
+                            transition: 'background 0.2s', position: 'relative', flexShrink: 0,
+                            background: u.profileActive === false ? 'rgba(0,0,0,0.15)' : 'var(--teal)',
+                            opacity: togglingProfile === u.id ? 0.6 : 1,
+                          }}
+                        >
+                          <div style={{
+                            position: 'absolute', top: 2.5, left: u.profileActive === false ? 3 : 20,
+                            width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                          }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: u.profileActive === false ? 'var(--mu)' : 'var(--teal)' }}>
+                          {u.profileActive === false ? 'Off' : 'On'}
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--mu)' }}>—</span>
+                    )}
                   </td>
                   <td style={{ color: 'var(--mu)', fontSize: '0.82rem' }}>{u.joined}</td>
                   <td>
