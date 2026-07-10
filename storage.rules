@@ -8,14 +8,22 @@ service firebase.storage {
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Digital products — readable by any signed-in user, owner-only write
-    match /products/{uid}/{fileName} {
+    // Digital products (delivery file + thumbnail, e.g. products/{uid}/images/...) —
+    // readable by any signed-in user, owner-only write. Recursive match so both the
+    // top-level file and the images/ subfolder are covered by one rule.
+    match /products/{uid}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Subscription plan images — readable by any signed-in user, owner-only write
+    match /subscriptions/{uid}/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
     // Book covers — public read (shown on public profile pages), owner-only write
-    match /books/{uid}/{fileName} {
+    match /books/{uid}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
