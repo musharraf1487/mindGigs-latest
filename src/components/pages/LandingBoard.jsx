@@ -3,9 +3,7 @@
  * "Join as an Expert" navigates to LandingPage (home)
  */
 
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
     Check,
@@ -330,46 +328,24 @@ export function LandingBoard({ nav, onLogin, experts }) {
     const [navHidden, setNavHidden] = React.useState(false);
     const [hoveredExpertId, setHoveredExpertId] = React.useState(null);
 
-    // ── Live carousel: real-time Firestore subscription ──
-    const [liveCarouselExperts, setLiveCarouselExperts] = useState([]);
-    const [carouselLive, setCarouselLive] = useState(false);
-
-    useEffect(() => {
-        const q = query(
-            collection(db, 'users'),
-            where('role', '==', 'expert'),
-            where('onboardingComplete', '==', true)
-        );
-
-        const unsubscribe = onSnapshot(q, (snap) => {
-            const firestoreExperts = snap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id: doc.id,
-                    name: d.name || 'Expert',
-                    role: d.headline || d.bio?.substring(0, 60) || 'Expert',
-                    image: d.image || null,
-                    expertise: d.expertise || d.skills || d.tags || [],
-                    price: d.sessionPrice ? `$${d.sessionPrice}/session` : null,
-                    rating: typeof d.rating === 'number' ? d.rating : (d.averageRating || 0),
-                    reviews: d.reviewCount || d.reviews || 0,
-                    isLive: true,
-                };
-            });
-
-            // Sort Firestore experts by rating descending, top 7
-            firestoreExperts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-            const merged = firestoreExperts.slice(0, 7);
-
-            setLiveCarouselExperts(merged);
-            setCarouselLive(true);
-        }, (err) => {
-            console.error('Carousel Firestore error:', err);
-            setLiveCarouselExperts([]);
-        });
-
-        return () => unsubscribe();
-    }, []);
+    // ── Featured Experts carousel — sourced from the same expert list used by ──
+    // the Experts Directory page, so both stay in sync from a single fetch.
+    const liveCarouselExperts = useMemo(() => {
+        const normalized = (experts || []).map((e) => ({
+            id: e.id,
+            name: e.name || 'Expert',
+            role: e.headline || e.bio?.substring(0, 60) || 'Expert',
+            image: e.image || null,
+            expertise: e.expertise || e.skills || e.tags || [],
+            price: e.sessionPrice ? `$${e.sessionPrice}/session` : null,
+            rating: typeof e.rating === 'number' ? e.rating : (e.averageRating || 0),
+            reviews: e.reviewCount || e.reviews || 0,
+            isVerified: e.isVerified,
+        }));
+        normalized.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        return normalized.slice(0, 7);
+    }, [experts]);
+    const carouselLive = liveCarouselExperts.length > 0;
 
     React.useEffect(() => {
         let lastScroll = window.scrollY;
@@ -825,6 +801,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
             </section >
 
             {/* Featured Experts */}
+            {liveCarouselExperts.length > 0 && (
             < section id="lb-experts" className="lb-section lb-experts" >
                 <div className="lb-experts-blob" />
                 <div className="lb-container lb-rel">
@@ -850,13 +827,13 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         modules={[Pagination, Navigation, Autoplay]}
                         spaceBetween={30}
                         slidesPerView={1}
-                        centeredSlides={true}
+                        centeredSlides={liveCarouselExperts.length < 2}
                         pagination={{ clickable: true }}
                         autoplay={{ delay: 4500, disableOnInteraction: false, pauseOnMouseEnter: true }}
-                        loop={liveCarouselExperts.length >= 3}
+                        loop={liveCarouselExperts.length >= 4}
                         breakpoints={{
-                            640: { slidesPerView: 2, centeredSlides: false },
-                            1024: { slidesPerView: Math.min(4, liveCarouselExperts.length), centeredSlides: liveCarouselExperts.length > 4 },
+                            640: { slidesPerView: 2, centeredSlides: liveCarouselExperts.length < 2 },
+                            1024: { slidesPerView: 3, centeredSlides: liveCarouselExperts.length < 3 },
                         }}
                         className="lb-experts-swiper"
                     >
@@ -970,6 +947,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </Swiper>
                 </div>
             </section >
+            )}
 
             {/* Footer */}
             < footer className="lb-footer" >
