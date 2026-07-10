@@ -379,7 +379,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                   <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                    {s.price}
+                    {s.price?.includes('$') ? s.price : `$${s.price}`}
                   </div>
                   <button className="btn btn-gr btn-sm" onClick={() => { if (!currentUser) { goToSignup(); return; } nav('booking', { session: s }); }}>
                     Book Now
@@ -563,7 +563,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--fu)', fontSize: '1.15rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                      {p.price}
+                      {p.price?.includes('$') ? p.price : `$${p.price}`}
                     </span>
                     <button
                       className="btn btn-pr btn-sm"
@@ -638,7 +638,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
                     <span style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                      {b.price}
+                      {b.price?.includes('$') ? b.price : `$${b.price}`}
                     </span>
                     <button className="btn btn-pr btn-sm" onClick={() => handleBuyBook(b)}>
                       {b.cta || 'Buy Now'}
@@ -673,7 +673,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                     {c.price && (
-                      <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price}</div>
+                      <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price.includes('$') ? c.price : `$${c.price}`}</div>
                     )}
                     <button className="btn btn-gr btn-sm" onClick={() => handleCustomCta(c)}>
                       {c.ctaType === 'book' ? 'Book Now' : c.ctaType === 'custom' ? (c.ctaLabel || 'Learn More') : 'Book a Call'} →

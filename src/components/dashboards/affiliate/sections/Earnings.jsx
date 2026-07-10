@@ -121,7 +121,7 @@ export function Earnings({ user, affiliateData, notify }) {
               {affiliateData.payouts.map((p, i) => (
                 <tr key={i}>
                   <td style={{ fontWeight: 500 }}>{p.date}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>+{p.amount}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>+{String(p.amount).includes('$') ? p.amount : `$${p.amount}`}</td>
                   <td>
                     <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: 600, background: 'rgba(26,184,160,0.08)', color: 'var(--teal)' }}>
                       {p.method}

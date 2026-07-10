@@ -374,7 +374,7 @@ export function Subscriptions({ user, expertData, notify }) {
                     </span>
                   </div>
                   <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--gb)' }}>
-                    {sub.price}
+                    {sub.price?.includes('$') ? sub.price : `$${sub.price}`}
                   </div>
                 </div>
               </div>

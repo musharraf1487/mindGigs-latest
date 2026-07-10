@@ -15,7 +15,12 @@ export function BookingFlow({ nav, notify, expert, session }) {
   // Use fallbacks to prevent crashes if data is missing, but prioritize passed props
   const expertName = expert?.name || 'Expert';
   const sessionTitle = session?.title || '60-min Strategy Deep Dive';
-  const sessionPrice = session?.price || '$250';
+  const rawSessionPrice = session?.price || '$250';
+  // Custom offerings without a set price fall through as "Contact for pricing" —
+  // only prepend $ when the value actually looks like an amount (has a digit).
+  const sessionPrice = rawSessionPrice.includes('$') || !/\d/.test(rawSessionPrice)
+    ? rawSessionPrice
+    : `$${rawSessionPrice}`;
   const sessionDuration = session?.duration || '60 min';
   const [step, setStep] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
