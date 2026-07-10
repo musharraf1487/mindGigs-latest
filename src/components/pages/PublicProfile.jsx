@@ -156,17 +156,21 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
   };
 
   const handleCustomCta = (c) => {
-    if (c.ctaType === 'book' || c.ctaType === 'contact') {
-      if (!currentUser) {
-        goToSignup();
-        return;
+    if (c.ctaType === 'custom') {
+      if (c.link) {
+        window.open(c.link, '_blank', 'noopener,noreferrer');
+      } else {
+        notify('Contact the expert to inquire.');
       }
-      nav('booking', { session: { title: c.title, price: c.price || 'Contact for pricing', duration: c.duration || 'Flexible' } });
-    } else if (c.ctaType === 'custom' && c.link) {
-      window.open(c.link, '_blank', 'noopener,noreferrer');
-    } else {
-      notify('Contact the expert to inquire.');
+      return;
     }
+    // 'book', 'contact', and any legacy/missing ctaType all use the same
+    // date-picker + checkout flow as the standard "Book Now" session button.
+    if (!currentUser) {
+      goToSignup();
+      return;
+    }
+    nav('booking', { session: { title: c.title, price: c.price || 'Contact for pricing', duration: c.duration || 'Flexible' } });
   };
 
   if (!expert) return null;
