@@ -4,9 +4,11 @@ import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { X } from 'lucide-react';
 
 const ICONS = ['package', 'file', 'chart', 'bot', 'palette', 'dollar'];
 const ICON_LABELS = { package: 'Template', file: 'Document', chart: 'Spreadsheet', bot: 'AI Tool', palette: 'Design', dollar: 'Finance' };
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
 const EMPTY_PRODUCT = {
   title: '',
@@ -14,6 +16,7 @@ const EMPTY_PRODUCT = {
   description: '',
   icon: 'package',
   category: 'Template',
+  imageUrl: null,
   fileUrl: null,
   fileName: null,
   deliveryLink: '',
@@ -23,12 +26,39 @@ const EMPTY_PRODUCT = {
   active: true,
 };
 
+function ProductImageThumb({ imageUrl, icon, size = 64 }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 10,
+        overflow: 'hidden',
+        flexShrink: 0,
+        background: imageUrl ? '#fff' : 'linear-gradient(135deg, var(--gd), var(--teal))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+      }}
+    >
+      {imageUrl ? (
+        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <ProfIcon icon={icon || 'package'} size={size * 0.4} color="#fff" variant="plain" style={{ pointerEvents: 'none' }} />
+      )}
+    </div>
+  );
+}
+
 /* ── UPLOAD / EDIT MODAL ── */
 function ProductModal({ product, onSave, onClose, onDelete, notify }) {
   const { currentUser } = useAuth();
   const isNew = !product;
   const [form, setForm] = useState(product || EMPTY_PRODUCT);
   const [productFile, setProductFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(product?.imageUrl || null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -47,6 +77,22 @@ function ProductModal({ product, onSave, onClose, onDelete, notify }) {
     if (file) handleFile(file);
   };
 
+  const handleImageFile = (file) => {
+    if (!file || !ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      notify && notify('Please upload a PNG or JPEG image.', 'warn');
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = (e) => {
+    e.stopPropagation();
+    setImageFile(null);
+    setImagePreview(null);
+    set('imageUrl', null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
@@ -62,10 +108,16 @@ function ProductModal({ product, onSave, onClose, onDelete, notify }) {
         await uploadBytes(storageRef, productFile);
         fileUrl = await getDownloadURL(storageRef);
       }
+      let imageUrl = form.imageUrl || null;
+      if (imageFile && currentUser) {
+        const imageRef = ref(storage, `products/${currentUser.uid}/images/${Date.now()}-${imageFile.name}`);
+        await uploadBytes(imageRef, imageFile);
+        imageUrl = await getDownloadURL(imageRef);
+      }
       // Auto-compute revenue for new products based on price × sales
       const price = parseFloat(form.price.replace(/[^0-9.]/g, '')) || 0;
       const rev = (price * (form.sales || 0)).toFixed(0);
-      onSave({ ...form, fileUrl, revenue: `$${rev}` });
+      onSave({ ...form, fileUrl, imageUrl, revenue: `$${rev}` });
     } catch (err) {
       console.error('Failed to upload product file:', err);
       notify && notify('Failed to upload product file. Please try again.', 'error');
@@ -126,6 +178,50 @@ function ProductModal({ product, onSave, onClose, onDelete, notify }) {
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Description</label>
             <textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="What does this product help clients with?" style={{ width: '100%', resize: 'vertical', minHeight: 80 }} />
+          </div>
+
+          {/* Product Image */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>
+              Product Image <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PNG or JPG, optional)</span>
+            </label>
+            <div
+              onClick={() => document.getElementById('product-image-input').click()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 16, padding: 16,
+                border: '2px dashed rgba(0,0,0,0.12)',
+                borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                background: 'rgba(0,0,0,0.01)',
+              }}
+            >
+              <input
+                id="product-image-input"
+                type="file"
+                accept="image/png,image/jpeg"
+                style={{ display: 'none' }}
+                onChange={(e) => handleImageFile(e.target.files[0])}
+              />
+              <div style={{ position: 'relative' }}>
+                <ProductImageThumb imageUrl={imagePreview} icon={form.icon} />
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <X size={12} color="var(--sl)" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gd)' }}>
+                  {imagePreview ? 'Change product image' : 'Upload product image'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 4 }}>
+                  Drag & drop or click to browse · shown on your public profile
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* File Upload Zone */}
@@ -396,8 +492,12 @@ export function Products({ user, expertData, notify }) {
               onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = ''; }}
             >
               {/* Thumbnail */}
-              <div style={{ height: 130, background: 'linear-gradient(135deg, rgba(26,184,160,0.07), rgba(84,119,146,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <ProfIcon icon={product.icon || 'package'} size={48} style={{ pointerEvents: 'none' }} />
+              <div style={{ height: 130, background: product.imageUrl ? '#eef1f4' : 'linear-gradient(135deg, rgba(26,184,160,0.07), rgba(84,119,146,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <ProfIcon icon={product.icon || 'package'} size={48} style={{ pointerEvents: 'none' }} />
+                )}
                 {product.active === false && (
                   <span style={{ position: 'absolute', top: 10, right: 10, fontSize: '0.65rem', background: 'rgba(0,0,0,0.08)', color: 'var(--sl)', padding: '3px 8px', borderRadius: 20, fontWeight: 700 }}>Inactive</span>
                 )}

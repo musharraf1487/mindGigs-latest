@@ -1,27 +1,99 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Users, Check, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Trash2, Users, Check, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { usePlatformConfig } from '../../../../context/PlatformConfigContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../config/firebase';
+import { db, storage } from '../../../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getExpertBookings } from '../../../../services/bookingService';
+
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
 const EMPTY_SUB = {
   title: '',
+  desc: '',
   price: '',
   subscribers: 0,
   active: true,
+  imageUrl: null,
   benefits: ['', '', ''], // Start with 3 empty benefits
 };
 
-function SubModal({ sub, onSave, onClose, onDelete }) {
+function SubImageThumb({ imageUrl, size = 64 }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 10,
+        overflow: 'hidden',
+        flexShrink: 0,
+        background: imageUrl ? '#fff' : 'linear-gradient(135deg, var(--gd), var(--teal))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+      }}
+    >
+      {imageUrl ? (
+        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <RefreshCw size={size * 0.4} color="#fff" opacity={0.85} />
+      )}
+    </div>
+  );
+}
+
+function SubModal({ sub, onSave, onClose, onDelete, notify }) {
+  const { currentUser } = useAuth();
   const isNew = !sub;
   const [form, setForm] = useState(sub || EMPTY_SUB);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(sub?.imageUrl || null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleImageFile = (file) => {
+    if (!file || !ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      notify && notify('Please upload a PNG or JPEG image.', 'warn');
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageFile(file);
+  };
+
+  const removeImage = (e) => {
+    e.stopPropagation();
+    setImageFile(null);
+    setImagePreview(null);
+    setForm(p => ({ ...p, imageUrl: null }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
-    onSave(form);
+    setUploading(true);
+    try {
+      let imageUrl = form.imageUrl || null;
+      if (imageFile && currentUser) {
+        const imageRef = ref(storage, `subscriptions/${currentUser.uid}/${Date.now()}-${imageFile.name}`);
+        await uploadBytes(imageRef, imageFile);
+        imageUrl = await getDownloadURL(imageRef);
+      }
+      onSave({ ...form, imageUrl });
+    } catch (err) {
+      console.error('Failed to upload subscription image:', err);
+      notify && notify('Failed to upload image. Please try again.', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const updateBenefit = (idx, val) => {
@@ -50,9 +122,60 @@ function SubModal({ sub, onSave, onClose, onDelete }) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: 28 }}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>
+              Plan Image <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PNG or JPG, optional)</span>
+            </label>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleImageDrop}
+              onClick={() => document.getElementById('sub-image-input').click()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 16, padding: 16,
+                border: `2px dashed ${dragging ? 'var(--teal)' : 'rgba(0,0,0,0.12)'}`,
+                borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                background: dragging ? 'rgba(26,184,160,0.04)' : 'rgba(0,0,0,0.01)',
+              }}
+            >
+              <input
+                id="sub-image-input"
+                type="file"
+                accept="image/png,image/jpeg"
+                style={{ display: 'none' }}
+                onChange={(e) => handleImageFile(e.target.files[0])}
+              />
+              <div style={{ position: 'relative' }}>
+                <SubImageThumb imageUrl={imagePreview} />
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <X size={12} color="var(--sl)" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gd)' }}>
+                  {imagePreview ? 'Change plan image' : 'Upload plan image'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 4 }}>
+                  Drag & drop or click to browse · shown on your public profile
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Plan Title *</label>
             <input className="input" type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. VIP Inner Circle" required style={{ width: '100%' }} />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Description</label>
+            <textarea className="input" rows={3} value={form.desc || ''} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="What is this membership plan for?" style={{ width: '100%', resize: 'vertical', minHeight: 80 }} />
           </div>
 
           <div style={{ marginBottom: 20 }}>
@@ -83,7 +206,7 @@ function SubModal({ sub, onSave, onClose, onDelete }) {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="button" onClick={onClose} className="btn btn-gh" style={{ flex: 1 }}>Cancel</button>
-            <button type="submit" className="btn btn-gr" style={{ flex: 2 }}>{isNew ? 'Create Plan' : 'Save Changes'}</button>
+            <button type="submit" className="btn btn-gr" style={{ flex: 2 }} disabled={uploading}>{uploading ? 'Uploading...' : isNew ? 'Create Plan' : 'Save Changes'}</button>
           </div>
 
           {!isNew && onDelete && (
@@ -224,8 +347,8 @@ export function Subscriptions({ user, expertData, notify }) {
 
   return (
     <>
-      {showCreate && <SubModal sub={null} onSave={handleCreate} onClose={() => setShowCreate(false)} />}
-      {editPlan && <SubModal sub={editPlan} onSave={handleEdit} onClose={() => setEditPlan(null)} onDelete={handleDelete} />}
+      {showCreate && <SubModal sub={null} onSave={handleCreate} onClose={() => setShowCreate(false)} notify={notify} />}
+      {editPlan && <SubModal sub={editPlan} onSave={handleEdit} onClose={() => setEditPlan(null)} onDelete={handleDelete} notify={notify} />}
 
       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -241,18 +364,24 @@ export function Subscriptions({ user, expertData, notify }) {
         <div className="grid-2" style={{ gap: '24px', marginBottom: '40px' }}>
           {plans.map((sub, i) => (
             <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--gd)' }}>{sub.title}</h3>
-                  <span className={`tag tag-${sub.active ? 'gr' : 'gh'}`} style={{ fontSize: '0.7rem' }}>
-                    {sub.active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--gb)' }}>
-                  {sub.price}
+              <div style={{ padding: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)', display: 'flex', gap: 16 }}>
+                <SubImageThumb imageUrl={sub.imageUrl} size={56} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: 8 }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--gd)' }}>{sub.title}</h3>
+                    <span className={`tag tag-${sub.active ? 'gr' : 'gh'}`} style={{ fontSize: '0.7rem', flexShrink: 0 }}>
+                      {sub.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--gb)' }}>
+                    {sub.price}
+                  </div>
                 </div>
               </div>
               <div style={{ padding: '24px', flex: 1 }}>
+                {sub.desc && (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--sl)', marginBottom: '20px', lineHeight: 1.5 }}>{sub.desc}</p>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', padding: '12px', background: 'var(--gmt)', borderRadius: '8px' }}>
                   <Users size={24} color="var(--gd)" />
                   <div>

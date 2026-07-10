@@ -157,32 +157,6 @@ function NetworkCanvas() {
     return <canvas ref={canvasRef} className="lb-hero-canvas" aria-hidden="true" />;
 }
 
-// ── Showcase experts — real people, shown for display until platform grows ──
-// No ratings, no verified flags. Can be removed from here at any time.
-const SHOWCASE_EXPERTS = [
-    {
-        id: 'showcase-amir',
-        name: "Amir Anzur",
-        role: "CMO - PSEB",
-        image: "/images/amiranzur.png",
-        expertise: ["Strategist", "Teacher", "Author"],
-    },
-    {
-        id: 'showcase-moe',
-        name: "Moe Mhanna",
-        role: "CPA · MBA in Business Administration",
-        image: "/images/moemohana.png",
-        expertise: ["Strategic Consultant", "Author", "Auditor"],
-    },
-    {
-        id: 'showcase-chris',
-        name: "Chris Tibbetts",
-        role: "Serial Entrepreneur & Business Growth Expert",
-        image: "/images/Chris-Tibbetts.png",
-        expertise: ["Entrepreneurship", "Growth Strategy", "Leadership"],
-    },
-];
-
 const SERVICES = [
     {
         category: "Consultants",
@@ -280,7 +254,6 @@ const SUBSCRIPTIONS = [
         ],
         icon: MessageSquare,
         color: "lb-color-green",
-        expertId: 'showcase-chris'
     },
     {
         title: "AI Pro Network",
@@ -296,7 +269,6 @@ const SUBSCRIPTIONS = [
         icon: Zap,
         color: "lb-color-blue",
         popular: true,
-        expertId: 'showcase-amir'
     },
     {
         title: "Strategic Advisory Access",
@@ -311,7 +283,6 @@ const SUBSCRIPTIONS = [
         ],
         icon: ShieldCheck,
         color: "lb-color-purple",
-        expertId: 'showcase-moe'
     }
 ];
 
@@ -359,8 +330,8 @@ export function LandingBoard({ nav, onLogin, experts }) {
     const [navHidden, setNavHidden] = React.useState(false);
     const [hoveredExpertId, setHoveredExpertId] = React.useState(null);
 
-    // ── Live carousel: real-time Firestore subscription + showcase experts ──
-    const [liveCarouselExperts, setLiveCarouselExperts] = useState(SHOWCASE_EXPERTS);
+    // ── Live carousel: real-time Firestore subscription ──
+    const [liveCarouselExperts, setLiveCarouselExperts] = useState([]);
     const [carouselLive, setCarouselLive] = useState(false);
 
     useEffect(() => {
@@ -386,23 +357,15 @@ export function LandingBoard({ nav, onLogin, experts }) {
                 };
             });
 
-            // Deduplicate: skip showcase entries whose name already exists in Firestore
-            const liveNames = new Set(firestoreExperts.map(e => e.name.toLowerCase()));
-            const uniqueShowcase = SHOWCASE_EXPERTS.filter(
-                se => !liveNames.has(se.name.toLowerCase())
-            );
-
-            // Sort Firestore experts by rating descending, then append showcase
+            // Sort Firestore experts by rating descending, top 7
             firestoreExperts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-            // Top 7 total: real experts first (by rating), then showcase fill remaining
-            const merged = [...firestoreExperts, ...uniqueShowcase].slice(0, 7);
+            const merged = firestoreExperts.slice(0, 7);
 
             setLiveCarouselExperts(merged);
             setCarouselLive(true);
         }, (err) => {
             console.error('Carousel Firestore error:', err);
-            setLiveCarouselExperts(SHOWCASE_EXPERTS);
+            setLiveCarouselExperts([]);
         });
 
         return () => unsubscribe();
@@ -816,10 +779,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                     </div>
                                     <button
                                         className="lb-btn-subscribe"
-                                        onClick={() => {
-                                            const exp = experts?.find(e => String(e.id) === String(plan.expertId)) || { id: plan.expertId, name: "Expert" };
-                                            nav('public-profile', { expertId: plan.expertId, expert: exp });
-                                        }}
+                                        onClick={() => nav('experts')}
                                     >
                                         Subscribe
                                     </button>

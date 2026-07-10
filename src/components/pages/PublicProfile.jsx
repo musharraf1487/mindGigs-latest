@@ -415,38 +415,59 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                 >
                   Featured
                 </span>
-                <div style={{ flex: 1, minWidth: 280 }}>
-                  <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.2rem' }}>
-                    {sub.title}
+                <div style={{ flex: 1, minWidth: 280, display: 'flex', gap: 18 }}>
+                  <div
+                    style={{
+                      width: 76,
+                      height: 76,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      background: sub.imageUrl ? '#eef1f4' : PRODUCT_GRADIENTS[0],
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {sub.imageUrl ? (
+                      <img src={sub.imageUrl} alt={sub.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <RefreshCw size={26} color="#fff" opacity={0.9} />
+                    )}
                   </div>
-                  {sub.desc && (
-                    <p style={{ fontSize: '.9rem', color: 'var(--sl)', marginTop: 6, lineHeight: 1.55, maxWidth: 420 }}>
-                      {sub.desc}
-                    </p>
-                  )}
-                  {sub.features?.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginTop: 18 }}>
-                      {sub.features.map((f) => (
-                        <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.9rem', color: 'var(--sl)' }}>
-                          <span
-                            style={{
-                              width: 19,
-                              height: 19,
-                              borderRadius: '50%',
-                              background: 'var(--teal)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                            }}
-                          >
-                            <Check size={11} color="#fff" strokeWidth={3} />
-                          </span>
-                          {f}
-                        </div>
-                      ))}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.2rem' }}>
+                      {sub.title}
                     </div>
-                  )}
+                    {sub.desc && (
+                      <p style={{ fontSize: '.9rem', color: 'var(--sl)', marginTop: 6, lineHeight: 1.55, maxWidth: 420 }}>
+                        {sub.desc}
+                      </p>
+                    )}
+                    {sub.benefits?.filter((b) => b.trim() !== '').length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginTop: 18 }}>
+                        {sub.benefits.filter((b) => b.trim() !== '').map((f) => (
+                          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.9rem', color: 'var(--sl)' }}>
+                            <span
+                              style={{
+                                width: 19,
+                                height: 19,
+                                borderRadius: '50%',
+                                background: 'var(--teal)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <Check size={11} color="#fff" strokeWidth={3} />
+                            </span>
+                            {f}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 14, minWidth: 140 }}>
                   <div style={{ textAlign: 'right' }}>
@@ -487,13 +508,17 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   style={{
                     position: 'relative',
                     aspectRatio: '16/9',
-                    background: PRODUCT_GRADIENTS[i % PRODUCT_GRADIENTS.length],
+                    background: p.imageUrl ? '#eef1f4' : PRODUCT_GRADIENTS[i % PRODUCT_GRADIENTS.length],
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <FileText size={30} color="#fff" opacity={0.9} />
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <FileText size={30} color="#fff" opacity={0.9} />
+                  )}
                   {p.sold && (
                     <span
                       style={{
@@ -515,7 +540,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                 <div style={{ padding: '22px 22px 24px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
                   <div>
                     <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', fontSize: '1rem' }}>{p.title}</div>
-                    <div style={{ fontSize: '.86rem', color: 'var(--sl)', marginTop: 6, lineHeight: 1.5 }}>{p.desc}</div>
+                    <div style={{ fontSize: '.86rem', color: 'var(--sl)', marginTop: 6, lineHeight: 1.5 }}>{p.description}</div>
                   </div>
                   <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--fu)', fontSize: '1.15rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>

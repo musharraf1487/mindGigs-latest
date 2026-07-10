@@ -24,18 +24,6 @@ import './styles/layout.css';
 import './styles/components.css';
 import './styles/pages.css';
 
-const SHOWCASE_EXPERTS = [
-  { id: 'showcase-amir', name: 'Amir Anzur', role: 'CMO - PSEB', image: '/images/amiranzur.png', expertise: ['Strategy', 'Teaching', 'Authorship'], tags: ['Strategist', 'Teacher', 'Author'], category: 'Business', isShowcase: true },
-  { id: 'showcase-moe', name: 'Moe Mhanna', role: 'CPA · MBA in Business Administration & Accounting', image: '/images/moemohana.png', expertise: ['Strategic Consulting', 'Auditing', 'Authorship'], tags: ['Strategic Consultant', 'Author', 'Auditor'], category: 'Finance', isShowcase: true },
-  { id: 'showcase-chris', name: 'Chris Tibbetts', role: 'Serial Entrepreneur & Business Growth Expert', image: '/images/Chris-Tibbetts.png', expertise: ['Entrepreneurship', 'Growth Strategy', 'Leadership'], tags: ['Entrepreneurship', 'Growth', 'Leadership'], category: 'Business', isShowcase: true },
-];
-
-const IMAGE_OVERRIDES = {
-  'Amir Anzur': '/images/amiranzur.png',
-  'Moe Mhanna': '/images/moemohana.png',
-  'Chris Tibbetts': '/images/Chris-Tibbetts.png',
-};
-
 function LoginSelectorModal({ onClose, onSelect }) {
   const roles = [
     { role: 'expert', icon: Users, title: 'Expert / Creator', sub: 'Access your profile, bookings & earnings' },
@@ -136,7 +124,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [experts]);
 
-  // Fetch live experts from Firestore, merge with showcase
+  // Fetch live experts from Firestore
   useEffect(() => {
     async function fetchExperts() {
       try {
@@ -146,13 +134,9 @@ export default function App() {
           const e = { ...d.data(), id: d.id, isLive: true };
           const hasRealImage = e.image && !e.image.includes('placeholder') && !e.image.includes('ui-avatars.com');
           if (hasRealImage) return e;
-          const override = IMAGE_OVERRIDES[e.name] || IMAGE_OVERRIDES[e.handle];
-          if (override) return { ...e, image: override };
           return { ...e, image: null };
         });
-        const liveNames = new Set(live.map(e => (e.name || '').toLowerCase()));
-        const toAdd = SHOWCASE_EXPERTS.filter(se => !liveNames.has(se.name.toLowerCase()));
-        setExperts([...live, ...toAdd]);
+        setExperts(live);
 
         // Resolve a pending vanity-URL slug against the freshly-loaded expert
         // list. Only runs once — cleared below regardless of outcome, so a
@@ -174,7 +158,7 @@ export default function App() {
         }
       } catch (err) {
         console.error('Error fetching experts:', err);
-        setExperts(SHOWCASE_EXPERTS);
+        setExperts([]);
       }
     }
     fetchExperts();
