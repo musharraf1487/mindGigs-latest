@@ -14,7 +14,9 @@ service cloud.firestore {
     // blocks self-escalation as well as accidental/malicious demotion).
     match /users/{uid} {
       allow read: if (request.auth != null && request.auth.uid == uid) ||
-        (resource.data.role == 'expert' && resource.data.onboardingComplete == true);
+        (resource.data.role == 'expert' && resource.data.onboardingComplete == true) ||
+        (request.auth != null && resource.data.referredByExpertId == request.auth.uid) ||
+        (request.auth != null && resource.data.affiliateId == request.auth.uid);
       allow create: if request.auth != null && request.auth.uid == uid &&
         request.resource.data.role != 'admin';
       allow update: if request.auth != null && request.auth.uid == uid &&
@@ -33,11 +35,24 @@ service cloud.firestore {
          resource.data.expertId == request.auth.uid);
     }
 
-    // Commissions — readable by expert or affiliate involved
+    // Commissions — readable by selling expert, referring expert, or affiliate involved
     match /commissions/{id} {
       allow read: if request.auth != null &&
         (resource.data.expertId == request.auth.uid ||
+         resource.data.referrerId == request.auth.uid ||
          resource.data.affiliateId == request.auth.uid);
+    }
+
+    // Affiliate coupon codes — doc ID is the code itself, so a collision
+    // (writing to an existing code) is denied as an unauthorized "update"
+    // (no update rule exists here), making code generation collision-safe.
+    // Read requires auth since lookup only happens after signup/login.
+    match /affiliateCodes/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.affiliateId == request.auth.uid &&
+        request.resource.data.code == code &&
+        code.matches('^[A-Z0-9]{6}$');
     }
 
     // Referrals — readable by the expert who owns them

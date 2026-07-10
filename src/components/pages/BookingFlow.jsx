@@ -3,14 +3,14 @@ import { CheckCircle2, ArrowLeft, ArrowRight, ChevronRight, User, Calendar, Lock
 import { useAuth } from '../../context/AuthContext';
 import { createBooking, getExpertBookings } from '../../services/bookingService';
 import { initiatePayment } from '../../services/stripeService';
-import { getStoredReferralCode } from '../../services/affiliateService';
+import { lookupAffiliateCode } from '../../services/affiliateService';
 import { getAvailableTimesForDay, getAvailableDaysInMonth, buildTakenSlotsMap } from '../../services/availabilityService';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 
 export function BookingFlow({ nav, notify, expert, session }) {
-  const { currentUser, userData } = useAuth();
+  const { currentUser, userData, refreshUserData } = useAuth();
 
   // Use fallbacks to prevent crashes if data is missing, but prioritize passed props
   const expertName = expert?.name || 'Expert';
@@ -27,11 +27,6 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const [bookingId, setBookingId] = useState(null);
   const [weeklySlots, setWeeklySlots] = useState(null);
   const [takenSlots, setTakenSlots] = useState({});
-
-  // Pre-fill any coupon/referral code captured from a shared link, editable by the client
-  useEffect(() => {
-    setCouponCode(getStoredReferralCode() || '');
-  }, []);
 
   // Fetch the expert's availability settings and already-booked slots
   useEffect(() => {
@@ -93,6 +88,23 @@ export function BookingFlow({ nav, notify, expert, session }) {
 
     setIsProcessing(true);
     try {
+      // 0. Checkout-time affiliate coupon (Path B). Lifetime commission is
+      // first-write-wins — never overwrite an affiliateId this buyer already has.
+      const trimmedCoupon = (couponCode || '').trim().toUpperCase();
+      if (trimmedCoupon && !userData?.affiliateId) {
+        try {
+          const foundAffiliateId = await lookupAffiliateCode(trimmedCoupon);
+          if (foundAffiliateId) {
+            await updateDoc(doc(db, 'users', currentUser.uid), { affiliateId: foundAffiliateId });
+            await refreshUserData?.();
+          } else {
+            notify('Coupon code not recognized — continuing without it.', 'warn');
+          }
+        } catch (err) {
+          console.error('Coupon lookup failed:', err);
+        }
+      }
+
       // 1. Create booking in Firestore
       const newBookingId = await createBooking({
         expertId: expert?.id || expert?.uid || 'unknown',
@@ -104,7 +116,6 @@ export function BookingFlow({ nav, notify, expert, session }) {
         sessionTitle: sessionTitle,
         price: parsePriceCents(sessionPrice),
         clientEmail: email,
-        referralCode: (couponCode || '').trim() || null,
       });
 
       setBookingId(newBookingId);

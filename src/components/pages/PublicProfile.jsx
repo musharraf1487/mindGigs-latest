@@ -16,7 +16,6 @@ import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
-import { getStoredReferralCode } from '../../services/affiliateService';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 
@@ -101,10 +100,11 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
     return isNaN(num) ? 0 : Math.round(num * 100);
   };
 
+  const goToSignup = () => nav('signup', { role: 'client', expertId: expert?.id || expert?.uid });
+
   const handleSubscribe = async (sub) => {
     if (!currentUser) {
-      notify('Please log in to subscribe.', 'warn');
-      nav('login', { role: 'client' });
+      goToSignup();
       return;
     }
     const amount = parsePriceCents(sub.price);
@@ -116,7 +116,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
         sub.title,
         amount,
         currentUser.email,
-        getStoredReferralCode() || null
+        currentUser.uid
       );
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
@@ -126,8 +126,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
 
   const handleBuyNow = async (product) => {
     if (!currentUser) {
-      notify('Please log in to purchase.', 'warn');
-      nav('login', { role: 'client' });
+      goToSignup();
       return;
     }
     const amount = parsePriceCents(product.price);
@@ -139,7 +138,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
         product.title,
         amount,
         currentUser.email,
-        getStoredReferralCode() || null,
         product.deliveryLink || product.fileUrl || null,
         currentUser.uid
       );
@@ -159,6 +157,10 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
 
   const handleCustomCta = (c) => {
     if (c.ctaType === 'book' || c.ctaType === 'contact') {
+      if (!currentUser) {
+        goToSignup();
+        return;
+      }
       nav('booking', { session: { title: c.title, price: c.price || 'Contact for pricing', duration: c.duration || 'Flexible' } });
     } else if (c.ctaType === 'custom' && c.link) {
       window.open(c.link, '_blank', 'noopener,noreferrer');
@@ -360,7 +362,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
                     {s.price}
                   </div>
-                  <button className="btn btn-gr btn-sm" onClick={() => nav('booking', { session: s })}>
+                  <button className="btn btn-gr btn-sm" onClick={() => { if (!currentUser) { goToSignup(); return; } nav('booking', { session: s }); }}>
                     Book Now
                   </button>
                   <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>

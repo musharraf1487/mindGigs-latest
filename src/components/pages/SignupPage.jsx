@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { captureReferralCode, getStoredReferralCode } from '../../services/affiliateService';
 import { claimHandle, normalizeHandle } from '../../services/handleService';
 
 function AuthShell({ children, nav }) {
@@ -55,7 +54,6 @@ const ROLE_CONFIG = {
     title: 'Create Your Expert Profile',
     sub: 'Join thousands of experts monetizing their knowledge on mindGigs.',
     showHandle: true,
-    showReferral: true,
     btnLabel: 'Create Expert Account →',
     successMsg: "Account created! Let's set up your profile.",
     redirect: 'onboarding',
@@ -65,7 +63,6 @@ const ROLE_CONFIG = {
     title: 'Create Your Buyer Account',
     sub: 'Book sessions, buy digital products, and subscribe to top experts.',
     showHandle: false,
-    showReferral: false,
     btnLabel: 'Create Buyer Account →',
     successMsg: 'Welcome! Your buyer account is ready.',
     redirect: 'client-dashboard',
@@ -73,9 +70,8 @@ const ROLE_CONFIG = {
   affiliate: {
     badge: 'Affiliate Program',
     title: 'Join as an Affiliate',
-    sub: 'Earn 20% lifetime commissions by referring experts to mindGigs.',
+    sub: 'Get your own coupon code and earn a 10% lifetime commission on every sale it brings in.',
     showHandle: true,
-    showReferral: false,
     btnLabel: 'Join Affiliate Program →',
     successMsg: 'Affiliate account created! Welcome to the program.',
     redirect: 'affiliate-dashboard',
@@ -83,7 +79,7 @@ const ROLE_CONFIG = {
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function SignupPage({ nav, notify, role = 'expert' }) {
+export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
   const { signup, loginWithGoogle, currentUser, userData, refreshUserData } = useAuth();
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState('');
@@ -91,14 +87,9 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
   const [pass, setPass] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const [refCode, setRefCode] = useState('');
+  const [couponCode, setCouponCode] = useState('');
   // Post-Google handle setup for roles that need a handle but skip onboarding
   const [needsHandleSetup, setNeedsHandleSetup] = useState(false);
-
-  useEffect(() => {
-    const stored = getStoredReferralCode();
-    if (stored) setRefCode(stored);
-  }, []);
 
   // Admin has no self-service signup — there is exactly one admin account,
   // provisioned out-of-band. Bounce away from this route entirely rather than
@@ -120,14 +111,13 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
     if (!name || !email || !pass) return notify('Please fill all fields', 'warn');
     if (cfg.showHandle && !username) return notify('Please enter a username', 'warn');
 
-    if (refCode) captureReferralCode(refCode);
     setLoading(true);
     try {
       await signup(email, pass, role, {
         name,
         handle: username || normalizeHandle(name),
         onboardingComplete: role !== 'expert',
-      });
+      }, { expertId, couponCode });
       notify(cfg.successMsg);
       nav(cfg.redirect);
     } catch (err) {
@@ -208,6 +198,12 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
         {cfg.sub}
       </p>
 
+      {expertId && (
+        <div style={{ fontSize: '.8rem', color: 'var(--teal)', background: 'rgba(25,181,166,0.08)', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+          You're signing up via a referral link — you'll be linked to this expert automatically.
+        </div>
+      )}
+
       <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }}>
         <div className="field">
           <label className="label">Full Name</label>
@@ -266,17 +262,15 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
         />
       </div>
 
-      {cfg.showReferral && (
-        <div className="field">
-          <label className="label">Referral Code (Optional)</label>
-          <input
-            className="input"
-            placeholder="Friend's username"
-            value={refCode}
-            onChange={(e) => setRefCode(e.target.value)}
-          />
-        </div>
-      )}
+      <div className="field">
+        <label className="label">Have a Coupon Code? (Optional)</label>
+        <input
+          className="input"
+          placeholder="e.g. MGX7K2"
+          value={couponCode}
+          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+        />
+      </div>
 
       <label className="checkbox-row" style={{ marginBottom: 20 }}>
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
@@ -333,7 +327,7 @@ export function SignupPage({ nav, notify, role = 'expert' }) {
           if (!agreed) return notify('Please agree to terms first.', 'warn');
           setLoading(true);
           try {
-            await loginWithGoogle(role || 'expert');
+            await loginWithGoogle(role || 'expert', { expertId, couponCode });
             // Affiliates need to choose a public handle before going to dashboard
             if (role === 'affiliate') {
               setNeedsHandleSetup(true);

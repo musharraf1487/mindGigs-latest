@@ -1,169 +1,131 @@
 /**
  * affiliateService.js
- * Core engine for the two-tier affiliate program.
+ * Core engine for the 4-scenario commission model.
  *
- * Tier 1 — client books via expert's referral link directly:
- *   Expert: 80%  |  mindGigs: 20%
+ * Path A — expert profile-link referral (tracked via users.referredByExpertId):
+ *   Same expert buys back:      expert 80% (70 sell + 10 referral) | mindGigs 20%
+ *   Different expert:           selling expert 70% | referring expert 10% | mindGigs 20%
  *
- * Tier 2 — a 2nd-tier affiliate (who signed up via expert's link) refers a buyer:
- *   Expert: 70%  |  Affiliate: 5%  |  mindGigs: 25%
+ * Path B — dedicated affiliate coupon (tracked via users.affiliateId):
+ *   expert 70% | affiliate 10% | mindGigs 20%
+ *
+ * No referral, no coupon:       expert 70% | mindGigs 30%
  */
 
 import {
   collection,
   doc,
-  addDoc,
+  setDoc,
   getDoc,
   getDocs,
-  updateDoc,
   query,
   where,
   orderBy,
-  increment,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-const REFERRAL_KEY = 'mg_ref';
+const CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
-// ─── localStorage helpers ─────────────────────────────────────────────────────
-
-export function captureReferralCode(code) {
-  if (code) localStorage.setItem(REFERRAL_KEY, code);
+function generateAffiliateCode() {
+  let out = '';
+  for (let i = 0; i < 6; i++) out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return out;
 }
-
-export function getStoredReferralCode() {
-  return localStorage.getItem(REFERRAL_KEY) || null;
-}
-
-export function clearReferralCode() {
-  localStorage.removeItem(REFERRAL_KEY);
-}
-
-// ─── Signup referral ──────────────────────────────────────────────────────────
 
 /**
- * Called after a new user signs up via a referral link.
- * Looks up who owns the code, writes a referral doc, and tags the new user.
+ * Mints a unique 6-char coupon code for a new affiliate and writes it to the
+ * affiliateCodes collection (doc ID == the code). A collision is rejected by
+ * Firestore rules as an unauthorized "update" to an existing doc, so this
+ * retries with a fresh code on failure.
  */
-export async function processSignupReferral(newUserId, newUserEmail, newUserRole, referralCode) {
-  if (!referralCode || !newUserId) return;
-  try {
-    // Find the expert who owns this referral code
-    const q = query(collection(db, 'users'), where('referralCode', '==', referralCode));
-    const snap = await getDocs(q);
-    if (snap.empty) return;
-
-    const expertDoc = snap.docs[0];
-    const expertId = expertDoc.id;
-    if (expertId === newUserId) return; // can't refer yourself
-
-    // Write referral record
-    await addDoc(collection(db, 'referrals'), {
-      referralCode,
-      expertId,
-      referredUserId: newUserId,
-      referredUserEmail: newUserEmail,
-      referredRole: newUserRole,
-      createdAt: new Date().toISOString(),
-      status: 'active',
-    });
-
-    // Tag the new user with who referred them and set tier 2
-    await updateDoc(doc(db, 'users', newUserId), {
-      referredBy: expertId,
-      tier: 2,
-    });
-  } catch (err) {
-    console.error('[affiliateService] processSignupReferral error:', err);
-  }
-}
-
-// ─── Commission calculation ───────────────────────────────────────────────────
-
-/**
- * Called after a confirmed payment.
- * Determines tier, calculates split, writes commission doc,
- * and increments earnings on relevant user docs atomically.
- */
-export async function processCommission({ bookingId, saleType = 'booking', saleAmount, expertId, referralCode }) {
-  if (!bookingId || !saleAmount || !expertId) return;
-  try {
-    let affiliateId = null;
-    let tier = 1;
-
-    if (referralCode) {
-      // Check if the buyer themselves was referred by someone (tier 2 chain)
-      // Find who owns this referral code
-      const codeQ = query(collection(db, 'users'), where('referralCode', '==', referralCode));
-      const codeSnap = await getDocs(codeQ);
-
-      if (!codeSnap.empty) {
-        const codeOwner = codeSnap.docs[0];
-        // If codeOwner is a tier-2 affiliate (i.e. they themselves were referred)
-        if (codeOwner.data().tier === 2 && codeOwner.data().referredBy === expertId) {
-          affiliateId = codeOwner.id;
-          tier = 2;
-        }
-      }
-    }
-
-    // Calculate split (amounts in cents)
-    let expertAmount, affiliateAmount, platformAmount;
-    if (tier === 2 && affiliateId) {
-      expertAmount = Math.round(saleAmount * 0.70);
-      affiliateAmount = Math.round(saleAmount * 0.05);
-      platformAmount = saleAmount - expertAmount - affiliateAmount;
-    } else {
-      expertAmount = Math.round(saleAmount * 0.80);
-      affiliateAmount = 0;
-      platformAmount = saleAmount - expertAmount;
-    }
-
-    // Write commission record
-    await addDoc(collection(db, 'commissions'), {
-      bookingId,
-      saleType,
-      saleAmount,
-      expertId,
-      expertAmount,
-      affiliateId: affiliateId || null,
-      affiliateAmount,
-      platformAmount,
-      tier,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    });
-
-    // Update expert earnings atomically
-    await updateDoc(doc(db, 'users', expertId), {
-      affiliateEarnings: increment(expertAmount),
-      pendingPayout: increment(expertAmount),
-    });
-
-    // Update tier-2 affiliate earnings atomically
-    if (affiliateId && affiliateAmount > 0) {
-      await updateDoc(doc(db, 'users', affiliateId), {
-        affiliateEarnings: increment(affiliateAmount),
-        pendingPayout: increment(affiliateAmount),
+export async function createAffiliateCode(uid, attempts = 5) {
+  for (let i = 0; i < attempts; i++) {
+    const code = generateAffiliateCode();
+    try {
+      await setDoc(doc(db, 'affiliateCodes', code), {
+        code,
+        affiliateId: uid,
+        createdAt: new Date().toISOString(),
       });
+      return code;
+    } catch (err) {
+      if (i === attempts - 1) throw err;
     }
-
-    // Mark booking as commission processed
-    await updateDoc(doc(db, 'bookings', bookingId), {
-      commissionPaid: true,
-      affiliateTier: tier,
-    });
-  } catch (err) {
-    console.error('[affiliateService] processCommission error:', err);
   }
 }
 
-// ─── Read helpers ─────────────────────────────────────────────────────────────
+/** Returns the affiliateId that owns `code`, or null if the code doesn't exist. */
+export async function lookupAffiliateCode(code) {
+  if (!code) return null;
+  const trimmed = code.trim().toUpperCase();
+  if (!trimmed) return null;
+  const snap = await getDoc(doc(db, 'affiliateCodes', trimmed));
+  return snap.exists() ? (snap.data().affiliateId || null) : null;
+}
 
+// ─── Expert-side: buyers this expert referred via their profile link ──────────
+
+export async function getExpertReferrals(expertId) {
+  const q = query(
+    collection(db, 'users'),
+    where('referredByExpertId', '==', expertId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/** Commissions where this expert was the selling expert (expertAmount). */
 export async function getExpertCommissions(expertId) {
   const q = query(
     collection(db, 'commissions'),
     where('expertId', '==', expertId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/** Commissions where this expert earned the scenario-3 referral bonus (referrerAmount). */
+export async function getExpertReferralCommissions(expertId) {
+  const q = query(
+    collection(db, 'commissions'),
+    where('referrerId', '==', expertId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getExpertAffiliateStats(expertId) {
+  const [referrals, sellingCommissions, referralCommissions] = await Promise.all([
+    getExpertReferrals(expertId),
+    getExpertCommissions(expertId),
+    getExpertReferralCommissions(expertId),
+  ]);
+
+  const sellingEarnings = sellingCommissions.reduce((s, c) => s + (c.expertAmount || 0), 0);
+  const referralEarnings = referralCommissions.reduce((s, c) => s + (c.referrerAmount || 0), 0);
+  const pendingCount = [...sellingCommissions, ...referralCommissions].filter(c => c.status === 'pending').length;
+
+  return {
+    referralCount: referrals.length,
+    sellingEarnings,   // cents, earned as the selling expert
+    referralEarnings,  // cents, earned as the referring expert (scenario 3 bonus)
+    totalEarned: sellingEarnings + referralEarnings,
+    pendingCount,
+    referrals,
+    sellingCommissions,
+    referralCommissions,
+  };
+}
+
+// ─── Affiliate-side: buyers who used this affiliate's coupon ──────────────────
+
+export async function getAffiliateReferredUsers(affiliateId) {
+  const q = query(
+    collection(db, 'users'),
+    where('affiliateId', '==', affiliateId),
     orderBy('createdAt', 'desc')
   );
   const snap = await getDocs(q);
@@ -180,33 +142,7 @@ export async function getAffiliateCommissions(affiliateId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function getExpertReferrals(expertId) {
-  const q = query(
-    collection(db, 'referrals'),
-    where('expertId', '==', expertId),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function getExpertAffiliateStats(expertId) {
-  const [referrals, commissions] = await Promise.all([
-    getExpertReferrals(expertId),
-    getExpertCommissions(expertId),
-  ]);
-
-  const totalEarned = commissions.reduce((s, c) => s + (c.expertAmount || 0), 0);
-  const pendingCount = commissions.filter(c => c.status === 'pending').length;
-
-  return {
-    referralCount: referrals.length,
-    totalEarned,       // in cents
-    pendingCount,
-    referrals,
-    commissions,
-  };
-}
+// ─── Admin ──────────────────────────────────────────────────────────────────
 
 export async function getAllCommissions() {
   const q = query(collection(db, 'commissions'), orderBy('createdAt', 'desc'));

@@ -9,16 +9,12 @@ export function Overview({ user, affiliateData, notify }) {
   const [payoutRequested, setPayoutRequested] = useState(false);
   const stats = [
     { label: 'Total Earnings', val: affiliateData?.totalEarnings || '$0', ch: 'All-time commission', color: 'var(--teal)', icon: 'dollar' },
-    { label: 'Active Referrals', val: affiliateData?.referrals?.length || 0, ch: 'Approved experts', color: 'var(--teal)', icon: 'users' },
+    { label: 'Referred Buyers', val: affiliateData?.referrals?.length || 0, ch: 'Used your coupon', color: 'var(--teal)', icon: 'users' },
     { label: 'Active Campaigns', val: affiliateData?.campaigns?.length || 0, ch: 'Marketing efforts', color: 'var(--gb)', icon: 'megaphone' },
     { label: 'Pending Payout', val: `$${affiliateData?.pendingPayout || '0'}`, ch: 'Ready to withdraw', color: 'var(--gb)', icon: 'clock' },
   ];
 
-  // Only referralCode is looked up server-side for commission attribution —
-  // falling back to `handle` here would show a plausible-looking link that
-  // silently never attributes a sale to this affiliate.
-  const referralCode = user?.referralCode || null;
-  const referralLink = referralCode ? `https://mindgigs.com/?ref=${referralCode}` : null;
+  const affiliateCode = user?.affiliateCode || null;
 
   return (
     <div>
@@ -45,7 +41,7 @@ export function Overview({ user, affiliateData, notify }) {
         ))}
       </div>
 
-      {/* Affiliate Link */}
+      {/* Coupon Code */}
       <div style={{
         marginBottom: '24px', padding: '18px 20px',
         background: 'linear-gradient(135deg, rgba(191,201,209,0.08), rgba(191,201,209,0.03))',
@@ -54,25 +50,28 @@ export function Overview({ user, affiliateData, notify }) {
       }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '0.85rem', color: 'var(--gd)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ProfIcon icon="link" size={14} /> Your Affiliate Link
+            <ProfIcon icon="link" size={14} /> Your Coupon Code
           </div>
           <div className="ref-box" style={{ marginTop: 0 }}>
-            <span className="ref-url">{referralLink || 'Set a username in Settings to get your link'}</span>
+            <span className="ref-url" style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.06em' }}>{affiliateCode || 'Not assigned yet'}</span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>
+            Buyers enter this at signup or checkout — you earn 10% lifetime on every sale it's tied to.
           </div>
         </div>
         <button
-          disabled={!referralLink}
+          disabled={!affiliateCode}
           onClick={() => {
-            if (!referralLink) return;
-            navigator.clipboard.writeText(referralLink);
-            notify?.('Affiliate link copied!', 'success');
+            if (!affiliateCode) return;
+            navigator.clipboard.writeText(affiliateCode);
+            notify?.('Coupon code copied!', 'success');
           }}
           style={{
             padding: '10px 18px', background: 'var(--teal)', color: '#fff',
             borderRadius: '8px', fontFamily: 'var(--fu)', fontWeight: 600,
             fontSize: '0.82rem', cursor: 'pointer', flexShrink: 0,
           }}
-        >Copy Link</button>
+        >Copy Code</button>
       </div>
 
       {/* Two-column: Commissions + Activity */}

@@ -10,11 +10,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { saveAccountToStorage } from '../components/common/AccountSwitcher';
-import {
-  processSignupReferral,
-  getStoredReferralCode,
-  clearReferralCode,
-} from '../services/affiliateService';
+import { createAffiliateCode, lookupAffiliateCode } from '../services/affiliateService';
 import { claimHandle, validateHandleFormat, isHandleAvailable, normalizeHandle } from '../services/handleService';
 
 const AuthContext = createContext();
@@ -29,7 +25,7 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function signup(email, password, role = 'expert', additionalData = {}) {
+  async function signup(email, password, role = 'expert', additionalData = {}, signupContext = {}) {
     const claimsHandle = ['expert', 'affiliate'].includes(role);
     const requestedHandle = additionalData.handle ? normalizeHandle(additionalData.handle) : '';
 
@@ -43,6 +39,25 @@ export function AuthProvider({ children }) {
 
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
 
+    // Path B — resolve an entered affiliate coupon code, if any. A bad/typo'd
+    // code never blocks signup, it just doesn't attach an affiliate.
+    let resolvedAffiliateId = null;
+    if (signupContext.couponCode) {
+      try {
+        resolvedAffiliateId = await lookupAffiliateCode(signupContext.couponCode);
+      } catch (err) {
+        console.error('Affiliate coupon lookup failed during signup:', err);
+      }
+    }
+
+    // Dedicated affiliates get their own coupon code minted before the user
+    // doc is written, so users.affiliateCode always points at an existing
+    // affiliateCodes doc.
+    let ownAffiliateCode = null;
+    if (role === 'affiliate') {
+      ownAffiliateCode = await createAffiliateCode(user.uid);
+    }
+
     const userDoc = {
       uid: user.uid,
       email: user.email,
@@ -50,9 +65,13 @@ export function AuthProvider({ children }) {
       name: additionalData.name || '',
       onboardingComplete: role !== 'expert',
       createdAt: new Date().toISOString(),
-      referralCode: null,
-      referredBy: null,
-      tier: role === 'expert' ? 1 : null,
+      // Path A — set once, for life, when this user signed up via an
+      // expert's public profile link. Never set if they are that expert.
+      referredByExpertId: (signupContext.expertId && signupContext.expertId !== user.uid) ? signupContext.expertId : null,
+      // Path B — set once, for life, if a valid affiliate coupon was entered at signup.
+      affiliateId: resolvedAffiliateId,
+      // Only present on dedicated affiliate accounts — their own coupon.
+      affiliateCode: role === 'affiliate' ? ownAffiliateCode : null,
       affiliateEarnings: 0,
       pendingPayout: 0,
       ...additionalData,
@@ -66,22 +85,11 @@ export function AuthProvider({ children }) {
 
     if (claimsHandle && requestedHandle) {
       try {
-        // syncReferralCode: true covers both roles here — this is the one-time
-        // signup-completion moment, so an affiliate's coupon code is also set
-        // to match now; it stays fixed on later handle edits (see Settings).
         const claimed = await claimHandle({ uid: user.uid, role, oldHandle: null, newHandle: requestedHandle, syncReferralCode: true });
         userDoc.handle = claimed;
-        userDoc.referralCode = claimed;
       } catch (err) {
         console.error('Handle claim failed after signup:', err);
       }
-    }
-
-    // Process referral if user arrived via a referral link
-    const storedCode = getStoredReferralCode();
-    if (storedCode) {
-      await processSignupReferral(user.uid, user.email, role, storedCode);
-      clearReferralCode();
     }
 
     setUserData(userDoc);
@@ -106,7 +114,7 @@ export function AuthProvider({ children }) {
     return cred;
   }
 
-  async function loginWithGoogle(expectedRole) {
+  async function loginWithGoogle(expectedRole, signupContext = {}) {
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(auth, provider);
     const { user } = cred;
@@ -126,6 +134,21 @@ export function AuthProvider({ children }) {
       const fallbackHandle = user.displayName
         ? normalizeHandle(user.displayName) + Math.floor(Math.random() * 1000)
         : '';
+
+      let resolvedAffiliateId = null;
+      if (signupContext.couponCode) {
+        try {
+          resolvedAffiliateId = await lookupAffiliateCode(signupContext.couponCode);
+        } catch (err) {
+          console.error('Affiliate coupon lookup failed during Google signup:', err);
+        }
+      }
+
+      let ownAffiliateCode = null;
+      if (expectedRole === 'affiliate') {
+        ownAffiliateCode = await createAffiliateCode(user.uid);
+      }
+
       const userDoc = {
         uid: user.uid,
         email: user.email,
@@ -137,9 +160,9 @@ export function AuthProvider({ children }) {
         onboardingComplete: expectedRole !== 'expert',
         createdAt: new Date().toISOString(),
         image: user.photoURL || '',
-        referralCode: null,
-        referredBy: null,
-        tier: expectedRole === 'expert' ? 1 : null,
+        referredByExpertId: (signupContext.expertId && signupContext.expertId !== user.uid) ? signupContext.expertId : null,
+        affiliateId: resolvedAffiliateId,
+        affiliateCode: expectedRole === 'affiliate' ? ownAffiliateCode : null,
         affiliateEarnings: 0,
         pendingPayout: 0,
       };
@@ -149,16 +172,9 @@ export function AuthProvider({ children }) {
         try {
           const claimed = await claimHandle({ uid: user.uid, role: expectedRole, oldHandle: null, newHandle: fallbackHandle, syncReferralCode: true });
           userDoc.handle = claimed;
-          userDoc.referralCode = claimed;
         } catch (err) {
           console.error('Handle claim failed after Google signup:', err);
         }
-      }
-
-      const storedCode = getStoredReferralCode();
-      if (storedCode) {
-        await processSignupReferral(user.uid, user.email, expectedRole, storedCode);
-        clearReferralCode();
       }
 
       setUserRole(expectedRole);

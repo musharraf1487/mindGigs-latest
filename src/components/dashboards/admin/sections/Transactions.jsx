@@ -1,10 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
 import { CreditCard, CheckCircle, Clock, DollarSign, Download } from 'lucide-react';
 
+const SCENARIO_LABELS = {
+  1: 'Standard (70/30)',
+  2: 'Self-Referral (80/20)',
+  3: 'Cross-Referral (70/10/20)',
+  4: 'Affiliate Coupon (70/10/20)',
+};
+
 export function Transactions({ user, adminData, notify }) {
-  const [liveTxns, setLiveTxns] = useState([]);
+  const [bookingDocs, setBookingDocs] = useState([]);
+  const [commissionsByBookingId, setCommissionsByBookingId] = useState({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -13,35 +21,50 @@ export function Transactions({ user, adminData, notify }) {
   useEffect(() => {
     const q = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snap) => {
-      const txns = snap.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id.slice(0, 8).toUpperCase(),
-          fullId: d.id,
-          user: data.clientName || 'Client',
-          expert: data.expertName || 'Expert',
-          type: data.sessionTitle ? 'Session' : 'Booking',
-          date: data.paidAt
-            ? new Date(data.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            : new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          amount: `$${((data.price || 0) / 100).toFixed(2)}`,
-          rawAmount: (data.price || 0) / 100,
-          status: data.paymentStatus === 'paid' ? 'completed' : data.status === 'cancelled' ? 'cancelled' : 'pending',
-        };
-      });
-      setLiveTxns(txns);
+      setBookingDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     }, (err) => {
       console.error('Transactions listener error:', err);
-      setLiveTxns(adminData?.recentTransactions?.map(t => ({
-        ...t, rawAmount: parseFloat(t.amount?.replace('$', '') || 0),
-      })) || []);
+      setBookingDocs([]);
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const allTxns = liveTxns.length > 0 ? liveTxns : (adminData?.recentTransactions?.map(t => ({ ...t, rawAmount: parseFloat(t.amount?.replace('$', '') || 0) })) || []);
+  // Real-time listener on commissions collection, indexed by bookingId so
+  // each transaction row can show which of the 4 scenarios applied.
+  useEffect(() => {
+    const q = query(collection(db, 'commissions'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.bookingId) map[data.bookingId] = data;
+      });
+      setCommissionsByBookingId(map);
+    }, (err) => console.error('Commissions listener error:', err));
+    return () => unsubscribe();
+  }, []);
+
+  const liveTxns = useMemo(() => bookingDocs.map(data => {
+    const commission = commissionsByBookingId[data.id];
+    return {
+      id: data.id.slice(0, 8).toUpperCase(),
+      fullId: data.id,
+      user: data.clientName || 'Client',
+      expert: data.expertName || 'Expert',
+      type: data.sessionTitle ? 'Session' : 'Booking',
+      date: data.paidAt
+        ? new Date(data.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      amount: `$${((data.price || 0) / 100).toFixed(2)}`,
+      rawAmount: (data.price || 0) / 100,
+      status: data.paymentStatus === 'paid' ? 'completed' : data.status === 'cancelled' ? 'cancelled' : 'pending',
+      scenario: commission?.scenario || null,
+    };
+  }), [bookingDocs, commissionsByBookingId]);
+
+  const allTxns = liveTxns.length > 0 ? liveTxns : (adminData?.recentTransactions?.map(t => ({ ...t, rawAmount: parseFloat(t.amount?.replace('$', '') || 0), scenario: null })) || []);
 
   const types = [...new Set(allTxns.map(t => t.type))];
 
@@ -57,8 +80,8 @@ export function Transactions({ user, adminData, notify }) {
   const handleExportCSV = () => {
     if (filtered.length === 0) { notify?.('No transactions to export', 'warn'); return; }
     const rows = [
-      ['ID', 'User', 'Expert', 'Type', 'Date', 'Amount', 'Status'],
-      ...filtered.map(t => [t.id, t.user, t.expert || '', t.type, t.date, t.amount, t.status]),
+      ['ID', 'User', 'Expert', 'Type', 'Date', 'Amount', 'Status', 'Scenario'],
+      ...filtered.map(t => [t.id, t.user, t.expert || '', t.type, t.date, t.amount, t.status, t.scenario ? SCENARIO_LABELS[t.scenario] : '']),
     ];
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -138,6 +161,7 @@ export function Transactions({ user, adminData, notify }) {
                 <th>Date</th>
                 <th>Amount</th>
                 <th>Status</th>
+                <th>Scenario</th>
               </tr>
             </thead>
             <tbody>
@@ -162,6 +186,7 @@ export function Transactions({ user, adminData, notify }) {
                       {txn.status === 'completed' ? <CheckCircle size={10} /> : <Clock size={10} />} {txn.status}
                     </span>
                   </td>
+                  <td style={{ color: 'var(--mu)', fontSize: '0.78rem' }}>{txn.scenario ? SCENARIO_LABELS[txn.scenario] : '—'}</td>
                 </tr>
               ))}
             </tbody>

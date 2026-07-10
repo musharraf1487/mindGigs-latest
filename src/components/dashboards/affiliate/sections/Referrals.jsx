@@ -1,25 +1,24 @@
 import React, { useState } from 'react';
-import { Users, UserCheck, Clock, DollarSign, Copy, Mail, Plus, Lightbulb, User } from 'lucide-react';
+import { Users, DollarSign, Copy, Mail, Plus, Lightbulb, User } from 'lucide-react';
 
-function InviteModal({ onClose, notify, referralCode }) {
+function InviteModal({ onClose, notify, affiliateCode }) {
   const [email, setEmail] = useState('');
 
   const handleSendInvite = (e) => {
     e.preventDefault();
     if (!email) return;
-    if (!referralCode) { notify?.('Set a username in Settings to get your referral link first.', 'warn'); return; }
-    const link = `https://mindgigs.com/?ref=${referralCode}`;
-    const subject = encodeURIComponent("You're invited to join mindGigs as an Expert!");
-    const body = encodeURIComponent(`Hi there,\n\nI think you'd be a great fit as an expert on mindGigs. You can monetize your skills and get paid for your time.\n\nSign up using my link: ${link}\n\nBest,`);
+    if (!affiliateCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
+    const subject = encodeURIComponent("Save with my mindGigs coupon!");
+    const body = encodeURIComponent(`Hi there,\n\nUse my coupon code ${affiliateCode} at signup or checkout on mindGigs.\n\nBest,`);
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     notify?.(`Invite email draft opened for ${email}`, 'success');
     onClose();
   };
 
   const handleCopy = () => {
-    if (!referralCode) { notify?.('Set a username in Settings to get your referral link first.', 'warn'); return; }
-    navigator.clipboard.writeText(`https://mindgigs.com/?ref=${referralCode}`);
-    notify?.('Invite link copied!', 'success');
+    if (!affiliateCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
+    navigator.clipboard.writeText(affiliateCode);
+    notify?.('Coupon code copied!', 'success');
   };
 
   return (
@@ -30,22 +29,22 @@ function InviteModal({ onClose, notify, referralCode }) {
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(26,184,160,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Mail size={18} color="var(--teal)" />
           </div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--gd)' }}>Invite an Expert</h3>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--gd)' }}>Invite a Buyer</h3>
         </div>
-        
+
         <p style={{ fontSize: '0.85rem', color: 'var(--mu)', marginBottom: 20 }}>
-          Send an email invitation or copy your unique referral link directly.
+          Share your coupon code <strong style={{ fontFamily: 'monospace' }}>{affiliateCode}</strong> — tell them to enter it at signup or checkout on any expert's session, subscription, or product.
         </p>
 
         <form onSubmit={handleSendInvite}>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Expert's Email Address</label>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Their Email Address</label>
             <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="expert@example.com" required style={{ width: '100%', padding: '10px 14px', border: '1.5px solid rgba(26,184,160,0.18)', borderRadius: '8px', fontSize: '0.875rem' }} />
+              placeholder="friend@example.com" required style={{ width: '100%', padding: '10px 14px', border: '1.5px solid rgba(26,184,160,0.18)', borderRadius: '8px', fontSize: '0.875rem' }} />
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="button" className="btn btn-gh" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={handleCopy}>
-              <Copy size={16} /> Copy Link
+              <Copy size={16} /> Copy Code
             </button>
             <button type="submit" className="btn btn-gr" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <Mail size={16} /> Send Email
@@ -59,38 +58,42 @@ function InviteModal({ onClose, notify, referralCode }) {
 
 export function Referrals({ user, affiliateData, notify }) {
   const [showInvite, setShowInvite] = useState(false);
-  // Only referralCode is looked up server-side for commission attribution —
-  // an invite link built from anything else would silently never attribute.
-  const referralCode = user?.referralCode || null;
+  const affiliateCode = user?.affiliateCode || null;
 
-  const active = affiliateData?.referrals?.filter(r => r.status === 'active').length || 0;
-  const pending = affiliateData?.referrals?.filter(r => r.status === 'pending').length || 0;
-  const total = affiliateData?.referrals?.length || 0;
-  const totalEarned = affiliateData?.referrals?.reduce((s, r) => s + parseFloat(r.earnings?.replace('$', '') || 0), 0) || 0;
+  const referredUsers = affiliateData?.referrals || [];
+  const total = referredUsers.length;
+
+  // Per-buyer commission earned, derived from the commissions list already
+  // loaded by AffiliateDashboard.jsx (each commission doc carries buyerId).
+  const commissions = affiliateData?.commissions || [];
+  const earningsByBuyer = commissions.reduce((acc, c) => {
+    if (!c.buyerId) return acc;
+    acc[c.buyerId] = (acc[c.buyerId] || 0) + (c.affiliateAmount || 0);
+    return acc;
+  }, {});
+  const totalEarned = commissions.reduce((s, c) => s + (c.affiliateAmount || 0), 0) / 100;
 
   return (
     <div>
-      {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} referralCode={referralCode} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} affiliateCode={affiliateCode} />}
 
       {/* Header */}
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 700, color: 'var(--gd)', marginBottom: '4px' }}>My Referrals</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--mu)' }}>Track referred experts and your commissions</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--mu)' }}>Buyers who used your coupon code, and what they've earned you</p>
         </div>
         <button onClick={() => setShowInvite(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'var(--teal)', color: '#fff', borderRadius: '8px', fontFamily: 'var(--fu)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
-          <Plus size={14} /> Invite Expert
+          <Plus size={14} /> Invite a Buyer
         </button>
       </div>
 
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {[
           { label: 'Total Referred', val: total, color: 'var(--teal)', icon: <Users size={18} color="var(--teal)" /> },
-          { label: 'Active', val: active, color: 'var(--teal)', icon: <UserCheck size={18} color="var(--teal)" /> },
-          { label: 'Pending Approval', val: pending, color: 'var(--gb)', icon: <Clock size={18} color="var(--gb)" /> },
-          { label: 'Total Earned', val: `$${totalEarned}`, color: 'var(--gd)', icon: <DollarSign size={18} color="var(--gd)" /> },
+          { label: 'Total Commission Earned', val: `$${totalEarned.toFixed(2)}`, color: 'var(--gd)', icon: <DollarSign size={18} color="var(--gd)" /> },
         ].map((s, i) => (
           <div key={i} className="stat-card" style={{ position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
@@ -114,41 +117,24 @@ export function Referrals({ user, affiliateData, notify }) {
           <table className="table">
             <thead>
               <tr>
-                <th>Expert</th>
+                <th>Buyer</th>
                 <th>Joined</th>
-                <th>Referral Link</th>
                 <th>Earnings</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {affiliateData.referrals.map((r, i) => (
-                <tr key={i}>
+              {referredUsers.map((r) => (
+                <tr key={r.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(26,184,160,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <User size={14} color="var(--teal)" />
                       </div>
-                      <span style={{ fontWeight: 600, color: 'var(--ch)' }}>{r.name}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--ch)' }}>{r.name || r.email || 'Buyer'}</span>
                     </div>
                   </td>
-                  <td style={{ color: 'var(--mu)' }}>{r.joined}</td>
-                  <td>
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--teal)', background: 'rgba(26,184,160,0.05)', padding: '3px 8px', borderRadius: '4px' }}>
-                      {r.referralLink}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>{r.earnings}</td>
-                  <td>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '4px',
-                      padding: '3px 10px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: 600,
-                      background: r.status === 'active' ? 'rgba(26,184,160,0.1)' : 'rgba(0,0,0,0.05)', 
-                      color: r.status === 'active' ? 'var(--teal)' : 'var(--mu)',
-                    }}>
-                      {r.status === 'active' ? '●' : '◐'} {r.status}
-                    </span>
-                  </td>
+                  <td style={{ color: 'var(--mu)' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ''}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>${((earningsByBuyer[r.id] || 0) / 100).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -159,7 +145,7 @@ export function Referrals({ user, affiliateData, notify }) {
               <Users size={22} color="var(--teal)" />
             </div>
             <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, marginBottom: 4 }}>No referrals yet</div>
-            <div style={{ fontSize: '0.82rem', marginBottom: 16 }}>Start inviting experts to earn commissions.</div>
+            <div style={{ fontSize: '0.82rem', marginBottom: 16 }}>Start sharing your coupon code to earn commissions.</div>
           </div>
         )}
       </div>
@@ -172,7 +158,7 @@ export function Referrals({ user, affiliateData, notify }) {
       }}>
         <div style={{ marginTop: 2 }}><Lightbulb size={16} color="var(--teal)" /></div>
         <div>
-          <strong style={{ color: 'var(--teal)' }}>Pro Tip:</strong> Share your affiliate link on LinkedIn or directly with experts to earn 20% on their first year + 10% recurring commission.
+          <strong style={{ color: 'var(--teal)' }}>Pro Tip:</strong> Share your coupon code <strong style={{ fontFamily: 'monospace' }}>{affiliateCode || '—'}</strong> anywhere — you earn a 10% lifetime commission on every sale it's tied to, forever.
         </div>
       </div>
     </div>

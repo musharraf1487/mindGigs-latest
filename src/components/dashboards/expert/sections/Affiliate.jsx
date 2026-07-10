@@ -6,12 +6,11 @@ import { collection, addDoc } from 'firebase/firestore';
 
 export function Affiliate({ user, notify }) {
   const { currentUser } = useAuth();
-  const [stats, setStats] = useState({ referralCount: 0, totalEarned: 0, pendingCount: 0, referrals: [], commissions: [] });
+  const [stats, setStats] = useState({ referralCount: 0, sellingEarnings: 0, referralEarnings: 0, totalEarned: 0, pendingCount: 0, referrals: [] });
   const [loading, setLoading] = useState(true);
   const [payoutRequested, setPayoutRequested] = useState(false);
 
-  const referralCode = user?.referralCode || user?.handle || currentUser?.uid?.slice(0, 8) || 'expert';
-  const referralLink = `https://mindgigs.com/?ref=${referralCode}`;
+  const referralLink = user?.handle ? `https://mindgigs.com/${user.handle}` : null;
   const pendingPayout = (user?.pendingPayout || 0) / 100;
   const totalEarned = (user?.affiliateEarnings || 0) / 100;
 
@@ -24,8 +23,9 @@ export function Affiliate({ user, notify }) {
   }, [currentUser]);
 
   const handleCopy = () => {
+    if (!referralLink) return;
     navigator.clipboard.writeText(referralLink);
-    notify?.('Referral link copied!', 'success');
+    notify?.('Profile link copied!', 'success');
   };
 
   const handlePayout = async () => {
@@ -51,19 +51,19 @@ export function Affiliate({ user, notify }) {
     <>
       <div style={{ marginBottom: 30 }}>
         <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 4 }}>Affiliate Program</h2>
-        <p style={{ color: 'var(--sl)', fontSize: '0.9rem' }}>Earn commissions by growing the mindGigs network. You keep 80% of every booking made through your link.</p>
+        <p style={{ color: 'var(--sl)', fontSize: '0.9rem' }}>Anyone who signs up via your profile link is linked to you for life. You earn 80% when they buy from you, or a 10% lifetime bonus when they buy from another expert.</p>
       </div>
 
       {/* Referral link */}
       <div className="card" style={{ marginBottom: 28, padding: 24, background: 'linear-gradient(135deg, rgba(84,119,146,0.05), rgba(26,184,160,0.05))', border: '1px solid rgba(84,119,146,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Your Referral Link</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Your Profile Link</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ flex: 1, fontSize: '0.875rem', color: 'var(--sl)', fontFamily: 'monospace', background: '#fff', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', wordBreak: 'break-all' }}>
-                {referralLink}
+                {referralLink || 'Set a username to get your profile link'}
               </div>
-              <button className="btn btn-gr" style={{ padding: '10px 18px', flexShrink: 0 }} onClick={handleCopy}>Copy</button>
+              <button className="btn btn-gr" style={{ padding: '10px 18px', flexShrink: 0 }} onClick={handleCopy} disabled={!referralLink}>Copy</button>
             </div>
           </div>
         </div>
@@ -106,27 +106,31 @@ export function Affiliate({ user, notify }) {
           <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--gd)' }}>How It Works</h3>
         </div>
         <div style={{ padding: 24 }}>
-          <div className="grid-2" style={{ gap: 20, marginBottom: 20 }}>
+          <div className="grid-3" style={{ gap: 16, marginBottom: 20 }}>
             <div style={{ padding: 16, borderRadius: 8, background: 'rgba(26,184,160,0.04)', border: '1px solid rgba(26,184,160,0.1)' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Tier 1 — Direct Referral</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--teal)', marginBottom: 4 }}>80%</div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--mu)' }}>You earn 80% of every booking made by someone who signed up via your link. mindGigs keeps 20%.</p>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Standard Sale</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--teal)', marginBottom: 4 }}>70%</div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--mu)' }}>No referral or coupon involved. You earn 70%, mindGigs keeps 30%.</p>
             </div>
             <div style={{ padding: 16, borderRadius: 8, background: 'rgba(84,119,146,0.04)', border: '1px solid rgba(84,119,146,0.1)' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Tier 2 — Sub-Affiliate</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gb)', marginBottom: 4 }}>70%</div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--mu)' }}>When someone you referred becomes an affiliate and brings in buyers, you earn 70%, they earn 5%, mindGigs keeps 25%.</p>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>They Buy From You</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gb)', marginBottom: 4 }}>80%</div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--mu)' }}>Someone who signed up via your link buys from you: 70% selling + 10% referral, mindGigs keeps 20%.</p>
+            </div>
+            <div style={{ padding: 16, borderRadius: 8, background: 'rgba(255,155,81,0.05)', border: '1px solid rgba(255,155,81,0.15)' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>They Buy Elsewhere</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gl)', marginBottom: 4 }}>+10%</div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--mu)' }}>Someone who signed up via your link buys from another expert: you still earn a 10% lifetime bonus, mindGigs keeps 20%.</p>
             </div>
           </div>
           {/* Recent referrals */}
           {stats.referrals.length > 0 && (
             <div>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--gd)', marginBottom: 12 }}>Recent Referrals</div>
-              {stats.referrals.slice(0, 5).map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < 4 ? '1px solid rgba(0,0,0,0.04)' : 'none', fontSize: '0.82rem' }}>
-                  <span style={{ color: 'var(--ch)' }}>{r.referredUserEmail}</span>
-                  <span style={{ color: 'var(--mu)' }}>{new Date(r.createdAt).toLocaleDateString()}</span>
-                  <span style={{ color: r.status === 'active' ? 'var(--teal)' : 'var(--mu)', fontWeight: 600 }}>{r.status}</span>
+              {stats.referrals.slice(0, 5).map((r) => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem' }}>
+                  <span style={{ color: 'var(--ch)' }}>{r.email || r.name || 'Referred user'}</span>
+                  <span style={{ color: 'var(--mu)' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ''}</span>
                 </div>
               ))}
             </div>

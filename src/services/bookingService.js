@@ -17,6 +17,10 @@
  *   paymentStatus : "unpaid" | "paid"
  *   createdAt     : ISO string
  * }
+ *
+ * clientId is the source of truth the stripeWebhook uses to look up the
+ * buyer's referredByExpertId/affiliateId for commission splitting — do not
+ * remove it.
  */
 
 import {
@@ -51,7 +55,6 @@ export async function createBooking({
   sessionTitle,
   price,           // number in cents
   clientEmail,
-  referralCode,
 }) {
   const docRef = await addDoc(collection(db, BOOKINGS), {
     expertId,
@@ -63,7 +66,6 @@ export async function createBooking({
     sessionTitle,
     price,
     clientEmail,
-    referralCode: referralCode || null,
     status: 'pending',
     paymentStatus: 'unpaid',
     createdAt: new Date().toISOString(),

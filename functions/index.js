@@ -23,10 +23,12 @@ const db = getFirestore();
 
 setGlobalOptions({ region: 'us-central1' });
 
-// ─── Commission rates ──────────────────────────────────────────────────────────
-const TIER1_EXPERT_RATE    = 0.80;
-const TIER2_EXPERT_RATE    = 0.70;
-const TIER2_AFFILIATE_RATE = 0.05;
+// ─── Commission rates — 4 scenarios, computed from the buyer's user doc ───────
+// 1. No referral, no coupon:                    expert 70% · platform 30%
+// 2. Buyer referred by THIS expert's profile link: expert 80% (70 sell + 10 referral) · platform 20%
+// 3. Buyer referred by a DIFFERENT expert's link:  expert 70% · referring expert 10% · platform 20%
+// 4. Buyer has an affiliateId (coupon used):        expert 70% · affiliate 10% · platform 20%
+// Priority when a buyer has both a referral and a coupon: affiliateId (coupon) wins.
 
 // ─── Helper: Daily.co room creation ──────────────────────────────────────────
 async function createDailyRoom(bookingId, dateStr, timeStr) {
@@ -313,66 +315,85 @@ function setCors(res) {
 }
 
 // ─── Helper: commission split ─────────────────────────────────────────────────
-async function processCommissionSplit({ db, saleType, saleAmount, expertId, referralCode, bookingId, stripeSessionId }) {
+async function processCommissionSplit(bookingId, expertId, saleAmount, buyerUid) {
+  let scenario = 1;
+  let referrerId = null;
   let affiliateId = null;
-  let tier = 1;
 
-  if (referralCode && expertId) {
-    const codeSnap = await db.collection('users')
-      .where('referralCode', '==', referralCode)
-      .limit(1)
-      .get();
-
-    if (!codeSnap.empty) {
-      const codeOwner = codeSnap.docs[0];
-      if (codeOwner.data().tier === 2 && codeOwner.data().referredBy === expertId) {
-        affiliateId = codeOwner.id;
-        tier = 2;
+  if (buyerUid) {
+    const buyerSnap = await db.collection('users').doc(buyerUid).get();
+    if (buyerSnap.exists) {
+      const buyer = buyerSnap.data();
+      if (buyer.affiliateId) {
+        // Scenario 4 — dedicated affiliate coupon takes priority over any referral
+        scenario = 4;
+        affiliateId = buyer.affiliateId;
+      } else if (buyer.referredByExpertId) {
+        if (buyer.referredByExpertId === expertId) {
+          scenario = 2; // buying from the same expert who referred them
+        } else {
+          scenario = 3; // buying from a different expert
+          referrerId = buyer.referredByExpertId;
+        }
       }
     }
   }
 
-  let expertAmount, affiliateAmount, platformAmount;
-  if (tier === 2 && affiliateId) {
-    expertAmount    = Math.round(saleAmount * TIER2_EXPERT_RATE);
-    affiliateAmount = Math.round(saleAmount * TIER2_AFFILIATE_RATE);
-    platformAmount  = saleAmount - expertAmount - affiliateAmount;
+  let expertAmount, referrerAmount = 0, affiliateAmount = 0;
+  if (scenario === 2) {
+    expertAmount = Math.round(saleAmount * 0.80);
+  } else if (scenario === 3) {
+    expertAmount = Math.round(saleAmount * 0.70);
+    referrerAmount = Math.round(saleAmount * 0.10);
+  } else if (scenario === 4) {
+    expertAmount = Math.round(saleAmount * 0.70);
+    affiliateAmount = Math.round(saleAmount * 0.10);
   } else {
-    expertAmount    = Math.round(saleAmount * TIER1_EXPERT_RATE);
-    affiliateAmount = 0;
-    platformAmount  = saleAmount - expertAmount;
+    expertAmount = Math.round(saleAmount * 0.70); // scenario 1
   }
+  // Platform always gets the remainder rather than a computed percentage,
+  // so the three independent Math.round() calls above can never lose or
+  // gain a cent off the total.
+  const platformAmount = saleAmount - expertAmount - referrerAmount - affiliateAmount;
 
   await db.collection('commissions').add({
     bookingId: bookingId || null,
-    saleType,
+    buyerId: buyerUid || null,
     saleAmount,
+    scenario,
     expertId: expertId || '',
     expertAmount,
+    referrerId: referrerId || null,
+    referrerAmount,
     affiliateId: affiliateId || null,
     affiliateAmount,
     platformAmount,
-    tier,
     status: 'pending',
-    stripeSessionId,
     createdAt: new Date().toISOString(),
   });
 
-  if (expertId) {
-    await db.collection('users').doc(expertId).update({
+  const writes = [];
+  if (expertId && expertAmount > 0) {
+    writes.push(db.collection('users').doc(expertId).update({
       affiliateEarnings: FieldValue.increment(expertAmount),
       pendingPayout:     FieldValue.increment(expertAmount),
-    });
+    }));
   }
-
+  if (referrerId && referrerAmount > 0) {
+    writes.push(db.collection('users').doc(referrerId).update({
+      affiliateEarnings: FieldValue.increment(referrerAmount),
+      pendingPayout:     FieldValue.increment(referrerAmount),
+    }));
+  }
   if (affiliateId && affiliateAmount > 0) {
-    await db.collection('users').doc(affiliateId).update({
+    writes.push(db.collection('users').doc(affiliateId).update({
       affiliateEarnings: FieldValue.increment(affiliateAmount),
       pendingPayout:     FieldValue.increment(affiliateAmount),
-    });
+    }));
   }
+  await Promise.all(writes);
 
-  return { expertAmount, affiliateAmount, platformAmount, tier };
+  return { scenario, expertAmount, referrerAmount, affiliateAmount, platformAmount };
 }
 
 // ─── 1. createCheckoutSession ─────────────────────────────────────────────────
@@ -387,7 +408,8 @@ async function processCommissionSplit({ db, saleType, saleAmount, expertId, refe
  *   bookingId   : string   — Firestore booking doc ID (required for 'booking')
  *   title       : string   — product/subscription name (required for 'subscription'/'product')
  *   expertId    : string   — expert uid (required for 'subscription'/'product')
- *   referralCode: string   — affiliate referral code for commission tracking
+ *   buyerId     : string   — buyer uid, used by the webhook to look up their
+ *                            referral/affiliate status for commission splitting
  *
  * Response: { url } — Stripe Checkout URL
  */
@@ -404,7 +426,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
   const clientUrl = process.env.CLIENT_URL || 'https://mindgigs.com';
 
   try {
-    const { saleType = 'booking', bookingId, amount, email, title, expertId, referralCode, deliveryLink, buyerId } = req.body;
+    const { saleType = 'booking', bookingId, amount, email, title, expertId, deliveryLink, buyerId } = req.body;
 
     if (!amount || !email) {
       return res.status(400).json({ error: 'amount and email are required' });
@@ -438,7 +460,6 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
           bookingId,
           saleType: 'booking',
           expertId: booking.expertId || expertId || '',
-          referralCode: booking.referralCode || referralCode || '',
         },
         success_url: `${clientUrl}?payment=success&bookingId=${bookingId}`,
         cancel_url:  `${clientUrl}?payment=cancelled`,
@@ -463,7 +484,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
         metadata: {
           saleType: 'subscription',
           expertId,
-          referralCode: referralCode || '',
+          buyerId: buyerId || '',
         },
         success_url: `${clientUrl}?payment=success`,
         cancel_url:  `${clientUrl}?payment=cancelled`,
@@ -487,7 +508,6 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
         metadata: {
           saleType: 'product',
           expertId,
-          referralCode: referralCode || '',
           itemTitle: title,
           deliveryLink: deliveryLink || '',
           buyerId: buyerId || '',
@@ -541,7 +561,7 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
   }
 
   const session = event.data.object;
-  const { bookingId, saleType = 'booking', expertId, referralCode, itemTitle, deliveryLink, buyerId } = session.metadata || {};
+  const { bookingId, saleType = 'booking', expertId, itemTitle, deliveryLink, buyerId } = session.metadata || {};
   const saleAmount = session.amount_total;
 
   if (saleAmount == null) {
@@ -637,25 +657,22 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
     }
 
     // ── 2. Calculate and write commission split (all types) ────────────────
-    const { expertAmount, affiliateAmount, platformAmount, tier } = await processCommissionSplit({
-      db,
-      saleType,
-      saleAmount,
-      expertId,
-      referralCode,
-      bookingId: bookingId || null,
-      stripeSessionId: session.id,
-    });
+    // Buyer identity comes from the booking's clientId (already fetched above)
+    // for bookings, or from the buyerId metadata for subscriptions/products.
+    const buyerUid = saleType === 'booking' ? (confirmedBookingData?.clientId || null) : (buyerId || null);
+
+    const { scenario, expertAmount, referrerAmount, affiliateAmount, platformAmount } =
+      await processCommissionSplit(bookingId || null, expertId, saleAmount, buyerUid);
 
     // ── 3. Mark booking commission as processed (booking type only) ────────
     if (saleType === 'booking' && bookingId) {
       await db.collection('bookings').doc(bookingId).update({
         commissionPaid: true,
-        affiliateTier: tier,
+        scenario,
       });
     }
 
-    console.log(`[stripeWebhook] ${saleType} processed (session ${session.id}). Split — Expert: ${expertAmount}, Affiliate: ${affiliateAmount}, Platform: ${platformAmount}`);
+    console.log(`[stripeWebhook] ${saleType} processed (session ${session.id}). Scenario ${scenario} — Expert: ${expertAmount}, Referrer: ${referrerAmount}, Affiliate: ${affiliateAmount}, Platform: ${platformAmount}`);
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('[stripeWebhook] Error processing payment:', err);

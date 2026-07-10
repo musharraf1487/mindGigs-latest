@@ -35,7 +35,8 @@ export function Settings({ user, notify, logout, nav }) {
   const [name, setName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
 
-  // Public handle (used in the affiliate's ?ref= coupon link)
+  // Public display username — unrelated to the affiliate's coupon code
+  // (affiliateCode is minted once at signup and never derived from this).
   const [handle, setHandle] = useState(user?.handle || '');
   const [handleStatus, setHandleStatus] = useState(null); // null | 'checking' | 'available' | 'taken' | 'invalid'
   const [savingHandle, setSavingHandle] = useState(false);

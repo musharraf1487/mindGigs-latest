@@ -180,7 +180,7 @@ const STEPS = [
     num: '03',
     icon: TrendingUp,
     title: 'Monetize Your Knowledge',
-    desc: 'Share your link. Stripe handles payments globally. Your affiliate link earns 20% on every expert you refer.',
+    desc: "Share your link. Stripe handles payments globally. Anyone who signs up through your profile link earns you a lifetime commission on their purchases.",
   },
 ];
 
@@ -482,13 +482,13 @@ export function LandingPage({ nav, onLogin }) {
                 Earn Even When<br />Others Earn
               </h2>
               <p className="lp-aff-sub">
-                Our two-tier commission structure builds compounding passive income. No caps, no expiry.
+                Get your own coupon code and earn a lifetime commission on every sale it brings in. No caps, no expiry.
               </p>
               <ul className="lp-aff-list">
                 {[
-                  '20% lifetime on every direct referral payment',
-                  "5% on your referrals' referrals (Tier 2)",
-                  'Unique referral link: mindgigs.com/?ref=you',
+                  '10% lifetime commission on every sale your coupon brings in',
+                  'Works across every expert on mindGigs — not tied to just one',
+                  'Your own coupon code, entered at signup or checkout',
                   'Affiliate wallet with payout requests',
                 ].map((b) => (
                   <li key={b} className="lp-aff-item">
@@ -516,7 +516,7 @@ export function LandingPage({ nav, onLogin }) {
                       </div>
                       <div>
                         <div className="lp-aff-node-name">You</div>
-                        <div className="lp-aff-node-sub">Expert &amp; Affiliate</div>
+                        <div className="lp-aff-node-sub">Dedicated Affiliate</div>
                       </div>
                     </div>
                   </div>
@@ -527,13 +527,13 @@ export function LandingPage({ nav, onLogin }) {
                         <User size={20} strokeWidth={1.5} />
                       </div>
                       <div>
-                        <div className="lp-aff-node-name">Sarah (L1)</div>
-                        <div className="lp-aff-node-sub">Earns $1,000/mo</div>
+                        <div className="lp-aff-node-name">Sarah buys a $500 session</div>
+                        <div className="lp-aff-node-sub">Uses your coupon at checkout</div>
                       </div>
                     </div>
                     <div className="lp-aff-comm-right">
-                      <div className="lp-aff-comm">$200</div>
-                      <div className="lp-aff-node-sub">20% to you</div>
+                      <div className="lp-aff-comm">$50</div>
+                      <div className="lp-aff-node-sub">10% to you</div>
                     </div>
                   </div>
                   <div className="lp-aff-arrow">↓</div>
@@ -543,18 +543,18 @@ export function LandingPage({ nav, onLogin }) {
                         <User size={18} strokeWidth={1.5} />
                       </div>
                       <div>
-                        <div className="lp-aff-node-name" style={{ fontSize: '0.82rem' }}>Ahmed (L2)</div>
-                        <div className="lp-aff-node-sub">Earns $800/mo</div>
+                        <div className="lp-aff-node-name" style={{ fontSize: '0.82rem' }}>Sarah buys again next month</div>
+                        <div className="lp-aff-node-sub">Same coupon, still linked to you</div>
                       </div>
                     </div>
                     <div className="lp-aff-comm-right">
-                      <div className="lp-aff-comm" style={{ fontSize: '1rem' }}>$40</div>
-                      <div className="lp-aff-node-sub">5% to you</div>
+                      <div className="lp-aff-comm" style={{ fontSize: '1rem' }}>$50</div>
+                      <div className="lp-aff-node-sub">10% to you, forever</div>
                     </div>
                   </div>
                   <div className="lp-aff-total">
                     <span className="lp-aff-total-label">Your monthly passive</span>
-                    <span className="lp-aff-total-val">$240<span className="lp-aff-total-period">/mo</span></span>
+                    <span className="lp-aff-total-val">$100<span className="lp-aff-total-period">/mo</span></span>
                   </div>
                 </div>
               </div>

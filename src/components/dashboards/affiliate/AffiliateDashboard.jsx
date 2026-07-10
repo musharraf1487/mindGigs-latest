@@ -8,7 +8,7 @@ import { Referrals } from './sections/Referrals';
 import { Campaigns } from './sections/Campaigns';
 import { Earnings } from './sections/Earnings';
 import { Settings } from './sections/Settings';
-import { getAffiliateCommissions, getExpertReferrals } from '../../../services/affiliateService';
+import { getAffiliateCommissions, getAffiliateReferredUsers } from '../../../services/affiliateService';
 import { useAuth } from '../../../context/AuthContext';
 
 export function AffiliateDashboard({ user, nav, logout, notify }) {
@@ -24,7 +24,7 @@ export function AffiliateDashboard({ user, nav, logout, notify }) {
       try {
         const [commissions, referrals] = await Promise.all([
           getAffiliateCommissions(currentUser.uid),
-          getExpertReferrals(currentUser.uid),
+          getAffiliateReferredUsers(currentUser.uid),
         ]);
         const totalEarned = commissions.reduce((s, c) => s + (c.affiliateAmount || 0), 0) / 100;
         const pending = (user?.pendingPayout || 0) / 100;

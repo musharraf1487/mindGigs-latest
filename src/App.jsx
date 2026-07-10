@@ -16,7 +16,6 @@ import { Users, ShoppingCart, Link as LinkIcon, ShieldCheck, ChevronRight } from
 import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { captureReferralCode } from './services/affiliateService';
 import { RESERVED_HANDLES, normalizeHandle } from './services/handleService';
 
 import './styles/globals.css';
@@ -83,6 +82,11 @@ export default function App() {
   const [activeSession, setActiveSession] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [signupRole, setSignupRole] = useState('expert');
+  // Path A referral tracking: which expert's profile link a signup came
+  // from. Always set explicitly by nav('signup', ctx) below — never
+  // inherited from activeExpertId, so visiting an expert profile and later
+  // clicking an unrelated "Sign Up" link can't wrongly attribute a referral.
+  const [signupExpertId, setSignupExpertId] = useState(() => window.history.state?.signupExpertId ?? null);
   const [loginEmailHint, setLoginEmailHint] = useState('');
   const [preLoginPage, setPreLoginPage] = useState('landingboard');
   // A bare path like mindgigs.com/username may be an expert's vanity URL —
@@ -91,13 +95,6 @@ export default function App() {
     const slug = normalizeHandle(window.location.pathname.replace(/^\/+|\/+$/g, ''));
     return slug && !RESERVED_HANDLES.has(slug) ? slug : null;
   });
-
-  // Capture referral code from URL on first load
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-    if (ref) captureReferralCode(ref);
-  }, []);
 
   // Handle Stripe redirect return (?payment=success or ?payment=cancelled)
   useEffect(() => {
@@ -116,7 +113,7 @@ export default function App() {
   // History state init + popstate handler
   useEffect(() => {
     if (!window.history.state?.page) {
-      window.history.replaceState({ page: 'landingboard', expertId: null, category: null, loginRole: null, signupRole: 'expert', activeSession: null, showLoginSelector: false }, '', window.location.href);
+      window.history.replaceState({ page: 'landingboard', expertId: null, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, showLoginSelector: false }, '', window.location.href);
     }
     const handlePopState = (e) => {
       const s = e.state;
@@ -131,6 +128,7 @@ export default function App() {
       }
       if (s.loginRole !== undefined) setLoginRole(s.loginRole);
       if (s.signupRole !== undefined) setSignupRole(s.signupRole);
+      if (s.signupExpertId !== undefined) setSignupExpertId(s.signupExpertId);
       if (s.category !== undefined) setActiveCategory(s.category);
       if (s.activeSession !== undefined) setActiveSession(s.activeSession);
     };
@@ -163,12 +161,11 @@ export default function App() {
         if (pendingSlug) {
           const match = live.find(e => e.handle === pendingSlug);
           if (match) {
-            captureReferralCode(pendingSlug);
             setActiveExpert(match);
             setActiveExpertId(match.id);
             setPage('public-profile');
             window.history.replaceState(
-              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', activeSession: null },
+              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null },
               '',
               '/' + pendingSlug
             );
@@ -215,7 +212,7 @@ export default function App() {
 
   const openLoginSelector = () => {
     setShowLoginSelector(true);
-    window.history.pushState({ page, expertId: activeExpertId, category: activeCategory, loginRole, signupRole, activeSession, showLoginSelector: true }, '', window.location.href);
+    window.history.pushState({ page, expertId: activeExpertId, category: activeCategory, loginRole, signupRole, signupExpertId, activeSession, showLoginSelector: true }, '', window.location.href);
   };
 
   const nav = (p, ctx) => {
@@ -242,6 +239,9 @@ export default function App() {
     if (p === 'login' && ctx?.emailHint !== undefined) setLoginEmailHint(ctx.emailHint || '');
     else if (p !== 'login') setLoginEmailHint('');
     if (p === 'signup') setSignupRole(ctx?.role || 'expert');
+    // Explicit and never inherited from activeExpertId — a signup link only
+    // carries a referral if this exact nav() call passed one.
+    if (p === 'signup') setSignupExpertId(ctx?.expertId ?? null);
     if (ctx?.category !== undefined) setActiveCategory(ctx.category);
     else if (p !== 'experts') setActiveCategory(null);
     if (ctx?.session !== undefined) setActiveSession(ctx.session);
@@ -265,6 +265,7 @@ export default function App() {
       category: ctx?.category ?? activeCategory ?? null,
       loginRole: p === 'login' ? (ctx?.role || loginRole) : loginRole,
       signupRole: p === 'signup' ? (ctx?.role || signupRole) : signupRole,
+      signupExpertId: p === 'signup' ? (ctx?.expertId ?? null) : signupExpertId,
       activeSession: p === 'booking' ? (ctx?.session || activeSession) : null,
     }, '', urlPath);
     setPage(p);
@@ -284,7 +285,7 @@ export default function App() {
       {page === 'home' && <LandingPage nav={nav} onLogin={openLoginSelector} />}
       {page === 'landingboard' && <LandingBoard nav={nav} onLogin={openLoginSelector} experts={experts} />}
       {page === 'login' && <LoginPage role={loginRole} nav={nav} onSwitchRole={openLoginSelector} notify={notify} emailHint={loginEmailHint} />}
-      {page === 'signup' && <SignupPage nav={nav} notify={notify} role={signupRole} />}
+      {page === 'signup' && <SignupPage nav={nav} notify={notify} role={signupRole} expertId={signupExpertId} />}
       {page === 'onboarding' && <OnboardingPage nav={nav} notify={notify} addExpert={e => setExperts(prev => [...prev, e])} />}
       {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={openLoginSelector} experts={experts} selectedCategory={activeCategory} />}
       {page === 'public-profile' && <PublicProfile nav={nav} notify={notify} expert={resolvedExpert} />}
