@@ -354,18 +354,16 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             eyebrow="Highlights"
             title="Achievements"
           />
-          <div className="grid-3">
+          <div className="grid-3" style={{ gap: 16 }}>
             {highlights.map((h, i) => {
               const card = (
-                <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
+                <div className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <div
                     style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 10,
+                      width: '100%',
+                      aspectRatio: '16/10',
                       overflow: 'hidden',
                       background: h.imageUrl ? '#eef1f4' : PRODUCT_GRADIENTS[i % PRODUCT_GRADIENTS.length],
-                      boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -375,11 +373,13 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                     {h.imageUrl ? (
                       <img src={h.imageUrl} alt={h.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <Award size={22} color="#fff" opacity={0.85} />
+                      <Award size={28} color="#fff" opacity={0.85} />
                     )}
                   </div>
-                  <div style={{ fontFamily: 'var(--fu)', fontSize: '.98rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.35 }}>
-                    {h.title}
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontFamily: 'var(--fu)', fontSize: '.9rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.35 }}>
+                      {h.title}
+                    </div>
                   </div>
                 </div>
               );
