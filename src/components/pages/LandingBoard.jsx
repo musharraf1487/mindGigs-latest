@@ -484,15 +484,14 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
 
                         <h1 className="lb-hero-title">
-                            Hire Proven Experts.{' '}
+                            Stuck on something?.{' '}
                             <br />
-                            Get{' '}
-                            <span className="lb-hero-accent">Real Results.</span>
+                            Borrow a {' '}
+                            <span className="lb-hero-accent">brilliant mind..</span>
                         </h1>
 
                         <p className="lb-hero-sub">
-                            Private consultations, structured advisory, and premium knowledge
-                            built for serious growth.
+                            Book a 1:1 video session with a verified expert who has already solved the problem you're staring at. No agencies. No retainers. No three-week email chains. Just answers, face to face.
                         </p>
 
                         {/* CTA Buttons */}
@@ -531,9 +530,9 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </motion.div>
                     <div className="lb-how-grid">
                         {[
-                            { step: "01", title: "Select the right expert", desc: "Browse through our curated list of proven practitioners." },
-                            { step: "02", title: "Choose your format", desc: "Select from 1:1 calls, advisory, or community access." },
-                            { step: "03", title: "Book and move forward", desc: "Get the clarity you need to execute with confidence." },
+                            { step: "01", title: "Pick your expert", desc: "Browse verified experts with real reviews and trusted specialties." },
+                            { step: "02", title: "Book a time that works", desc: "Choose a slot, pay securely, and get an instant calendar invite." },
+                            { step: "03", title: "Meet face to face", desc: "Join a private video call, share your screen, and leave with clear answers." },
                         ].map((item, i) => (
                             <motion.div
                                 key={i}
