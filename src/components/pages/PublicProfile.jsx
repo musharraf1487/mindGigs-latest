@@ -302,9 +302,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             {expert.headline && (
               <div style={{ fontSize: '.92rem', color: 'var(--sl)', fontWeight: 500, marginTop: 6 }}>{expert.headline}</div>
             )}
-            <div style={{ marginTop: 6, fontFamily: 'var(--fu)', fontSize: '.94rem', color: 'var(--teal)', fontWeight: 500 }}>
-              mindgigs.com/{expert.handle}
-            </div>
           </div>
 
           {(expert.tags?.length > 0 || expert.twitter || expert.linkedin) && (
@@ -329,11 +326,11 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   href={expert.linkedin.startsWith('http') ? expert.linkedin : `https://${expert.linkedin}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: '.85rem', color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+                  style={{ fontSize: '.85rem', color: '#0A66C2', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <Linkedin size={16} /> LinkedIn
+                  <Linkedin size={16} color="#0A66C2" /> LinkedIn
                 </a>
               )}
             </div>
