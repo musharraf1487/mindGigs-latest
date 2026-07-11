@@ -818,6 +818,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                 )}
                             </p>
                         </div>
+                        
                         <button className="lb-view-all" onClick={() => nav('experts')}>
                             View all 500+ experts <ArrowRight style={{ width: 20, height: 20 }} />
                         </button>

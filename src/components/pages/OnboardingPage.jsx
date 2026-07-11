@@ -11,6 +11,7 @@ import {
   Paperclip,
   Camera,
   Sparkles,
+  Award,
 } from 'lucide-react';
 
 const CATEGORY_KEYWORDS = {
@@ -67,12 +68,19 @@ export function OnboardingPage({ nav, notify, addExpert }) {
   const [customPrice, setCustomPrice] = useState('');
   const [customDesc, setCustomDesc] = useState('');
 
+  // Highlights & Achievements
+  const [highlightTitle, setHighlightTitle] = useState('');
+  const [highlightLink, setHighlightLink] = useState('');
+
   const { currentUser, userData, refreshUserData } = useAuth();
   const fileInputRef = useRef(null);
   const productFileInputRef = useRef(null);
+  const highlightImageInputRef = useRef(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
   const [productFile, setProductFile] = useState(null);
+  const [highlightImageFile, setHighlightImageFile] = useState(null);
+  const [highlightImagePreview, setHighlightImagePreview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Pre-fill handle from existing user data (important for Google signups)
@@ -92,6 +100,14 @@ export function OnboardingPage({ nav, notify, addExpert }) {
     if (e.target.files?.[0]) setProductFile(e.target.files[0]);
   };
 
+  const handleHighlightImageChange = (e) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setHighlightImageFile(file);
+      setHighlightImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const steps = ['Profile Setup', 'Add First Offer'];
 
   const offerTabs = [
@@ -99,6 +115,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
     { label: 'Subscription', icon: RefreshCw },
     { label: 'Digital Product', icon: Box },
     { label: 'Custom Offer', icon: Sparkles },
+    { label: 'Highlights', icon: Award },
   ];
 
   return (
@@ -335,6 +352,35 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                   </div>
                 </>
               )}
+
+              {/* Highlights & Achievements */}
+              {offerTab === 4 && (
+                <>
+                  <div style={{ background: 'rgba(25,181,166,0.05)', border: '1px solid rgba(25,181,166,0.15)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontSize: '.82rem', color: 'var(--sl)' }}>
+                    Showcase an award, press mention, or achievement on your profile.
+                  </div>
+                  <div className="field">
+                    <label className="label">Title</label>
+                    <input className="input" placeholder="e.g. Featured in Forbes 30 Under 30" value={highlightTitle} onChange={e => setHighlightTitle(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Link (optional)</label>
+                    <input className="input" placeholder="https://..." value={highlightLink} onChange={e => setHighlightLink(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Image (optional)</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 16, border: '2px dashed rgba(25, 181, 166, .2)', borderRadius: 'var(--rsm)', padding: 16, cursor: 'pointer', background: 'var(--gmt)' }}>
+                      <div
+                        style={{ width: 56, height: 56, borderRadius: 10, background: highlightImagePreview ? `url(${highlightImagePreview}) center/cover` : 'rgba(25, 181, 166, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}
+                      >
+                        {!highlightImagePreview && <Award size={22} color="var(--teal)" />}
+                      </div>
+                      <div style={{ fontSize: '.82rem', color: 'var(--mu)' }}>{highlightImageFile ? highlightImageFile.name : 'Upload image (PNG, JPG) — optional'}</div>
+                      <input type="file" style={{ display: 'none' }} accept="image/png,image/jpeg" onChange={handleHighlightImageChange} ref={highlightImageInputRef} />
+                    </label>
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -388,6 +434,16 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                       newProduct.fileName = productFile.name;
                     }
 
+                    let newHighlight = highlightTitle
+                      ? { title: highlightTitle, link: highlightLink || null, imageUrl: null, active: true }
+                      : null;
+
+                    if (newHighlight && highlightImageFile) {
+                      const highlightStorageRef = ref(storage, `highlights/${currentUser.uid}/${Date.now()}-${highlightImageFile.name}`);
+                      await uploadBytes(highlightStorageRef, highlightImageFile);
+                      newHighlight.imageUrl = await getDownloadURL(highlightStorageRef);
+                    }
+
                     // Lowest non-zero price across all offers
                     const prices = [sessionPrice, subPrice, productPrice, customPrice]
                       .map(Number)
@@ -426,6 +482,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                       subscriptionsList: newSub ? [newSub] : [],
                       productsList: newProduct ? [newProduct] : [],
                       customOfferingsList: newCustom ? [newCustom] : [],
+                      highlightsList: newHighlight ? [newHighlight] : [],
                       onboardingComplete: true,
                     };
 

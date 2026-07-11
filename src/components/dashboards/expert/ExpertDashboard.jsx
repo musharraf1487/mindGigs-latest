@@ -8,12 +8,13 @@ import { Sessions } from './sections/Sessions';
 import { Subscriptions } from './sections/Subscriptions';
 import { Products } from './sections/Products';
 import { Books } from './sections/Books';
+import { Highlights } from './sections/Highlights';
 import { CustomOfferings } from './sections/CustomOfferings';
 import { Affiliate } from './sections/Affiliate';
 import { Earnings } from './sections/Earnings';
 import { Settings } from './sections/Settings';
 import { Availability } from './sections/Availability';
-import { LayoutDashboard, Briefcase, Calendar, Clock, RefreshCw, Package, BookOpen, Sparkles, Rocket, DollarSign, Settings as SettingsIcon, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Calendar, Clock, RefreshCw, Package, BookOpen, Award, Sparkles, Rocket, DollarSign, Settings as SettingsIcon, LogOut, User } from 'lucide-react';
 
 export function ExpertDashboard({ user, nav, logout, notify }) {
   const [active, setActive] = useState('overview');
@@ -27,6 +28,7 @@ export function ExpertDashboard({ user, nav, logout, notify }) {
     { id: 'subscriptions', label: 'Subscriptions', icon: <RefreshCw size={18} color="var(--teal)" />, group: 'OFFERINGS' },
     { id: 'products', label: 'Digital Products', icon: <Package size={18} color="var(--teal)" />, group: 'OFFERINGS' },
     { id: 'books', label: 'Books', icon: <BookOpen size={18} color="var(--teal)" />, group: 'OFFERINGS' },
+    { id: 'highlights', label: 'Highlights', icon: <Award size={18} color="var(--teal)" />, group: 'OFFERINGS' },
     { id: 'custom-offerings', label: 'Custom Offerings', icon: <Sparkles size={18} color="var(--teal)" />, group: 'OFFERINGS' },
     { id: 'affiliate', label: 'Affiliate', icon: <Rocket size={18} color="var(--teal)" />, group: 'NETWORK' },
     { id: 'earnings', label: 'Earnings', icon: <DollarSign size={18} color="var(--teal)" />, group: 'NETWORK' },
@@ -43,6 +45,7 @@ export function ExpertDashboard({ user, nav, logout, notify }) {
       case 'subscriptions': return <Subscriptions user={user} notify={notify} />;
       case 'products': return <Products user={user} notify={notify} />;
       case 'books': return <Books user={user} notify={notify} />;
+      case 'highlights': return <Highlights user={user} notify={notify} />;
       case 'custom-offerings': return <CustomOfferings user={user} notify={notify} />;
       case 'affiliate': return <Affiliate user={user} notify={notify} />;
       case 'earnings': return <Earnings user={user} notify={notify} />;

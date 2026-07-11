@@ -326,7 +326,6 @@ export function Offers({ user, notify }) {
           <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '4px' }}>My Offers</h2>
           <p style={{ color: 'var(--sl)', fontSize: '0.9rem' }}>Manage your sessions, subscriptions, and digital products.</p>
         </div>
-        <button className="btn btn-gr" onClick={() => setShowCreate(true)}>+ Create New Offer</button>
       </div>
 
       {/* Offers Grid */}

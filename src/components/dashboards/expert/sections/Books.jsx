@@ -5,7 +5,6 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-const FORMATS = ['Paperback', 'Kindle', 'Hardcover'];
 const CTA_OPTIONS = ['Buy Now', 'Buy on Amazon'];
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
@@ -13,7 +12,7 @@ const EMPTY_BOOK = {
   title: '',
   author: '',
   tagline: '',
-  format: 'Paperback',
+  format: 'Ebook',
   price: '',
   cta: 'Buy Now',
   link: '',
@@ -183,25 +182,6 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Tagline</label>
             <input className="input" type="text" value={form.tagline} onChange={(e) => set('tagline', e.target.value)} placeholder="One-line description of the book" style={{ width: '100%' }} />
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>Format</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {FORMATS.map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => set('format', f)}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, border: '1.5px solid', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s',
-                    borderColor: form.format === f ? 'var(--teal)' : 'rgba(0,0,0,0.1)',
-                    background: form.format === f ? 'rgba(26,184,160,0.08)' : '#fff',
-                    color: form.format === f ? 'var(--teal)' : 'var(--sl)',
-                  }}
-                >{f}</button>
-              ))}
-            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>

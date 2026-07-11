@@ -11,6 +11,7 @@ import {
   Clock,
   Check,
   Sparkles,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -201,6 +202,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
   const products = (expert.productsList || []).filter(isListed);
   const books = (expert.booksList || []).filter(isListed);
   const customOfferings = (expert.customOfferingsList || []).filter(isListed);
+  const highlights = (expert.highlightsList || []).filter(isListed);
 
   return (
     <div style={{ background: 'var(--cr)', minHeight: '100vh' }}>
@@ -343,6 +345,61 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             </div>
           )}
         </div>
+
+        {/* Highlights & Achievements */}
+        {highlights.length > 0 && (
+        <div style={{ marginTop: 56 }}>
+          <SectionHeader
+            icon={<Award size={18} color="var(--teal)" />}
+            eyebrow="Highlights"
+            title="Achievements"
+          />
+          <div className="grid-3">
+            {highlights.map((h, i) => {
+              const card = (
+                <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      background: h.imageUrl ? '#eef1f4' : PRODUCT_GRADIENTS[i % PRODUCT_GRADIENTS.length],
+                      boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {h.imageUrl ? (
+                      <img src={h.imageUrl} alt={h.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <Award size={22} color="#fff" opacity={0.85} />
+                    )}
+                  </div>
+                  <div style={{ fontFamily: 'var(--fu)', fontSize: '.98rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.35 }}>
+                    {h.title}
+                  </div>
+                </div>
+              );
+              return h.link ? (
+                <a
+                  key={h.title}
+                  href={h.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: 'none', display: 'block' }}
+                >
+                  {card}
+                </a>
+              ) : (
+                <div key={h.title}>{card}</div>
+              );
+            })}
+          </div>
+        </div>
+        )}
 
         {/* 1:1 Sessions */}
         {sessions.length > 0 && (
@@ -685,7 +742,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
           </div>
         )}
 
-        {sessions.length === 0 && subscriptions.length === 0 && products.length === 0 && books.length === 0 && customOfferings.length === 0 && (
+        {sessions.length === 0 && subscriptions.length === 0 && products.length === 0 && books.length === 0 && customOfferings.length === 0 && highlights.length === 0 && (
           <div style={{ marginTop: 56, textAlign: 'center', padding: '48px 24px', color: 'var(--mu)' }}>
             <div style={{ fontSize: '.95rem' }}>{firstName} hasn't published any offerings yet. Check back soon!</div>
           </div>
