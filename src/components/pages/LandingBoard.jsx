@@ -487,7 +487,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                             Stuck on something?.{' '}
                             <br />
                             Borrow a {' '}
-                            <span className="lb-hero-accent">brilliant mind..</span>
+                            <span className="lb-hero-accent">brilliant mind.</span>
                         </h1>
 
                         <p className="lb-hero-sub">
