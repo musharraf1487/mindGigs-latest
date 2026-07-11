@@ -260,7 +260,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 0' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 64px' }}>
         {/* Profile Header */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ position: 'relative', width: 200, height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -444,6 +444,77 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
                     Do you want to become an Affiliate?
                   </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {/* Books */}
+        {books.length > 0 && (
+        <div style={{ marginTop: 56 }}>
+          <SectionHeader
+            icon={<BookOpen size={18} color="var(--teal)" />}
+            eyebrow="Books"
+            title="Published work"
+          />
+          <div className="grid-3">
+            {books.map((b, i) => (
+              <div key={b.title} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div
+                  style={{
+                    width: 88,
+                    aspectRatio: '2/3',
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    background: b.coverUrl ? '#eef1f4' : BOOK_GRADIENTS[i % BOOK_GRADIENTS.length],
+                    boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {b.coverUrl ? (
+                    <img src={b.coverUrl} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <BookOpen size={22} color="#fff" opacity={0.85} />
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--fu)', fontSize: '1rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.3 }}>
+                      {b.title}
+                    </div>
+                    {b.author && (
+                      <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginTop: 3 }}>by {b.author}</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '.84rem', color: 'var(--sl)', lineHeight: 1.5 }}>{b.tagline}</div>
+                  <div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        background: 'rgba(15,23,42,0.05)',
+                        color: 'var(--sl)',
+                        fontSize: '.72rem',
+                        fontWeight: 600,
+                        padding: '4px 11px',
+                        borderRadius: 999,
+                      }}
+                    >
+                      {b.format}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
+                    <span style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
+                      {b.price?.includes('$') ? b.price : `$${b.price}`}
+                    </span>
+                    <button className="btn btn-pr btn-sm" onClick={() => handleBuyBook(b)}>
+                      {b.cta || 'Buy Now'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -637,77 +708,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
         </div>
         )}
 
-        {/* Books */}
-        {books.length > 0 && (
-        <div style={{ marginTop: 56 }}>
-          <SectionHeader
-            icon={<BookOpen size={18} color="var(--teal)" />}
-            eyebrow="Books"
-            title="Published work"
-          />
-          <div className="grid-3">
-            {books.map((b, i) => (
-              <div key={b.title} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div
-                  style={{
-                    width: 88,
-                    aspectRatio: '2/3',
-                    borderRadius: 6,
-                    overflow: 'hidden',
-                    background: b.coverUrl ? '#eef1f4' : BOOK_GRADIENTS[i % BOOK_GRADIENTS.length],
-                    boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {b.coverUrl ? (
-                    <img src={b.coverUrl} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <BookOpen size={22} color="#fff" opacity={0.85} />
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <div>
-                    <div style={{ fontFamily: 'var(--fu)', fontSize: '1rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.3 }}>
-                      {b.title}
-                    </div>
-                    {b.author && (
-                      <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginTop: 3 }}>by {b.author}</div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '.84rem', color: 'var(--sl)', lineHeight: 1.5 }}>{b.tagline}</div>
-                  <div>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        background: 'rgba(15,23,42,0.05)',
-                        color: 'var(--sl)',
-                        fontSize: '.72rem',
-                        fontWeight: 600,
-                        padding: '4px 11px',
-                        borderRadius: 999,
-                      }}
-                    >
-                      {b.format}
-                    </span>
-                  </div>
-                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
-                    <span style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                      {b.price?.includes('$') ? b.price : `$${b.price}`}
-                    </span>
-                    <button className="btn btn-pr btn-sm" onClick={() => handleBuyBook(b)}>
-                      {b.cta || 'Buy Now'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        )}
-
         {/* Custom Offerings */}
         {customOfferings.length > 0 && (
           <div style={{ marginTop: 56 }}>
@@ -748,69 +748,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
           </div>
         )}
 
-        {/* Profile Footer CTA */}
-        <div
-          style={{
-            marginTop: 64,
-            marginBottom: 64,
-            borderRadius: 'var(--rlg)',
-            padding: '56px 32px',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            background: 'var(--gd)',
-            backgroundImage:
-              'radial-gradient(circle at 30% 20%, rgba(84,119,146,0.45) 0%, rgba(15,23,42,0) 55%), radial-gradient(circle at 80% 90%, rgba(25,181,166,0.28) 0%, rgba(15,23,42,0) 50%)',
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: 'var(--fd)',
-              fontSize: '2.1rem',
-              fontWeight: 700,
-              color: '#fff',
-              letterSpacing: '-0.01em',
-              position: 'relative',
-            }}
-          >
-            Start Monetizing Your Knowledge
-          </h3>
-          <p
-            style={{
-              fontSize: '.97rem',
-              color: 'rgba(255,255,255,.65)',
-              marginTop: 14,
-              maxWidth: 480,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              lineHeight: 1.6,
-              position: 'relative',
-            }}
-          >
-            Join {firstName} and thousands of experts earning recurring income on mindGigs.
-          </p>
-          <button
-            style={{
-              marginTop: 26,
-              padding: '14px 32px',
-              borderRadius: 999,
-              border: 'none',
-              background: '#fff',
-              color: 'var(--gd)',
-              fontSize: '.95rem',
-              fontFamily: 'var(--fu)',
-              fontWeight: 700,
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'background .2s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#e9ebee')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-            onClick={() => nav(isLoggedIn ? dashboardRoute : 'signup')}
-          >
-            {isLoggedIn ? 'Go to Profile →' : 'Create Your Profile — Free →'}
-          </button>
-        </div>
       </div>
     </div>
   );
