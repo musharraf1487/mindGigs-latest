@@ -294,13 +294,13 @@ function FloatingSideElements() {
                     <div className="side-popup-sub">31 Days</div>
                 </div>
             </div>
-            <div className="side-popup side-popup-left-2">
+            {/* <div className="side-popup side-popup-left-2">
                 <div className="side-popup-icon"><TrendingUp size={20} /></div>
                 <div>
                     <div className="side-popup-text">Analytics</div>
                     <div className="side-popup-sub">Real-time</div>
                 </div>
-            </div>
+            </div> */}
             <div className="side-popup side-popup-right-2">
                 <div className="side-popup-icon"><CheckCircle2 size={20} /></div>
                 <div>
@@ -484,15 +484,14 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
 
                         <h1 className="lb-hero-title">
-                            Stuck on something?.{' '}
+                            Stuck on something?{' '}
                             <br />
                             Borrow a {' '}
                             <span className="lb-hero-accent">brilliant mind.</span>
                         </h1>
 
                         <p className="lb-hero-sub">
-                            Book a 1:1 video session with a verified expert who has already solved the problem you're staring at. No agencies. No retainers. No three-week email chains. Just answers, face to face.
-                        </p>
+                               Book a 1:1 video session with a verified expert who already solved the problem and get answers face to face.                        </p>
 
                         {/* CTA Buttons */}
                         <div className="lb-hero-cta">
