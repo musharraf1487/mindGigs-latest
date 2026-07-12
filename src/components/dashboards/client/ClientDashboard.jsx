@@ -6,6 +6,7 @@ import { getClientBookings, cancelBooking } from '../../../services/bookingServi
 import { getClientPurchases } from '../../../services/purchaseService';
 import { isSessionJoinable } from '../../../services/availabilityService';
 import { submitReview, hasReviewedBooking } from '../../../services/reviewService';
+import { formatOfferPrice } from '../../../utils/price';
 import { AccountSwitcher } from '../../common/AccountSwitcher';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
@@ -335,7 +336,7 @@ function Subscriptions({ notify, nav }) {
                         <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>⚠️</div>
                         <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--gd)', marginBottom: 8 }}>Cancel Subscription?</div>
                         <div style={{ fontWeight: 700, color: 'var(--gd)', marginBottom: 4 }}>{cancelTarget.plan}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--sl)', marginBottom: 16 }}>by {cancelTarget.expert} · {cancelTarget.price?.includes('$') ? cancelTarget.price : `$${cancelTarget.price}`}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--sl)', marginBottom: 16 }}>by {cancelTarget.expert} · {formatOfferPrice(cancelTarget.price)}</div>
                         <p style={{ fontSize: '0.8rem', color: 'var(--mu)', marginBottom: 24, padding: '10px 14px', background: 'rgba(232,68,68,0.05)', borderRadius: 8, border: '1px solid rgba(232,68,68,0.12)' }}>
                             You will lose access at the end of your billing period.
                         </p>
@@ -369,7 +370,7 @@ function Subscriptions({ notify, nav }) {
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontFamily: 'var(--fu)', fontWeight: 800, fontSize: '1.3rem', color: 'var(--gd)', marginBottom: 8 }}>{s.price?.includes('$') ? s.price : `$${s.price}`}</div>
+                                    <div style={{ fontFamily: 'var(--fu)', fontWeight: 800, fontSize: '1.3rem', color: 'var(--gd)', marginBottom: 8 }}>{formatOfferPrice(s.price)}</div>
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         <StatusBadge status={s.status} />
                                         <button

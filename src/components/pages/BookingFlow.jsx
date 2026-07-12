@@ -7,6 +7,7 @@ import { lookupAffiliateCode } from '../../services/affiliateService';
 import { getAvailableTimesForDay, getAvailableDaysInMonth, buildTakenSlotsMap } from '../../services/availabilityService';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { formatOfferPrice } from '../../utils/price';
 
 
 export function BookingFlow({ nav, notify, expert, session }) {
@@ -18,12 +19,8 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const isFreeCall = !!session?.freeCall;
   const rawSessionPrice = session?.price || '$250';
   // Custom offerings without a set price fall through as "Contact for pricing" —
-  // only prepend $ when the value actually looks like an amount (has a digit).
-  const sessionPrice = isFreeCall
-    ? 'Free'
-    : rawSessionPrice.includes('$') || !/\d/.test(rawSessionPrice)
-    ? rawSessionPrice
-    : `$${rawSessionPrice}`;
+  // formatOfferPrice passes non-numeric values through unchanged.
+  const sessionPrice = isFreeCall ? 'Free' : formatOfferPrice(rawSessionPrice);
   const sessionDuration = session?.duration || '60 min';
   const [step, setStep] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);

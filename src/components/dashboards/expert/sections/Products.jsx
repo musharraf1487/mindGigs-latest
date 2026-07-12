@@ -5,6 +5,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { X } from 'lucide-react';
+import { ReorderArrows } from '../../../common/ReorderArrows';
+import { formatOfferPrice } from '../../../../utils/price';
 
 const ICONS = ['package', 'file', 'chart', 'bot', 'palette', 'dollar'];
 const ICON_LABELS = { package: 'Template', file: 'Document', chart: 'Spreadsheet', bot: 'AI Tool', palette: 'Design', dollar: 'Finance' };
@@ -389,7 +391,7 @@ function StatsModal({ product, onClose }) {
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1, padding: '14px 18px', borderRadius: 10, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--mu)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Price</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gb)' }}>{product.price?.includes('$') ? product.price : `$${product.price}`}</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gb)' }}>{formatOfferPrice(product.price)}</div>
             </div>
             <div style={{ flex: 1, padding: '14px 18px', borderRadius: 10, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--mu)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Status</div>
@@ -468,6 +470,15 @@ export function Products({ user, expertData, notify }) {
     notify && notify('Product deleted.');
   };
 
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= products.length) return;
+    const updated = [...products];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setProducts(updated);
+    saveToFirestore(updated);
+  };
+
   return (
     <>
       {showUpload && <ProductModal product={null} onSave={handleUpload} onClose={() => setShowUpload(false)} notify={notify} />}
@@ -486,7 +497,7 @@ export function Products({ user, expertData, notify }) {
       {/* Product Grid */}
       {products.length > 0 ? (
         <div className="grid-3" style={{ gap: '24px' }}>
-          {products.map(product => (
+          {products.map((product, i) => (
             <div key={product.id} className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }}
               onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
               onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = ''; }}
@@ -510,7 +521,7 @@ export function Products({ user, expertData, notify }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--gd)', lineHeight: 1.4, flex: 1 }}>{product.title}</h3>
                   <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--gb)', marginLeft: 8, whiteSpace: 'nowrap' }}>
-                    {product.price?.includes('$') ? product.price : `$${product.price}`}
+                    {formatOfferPrice(product.price)}
                   </div>
                 </div>
 
@@ -527,7 +538,13 @@ export function Products({ user, expertData, notify }) {
                 </div>
 
                 {/* Action buttons */}
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <ReorderArrows
+                    onMoveUp={() => handleMove(i, -1)}
+                    onMoveDown={() => handleMove(i, 1)}
+                    disableUp={i === 0}
+                    disableDown={i === products.length - 1}
+                  />
                   <button
                     className="btn btn-sm btn-gh"
                     style={{ flex: 1 }}

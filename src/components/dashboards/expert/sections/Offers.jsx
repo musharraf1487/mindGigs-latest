@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
+import { formatOfferPrice } from '../../../../utils/price';
 
 const EMPTY_OFFER = {
   title: '',
@@ -345,7 +346,7 @@ export function Offers({ user, notify }) {
                   {offer.title}
                 </h3>
                 <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--gb)', marginBottom: '12px' }}>
-                  {offer.price?.includes('$') ? offer.price : `$${offer.price}`}
+                  {formatOfferPrice(offer.price)}
                 </div>
                 {offer.duration && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--sl)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>

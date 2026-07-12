@@ -3,6 +3,8 @@ import { Trash2, Clock, Calendar } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
+import { ReorderArrows } from '../../../common/ReorderArrows';
+import { formatOfferPrice } from '../../../../utils/price';
 
 const EMPTY_SESSION = {
   title: '',
@@ -147,6 +149,15 @@ export function Sessions({ user, expertData, notify }) {
     notify && notify('Session deleted.');
   };
 
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= sessions.length) return;
+    const updated = [...sessions];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setSessions(updated);
+    saveToFirestore(updated);
+  };
+
   return (
     <>
       {showCreate && <SessionModal session={null} onSave={handleCreate} onClose={() => setShowCreate(false)} />}
@@ -162,7 +173,7 @@ export function Sessions({ user, expertData, notify }) {
 
       {sessions.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {sessions.map((s) => (
+          {sessions.map((s, i) => (
             <div
               key={s.id}
               className="card"
@@ -183,7 +194,13 @@ export function Sessions({ user, expertData, notify }) {
                 <p style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>{s.desc || 'No description provided.'}</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, minWidth: 120 }}>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gb)' }}>{s.price?.includes('$') ? s.price : `$${s.price}`}</div>
+                <ReorderArrows
+                  onMoveUp={() => handleMove(i, -1)}
+                  onMoveDown={() => handleMove(i, 1)}
+                  disableUp={i === 0}
+                  disableDown={i === sessions.length - 1}
+                />
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gb)' }}>{formatOfferPrice(s.price)}</div>
                 <button className="btn btn-sm btn-gh" onClick={() => setEditSession(s)}>✏️ Edit</button>
               </div>
             </div>

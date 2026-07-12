@@ -4,6 +4,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ReorderArrows } from '../../../common/ReorderArrows';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
@@ -255,6 +256,15 @@ export function Highlights({ user, expertData, notify }) {
     notify && notify('Highlight removed.');
   };
 
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= highlights.length) return;
+    const updated = [...highlights];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setHighlights(updated);
+    saveToFirestore(updated);
+  };
+
   return (
     <>
       {showCreate && <HighlightModal highlight={null} onSave={handleCreate} onClose={() => setShowCreate(false)} notify={notify} />}
@@ -270,7 +280,7 @@ export function Highlights({ user, expertData, notify }) {
 
       {highlights.length > 0 ? (
         <div className="grid-3" style={{ gap: 24 }}>
-          {highlights.map((highlight) => (
+          {highlights.map((highlight, i) => (
             <div key={highlight.id} className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s' }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = ''; }}
@@ -292,7 +302,15 @@ export function Highlights({ user, expertData, notify }) {
                     {highlight.link}
                   </p>
                 )}
-                <button className="btn btn-sm btn-gh" onClick={() => setEditHighlight(highlight)} style={{ marginTop: 'auto' }}>✏️ Edit</button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 'auto' }}>
+                  <ReorderArrows
+                    onMoveUp={() => handleMove(i, -1)}
+                    onMoveDown={() => handleMove(i, 1)}
+                    disableUp={i === 0}
+                    disableDown={i === highlights.length - 1}
+                  />
+                  <button className="btn btn-sm btn-gh" style={{ flex: 1 }} onClick={() => setEditHighlight(highlight)}>✏️ Edit</button>
+                </div>
               </div>
             </div>
           ))}

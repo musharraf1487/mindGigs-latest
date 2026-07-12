@@ -4,6 +4,8 @@ import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ReorderArrows } from '../../../common/ReorderArrows';
+import { formatOfferPrice } from '../../../../utils/price';
 
 const CTA_OPTIONS = ['Buy Now', 'Buy on Amazon'];
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
@@ -303,6 +305,15 @@ export function Books({ user, expertData, notify }) {
     notify && notify('Book removed.');
   };
 
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= books.length) return;
+    const updated = [...books];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setBooks(updated);
+    saveToFirestore(updated);
+  };
+
   return (
     <>
       {showCreate && <BookModal book={null} onSave={handleCreate} onClose={() => setShowCreate(false)} notify={notify} />}
@@ -318,7 +329,7 @@ export function Books({ user, expertData, notify }) {
 
       {books.length > 0 ? (
         <div className="grid-3" style={{ gap: 24 }}>
-          {books.map((book) => (
+          {books.map((book, i) => (
             <div key={book.id} className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s' }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = ''; }}
@@ -338,14 +349,22 @@ export function Books({ user, expertData, notify }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                   <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.4, flex: 1 }}>{book.title}</h3>
                   <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gb)', marginLeft: 8, whiteSpace: 'nowrap' }}>
-                    {book.price?.includes('$') ? book.price : `$${book.price}`}
+                    {formatOfferPrice(book.price)}
                   </div>
                 </div>
                 {book.author && <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginBottom: 8 }}>by {book.author}</div>}
                 <p style={{ fontSize: '0.8rem', color: 'var(--sl)', marginBottom: 16, lineHeight: 1.5, flex: 1 }}>
                   {book.tagline || 'No tagline provided.'}
                 </p>
-                <button className="btn btn-sm btn-gh" onClick={() => setEditBook(book)}>✏️ Edit</button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <ReorderArrows
+                    onMoveUp={() => handleMove(i, -1)}
+                    onMoveDown={() => handleMove(i, 1)}
+                    disableUp={i === 0}
+                    disableDown={i === books.length - 1}
+                  />
+                  <button className="btn btn-sm btn-gh" style={{ flex: 1 }} onClick={() => setEditBook(book)}>✏️ Edit</button>
+                </div>
               </div>
             </div>
           ))}

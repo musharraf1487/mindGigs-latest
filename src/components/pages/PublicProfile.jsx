@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
+import { formatOfferPrice } from '../../utils/price';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 const BIO_PREVIEW_LENGTH = 300;
@@ -446,7 +447,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                   <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                    {s.price?.includes('$') ? s.price : `$${s.price}`}
+                    {formatOfferPrice(s.price)}
                   </div>
                   <button className="btn btn-gr btn-sm" onClick={() => { if (!currentUser) { goToSignup(); return; } nav('booking', { session: s }); }}>
                     Book Now
@@ -529,7 +530,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
                     <span style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                      {b.price?.includes('$') ? b.price : `$${b.price}`}
+                      {formatOfferPrice(b.price)}
                     </span>
                     <button className="btn btn-pr btn-sm" onClick={() => handleBuyBook(b)}>
                       {b.cta || 'Buy Now'}
@@ -639,7 +640,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 14, minWidth: 140 }}>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontFamily: 'var(--fu)', fontSize: '1.9rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                      {sub.price ? (String(sub.price).includes('$') ? String(sub.price).split('/')[0] : `$${sub.price}`) : '$—'}
+                      {sub.price ? formatOfferPrice(String(sub.price).split('/')[0]) : '$—'}
                     </div>
                     <div style={{ fontSize: '.8rem', color: 'var(--mu)' }}>/month</div>
                   </div>
@@ -711,7 +712,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--fu)', fontSize: '1.15rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
-                      {p.price?.includes('$') ? p.price : `$${p.price}`}
+                      {formatOfferPrice(p.price)}
                     </span>
                     <button
                       className="btn btn-pr btn-sm"
@@ -750,7 +751,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                     {c.price && (
-                      <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price.includes('$') ? c.price : `$${c.price}`}</div>
+                      <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{formatOfferPrice(c.price)}</div>
                     )}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="btn btn-gh btn-sm" onClick={() => handleBookCall(c)}>

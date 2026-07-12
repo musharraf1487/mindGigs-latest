@@ -3,6 +3,8 @@ import { Trash2, Sparkles } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
+import { ReorderArrows } from '../../../common/ReorderArrows';
+import { formatOfferPrice } from '../../../../utils/price';
 
 const EMPTY_OFFERING = {
   title: '',
@@ -155,6 +157,15 @@ export function CustomOfferings({ user, expertData, notify }) {
     notify && notify('Offering deleted.');
   };
 
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= offerings.length) return;
+    const updated = [...offerings];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setOfferings(updated);
+    saveToFirestore(updated);
+  };
+
   return (
     <>
       {showCreate && <OfferingModal offering={null} onSave={handleCreate} onClose={() => setShowCreate(false)} />}
@@ -170,7 +181,7 @@ export function CustomOfferings({ user, expertData, notify }) {
 
       {offerings.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {offerings.map((o) => (
+          {offerings.map((o, i) => (
             <div
               key={o.id}
               className="card"
@@ -188,7 +199,13 @@ export function CustomOfferings({ user, expertData, notify }) {
                 <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>Buttons: <strong style={{ color: 'var(--teal)' }}>Book a Call · Buy Now</strong></div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, minWidth: 120 }}>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gb)' }}>{o.price ? (o.price.includes('$') ? o.price : `$${o.price}`) : 'Custom'}</div>
+                <ReorderArrows
+                  onMoveUp={() => handleMove(i, -1)}
+                  onMoveDown={() => handleMove(i, 1)}
+                  disableUp={i === 0}
+                  disableDown={i === offerings.length - 1}
+                />
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gb)' }}>{o.price ? formatOfferPrice(o.price) : 'Custom'}</div>
                 <button className="btn btn-sm btn-gh" onClick={() => setEditOffering(o)}>✏️ Edit</button>
               </div>
             </div>

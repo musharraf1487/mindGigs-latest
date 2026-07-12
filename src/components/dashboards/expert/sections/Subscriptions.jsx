@@ -6,6 +6,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getExpertBookings } from '../../../../services/bookingService';
+import { ReorderArrows } from '../../../common/ReorderArrows';
+import { formatOfferPrice } from '../../../../utils/price';
 
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
@@ -345,6 +347,15 @@ export function Subscriptions({ user, expertData, notify }) {
     notify && notify('Subscription plan deleted.');
   };
 
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= plans.length) return;
+    const updated = [...plans];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setPlans(updated);
+    saveToFirestore(updated);
+  };
+
   return (
     <>
       {showCreate && <SubModal sub={null} onSave={handleCreate} onClose={() => setShowCreate(false)} notify={notify} />}
@@ -369,12 +380,20 @@ export function Subscriptions({ user, expertData, notify }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: 8 }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--gd)' }}>{sub.title}</h3>
-                    <span className={`tag tag-${sub.active ? 'gr' : 'gh'}`} style={{ fontSize: '0.7rem', flexShrink: 0 }}>
-                      {sub.active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <ReorderArrows
+                        onMoveUp={() => handleMove(i, -1)}
+                        onMoveDown={() => handleMove(i, 1)}
+                        disableUp={i === 0}
+                        disableDown={i === plans.length - 1}
+                      />
+                      <span className={`tag tag-${sub.active ? 'gr' : 'gh'}`} style={{ fontSize: '0.7rem' }}>
+                        {sub.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--gb)' }}>
-                    {sub.price?.includes('$') ? sub.price : `$${sub.price}`}
+                    {formatOfferPrice(sub.price)}
                   </div>
                 </div>
               </div>
