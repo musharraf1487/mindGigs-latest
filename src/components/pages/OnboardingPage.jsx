@@ -14,7 +14,11 @@ import {
   Award,
 } from 'lucide-react';
 
-const BIO_MAX_LENGTH = 1000;
+const BIO_MAX_WORDS = 1000;
+
+function countWords(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
 
 const CATEGORY_KEYWORDS = {
   Tech: ['developer','software','engineering','coding','programmer','javascript','python','react','node','backend','frontend','fullstack','devops','cloud','aws','azure','gcp','mobile','app','web','data science','machine learning','ai','artificial intelligence','cybersecurity','blockchain','database','api','tech','it','infrastructure','saas','platform','algorithm','automation','robotics','iot'],
@@ -179,15 +183,18 @@ export function OnboardingPage({ nav, notify, addExpert }) {
               </p>
 
               <div className="field">
-                <label className="label">Bio (max {BIO_MAX_LENGTH} chars)</label>
+                <label className="label">Bio (max {BIO_MAX_WORDS} words)</label>
                 <textarea
                   className="textarea"
                   placeholder="Tell experts and visitors who you are and what you offer..."
                   style={{ minHeight: 120 }}
                   value={bio}
-                  onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_LENGTH))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (countWords(value) <= BIO_MAX_WORDS) setBio(value);
+                  }}
                 />
-                <span style={{ fontSize: '.72rem', color: bio.length >= BIO_MAX_LENGTH ? '#e0554f' : 'var(--mu)', float: 'right' }}>{bio.length}/{BIO_MAX_LENGTH}</span>
+                <span style={{ fontSize: '.72rem', color: countWords(bio) >= BIO_MAX_WORDS ? '#e0554f' : 'var(--mu)', float: 'right' }}>{countWords(bio)}/{BIO_MAX_WORDS} words</span>
               </div>
 
               <div className="field">

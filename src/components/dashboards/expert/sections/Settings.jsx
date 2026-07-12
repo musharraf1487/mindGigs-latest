@@ -7,7 +7,11 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, delete
 import { AlertCircle, Trash2, Key, Shield, User as UserIcon, Link as LinkIcon, Camera } from 'lucide-react';
 import { claimHandle, normalizeHandle, validateHandleFormat, isHandleAvailable } from '../../../../services/handleService';
 
-const BIO_MAX_LENGTH = 1000;
+const BIO_MAX_WORDS = 1000;
+
+function countWords(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
 
 export function Settings({ user, notify, logout, nav }) {
   const { currentUser, refreshUserData } = useAuth();
@@ -235,16 +239,19 @@ export function Settings({ user, notify, logout, nav }) {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Bio</label>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Bio (max {BIO_MAX_WORDS} words)</label>
             <textarea
               className="input"
               value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_LENGTH))}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (countWords(value) <= BIO_MAX_WORDS) setBio(value);
+              }}
               rows="4"
               style={{ width: '100%', resize: 'vertical', minHeight: '100px' }}
               placeholder="Tell us about yourself..."
             />
-            <span style={{ fontSize: '.72rem', color: bio.length >= BIO_MAX_LENGTH ? '#e84444' : 'var(--mu)', float: 'right' }}>{bio.length}/{BIO_MAX_LENGTH}</span>
+            <span style={{ fontSize: '.72rem', color: countWords(bio) >= BIO_MAX_WORDS ? '#e84444' : 'var(--mu)', float: 'right' }}>{countWords(bio)}/{BIO_MAX_WORDS} words</span>
           </div>
 
           <div className="grid-2" style={{ gap: '24px', marginBottom: '24px', clear: 'both' }}>
