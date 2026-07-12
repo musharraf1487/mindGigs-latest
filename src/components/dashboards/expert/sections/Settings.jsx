@@ -1,17 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db, auth } from '../../../../config/firebase';
+import { db, auth, storage } from '../../../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, deleteUser } from 'firebase/auth';
-import { AlertCircle, Trash2, Key, Shield, User as UserIcon, Link as LinkIcon } from 'lucide-react';
+import { AlertCircle, Trash2, Key, Shield, User as UserIcon, Link as LinkIcon, Camera } from 'lucide-react';
 import { claimHandle, normalizeHandle, validateHandleFormat, isHandleAvailable } from '../../../../services/handleService';
+
+const BIO_MAX_LENGTH = 1000;
 
 export function Settings({ user, notify, logout, nav }) {
   const { currentUser, refreshUserData } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || ''); // We will make email read-only for now to simplify
   const [bio, setBio] = useState(user?.bio || '');
+  const [headline, setHeadline] = useState(user?.headline || '');
+  const [tags, setTags] = useState((user?.tags || []).join(', '));
+  const [linkedin, setLinkedin] = useState(user?.linkedin || '');
+  const [twitter, setTwitter] = useState(user?.twitter || '');
   const [loading, setLoading] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+
+  const handleAvatarChange = (e) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
 
   // Public profile URL / handle
   const [handle, setHandle] = useState(user?.handle || '');
@@ -31,6 +50,10 @@ export function Settings({ user, notify, logout, nav }) {
     setName(user?.name || '');
     setEmail(user?.email || '');
     setBio(user?.bio || '');
+    setHeadline(user?.headline || '');
+    setTags((user?.tags || []).join(', '));
+    setLinkedin(user?.linkedin || '');
+    setTwitter(user?.twitter || '');
     setHandle(user?.handle || '');
   }, [user]);
 
@@ -79,10 +102,24 @@ export function Settings({ user, notify, logout, nav }) {
     }
     setLoading(true);
     try {
+      let photoUrl = user?.image || null;
+      if (avatarFile) {
+        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+        await uploadBytes(storageRef, avatarFile);
+        photoUrl = await getDownloadURL(storageRef);
+      }
+
       await updateDoc(doc(db, 'users', currentUser.uid), {
         name,
         bio,
+        headline,
+        tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        linkedin: linkedin || null,
+        twitter: twitter || null,
+        image: photoUrl,
       });
+      setAvatarFile(null);
+      setAvatarPreview('');
       await refreshUserData();
       notify('Profile updated successfully!');
     } catch (err) {
@@ -156,6 +193,22 @@ export function Settings({ user, notify, logout, nav }) {
           <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--gd)' }}>Profile Information</h3>
         </div>
         <div style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: '24px' }}>
+            <div
+              style={{ width: 72, height: 72, borderRadius: '50%', background: (avatarPreview || user?.image) ? `url(${avatarPreview || user.image}) top center/cover` : 'rgba(25, 181, 166, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', flexShrink: 0, color: 'var(--teal)', fontWeight: 700, fontSize: '1.3rem' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {!(avatarPreview || user?.image) && (name?.charAt(0).toUpperCase() || <Camera size={24} />)}
+            </div>
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleAvatarChange} />
+            <div>
+              <button type="button" className="btn btn-gh btn-sm" onClick={() => fileInputRef.current?.click()}>
+                {avatarPreview || user?.image ? 'Change Photo' : 'Upload Photo'}
+              </button>
+              <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 6 }}>Shown on your public profile and expert cards.</div>
+            </div>
+          </div>
+
           <div className="grid-2" style={{ gap: '24px', marginBottom: '24px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Full Name</label>
@@ -186,11 +239,62 @@ export function Settings({ user, notify, logout, nav }) {
             <textarea
               className="input"
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_LENGTH))}
               rows="4"
               style={{ width: '100%', resize: 'vertical', minHeight: '100px' }}
               placeholder="Tell us about yourself..."
             />
+            <span style={{ fontSize: '.72rem', color: bio.length >= BIO_MAX_LENGTH ? '#e84444' : 'var(--mu)', float: 'right' }}>{bio.length}/{BIO_MAX_LENGTH}</span>
+          </div>
+
+          <div className="grid-2" style={{ gap: '24px', marginBottom: '24px', clear: 'both' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Professional Headline</label>
+              <input
+                type="text"
+                className="input"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                style={{ width: '100%' }}
+                placeholder="e.g. CMO · SaaS Advisor · Author"
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Expertise Tags</label>
+              <input
+                type="text"
+                className="input"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                style={{ width: '100%' }}
+                placeholder="e.g. Product Strategy, SaaS, Fundraising"
+              />
+            </div>
+          </div>
+
+          <div className="grid-2" style={{ gap: '24px', marginBottom: '24px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>LinkedIn (optional)</label>
+              <input
+                type="text"
+                className="input"
+                value={linkedin}
+                onChange={(e) => setLinkedin(e.target.value)}
+                style={{ width: '100%' }}
+                placeholder="https://linkedin.com/in/yourname"
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Twitter / X (optional)</label>
+              <input
+                type="text"
+                className="input"
+                value={twitter}
+                onChange={(e) => setTwitter(e.target.value)}
+                style={{ width: '100%' }}
+                placeholder="https://twitter.com/yourhandle"
+              />
+            </div>
           </div>
 
           <button className="btn btn-gr" style={{ padding: '10px 24px' }} onClick={handleSaveProfile} disabled={loading}>
