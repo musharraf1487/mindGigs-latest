@@ -884,6 +884,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                                         width: '100%',
                                                         height: '100%',
                                                         objectFit: 'cover',
+                                                        objectPosition: 'top center',
                                                         transition: 'transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1)',
                                                         transform: isHovered ? 'scale(1.15)' : 'scale(1)',
                                                     }}

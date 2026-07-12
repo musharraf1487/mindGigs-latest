@@ -14,6 +14,8 @@ import {
   Award,
 } from 'lucide-react';
 
+const BIO_MAX_LENGTH = 1000;
+
 const CATEGORY_KEYWORDS = {
   Tech: ['developer','software','engineering','coding','programmer','javascript','python','react','node','backend','frontend','fullstack','devops','cloud','aws','azure','gcp','mobile','app','web','data science','machine learning','ai','artificial intelligence','cybersecurity','blockchain','database','api','tech','it','infrastructure','saas','platform','algorithm','automation','robotics','iot'],
   Health: ['health','wellness','fitness','nutrition','medical','doctor','therapist','therapy','yoga','meditation','dietitian','healthcare','physiotherapy','exercise','mental health','wellbeing','nurse','pharmacist','clinical','weight loss','mindfulness','holistic','rehabilitation','sports medicine','public health'],
@@ -166,7 +168,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
 
               {/* Avatar */}
               <div
-                style={{ width: 80, height: 80, borderRadius: '50%', background: avatarPreview ? `url(${avatarPreview}) center/cover` : 'rgba(25, 181, 166, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', border: '3px dashed rgba(25, 181, 166, 0.2)', cursor: 'pointer', overflow: 'hidden', color: 'var(--teal)', fontWeight: 700, fontSize: '1.5rem' }}
+                style={{ width: 80, height: 80, borderRadius: '50%', background: avatarPreview ? `url(${avatarPreview}) top center/cover` : 'rgba(25, 181, 166, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', border: '3px dashed rgba(25, 181, 166, 0.2)', cursor: 'pointer', overflow: 'hidden', color: 'var(--teal)', fontWeight: 700, fontSize: '1.5rem' }}
                 onClick={() => fileInputRef.current?.click()}
               >
                 {avatarPreview ? null : (userData?.name?.charAt(0).toUpperCase() || <Camera size={28} />)}
@@ -177,15 +179,15 @@ export function OnboardingPage({ nav, notify, addExpert }) {
               </p>
 
               <div className="field">
-                <label className="label">Bio (max 300 chars)</label>
+                <label className="label">Bio (max {BIO_MAX_LENGTH} chars)</label>
                 <textarea
                   className="textarea"
                   placeholder="Tell experts and visitors who you are and what you offer..."
-                  style={{ minHeight: 80 }}
+                  style={{ minHeight: 120 }}
                   value={bio}
-                  onChange={(e) => setBio(e.target.value.slice(0, 300))}
+                  onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_LENGTH))}
                 />
-                <span style={{ fontSize: '.72rem', color: 'var(--mu)', float: 'right' }}>{bio.length}/300</span>
+                <span style={{ fontSize: '.72rem', color: bio.length >= BIO_MAX_LENGTH ? '#e0554f' : 'var(--mu)', float: 'right' }}>{bio.length}/{BIO_MAX_LENGTH}</span>
               </div>
 
               <div className="field">

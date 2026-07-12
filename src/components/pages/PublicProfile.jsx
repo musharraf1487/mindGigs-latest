@@ -19,6 +19,27 @@ import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
+const BIO_PREVIEW_LENGTH = 300;
+
+function ExpandableBio({ bio }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = bio.length > BIO_PREVIEW_LENGTH;
+  const displayText = expanded || !isLong ? bio : `${bio.slice(0, BIO_PREVIEW_LENGTH).trimEnd()}...`;
+
+  return (
+    <p style={{ fontSize: '.94rem', color: 'var(--sl)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+      {displayText}
+      {isLong && (
+        <span
+          onClick={() => setExpanded((v) => !v)}
+          style={{ color: 'var(--gd)', fontWeight: 600, cursor: 'pointer', marginLeft: 6 }}
+        >
+          {expanded ? 'less' : 'more'}
+        </span>
+      )}
+    </p>
+  );
+}
 
 const ROLE_DASHBOARD_ROUTE = {
   expert: 'expert-dashboard',
@@ -288,7 +309,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
               }}
             >
               {expert.image ? (
-                <img src={expert.image} alt={expert.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={expert.image} alt={expert.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
               ) : (
                 <span style={{ fontFamily: 'var(--fu)', fontSize: 72, fontWeight: 700, color: '#fff' }}>{initials}</span>
               )}
@@ -338,7 +359,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
 
           {expert.bio && (
             <div className="card" style={{ marginTop: 20, width: '100%', padding: '24px 32px' }}>
-              <p style={{ fontSize: '.94rem', color: 'var(--sl)', lineHeight: 1.6 }}>{expert.bio}</p>
+              <ExpandableBio bio={expert.bio} />
             </div>
           )}
         </div>
