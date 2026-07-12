@@ -228,8 +228,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, userData, signup, login, loginWithGoogle, logout, refreshUserData }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ currentUser, userRole, userData, authLoading: loading, signup, login, loginWithGoogle, logout, refreshUserData }}>
+      {children}
     </AuthContext.Provider>
   );
 }
