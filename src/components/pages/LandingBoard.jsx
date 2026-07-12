@@ -472,7 +472,6 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     <div className="hero-3d-wall" />
                     <div className="hero-3d-fade" />
                 </div>
-                <FloatingSideElements />
 
                 <div className="lb-hero-content">
                     <motion.div
