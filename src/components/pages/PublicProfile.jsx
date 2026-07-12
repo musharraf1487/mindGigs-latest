@@ -350,7 +350,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
           )}
 
           {expert.bio && (
-            <div className="card" style={{ marginTop: 20, width: '100%', padding: '24px 32px' }}>
+            <div className="card" style={{ marginTop: 20, width: '100%', padding: '24px 32px', textAlign: 'left' }}>
               <ExpandableBio bio={expert.bio} />
             </div>
           )}
