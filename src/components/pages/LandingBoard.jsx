@@ -284,33 +284,33 @@ const SUBSCRIPTIONS = [
     }
 ];
 
-function FloatingSideElements() {
-    return (
-        <>
-            <div className="side-popup side-popup-left-1">
-                <div className="side-popup-icon"><Clock size={20} /></div>
-                <div>
-                    <div className="side-popup-text">Schedule</div>
-                    <div className="side-popup-sub">31 Days</div>
-                </div>
-            </div>
-            {/* <div className="side-popup side-popup-left-2">
-                <div className="side-popup-icon"><TrendingUp size={20} /></div>
-                <div>
-                    <div className="side-popup-text">Analytics</div>
-                    <div className="side-popup-sub">Real-time</div>
-                </div>
-            </div> */}
-            <div className="side-popup side-popup-right-2">
-                <div className="side-popup-icon"><CheckCircle2 size={20} /></div>
-                <div>
-                    <div className="side-popup-text">Success</div>
-                    <div className="side-popup-sub">Guaranteed</div>
-                </div>
-            </div>
-        </>
-    );
-}
+// function FloatingSideElements() {
+//     return (
+//         <>
+//             <div className="side-popup side-popup-left-1">
+//                 <div className="side-popup-icon"><Clock size={20} /></div>
+//                 <div>
+//                     <div className="side-popup-text">Schedule</div>
+//                     <div className="side-popup-sub">31 Days</div>
+//                 </div>
+//             </div>
+//             {/* <div className="side-popup side-popup-left-2">
+//                 <div className="side-popup-icon"><TrendingUp size={20} /></div>
+//                 <div>
+//                     <div className="side-popup-text">Analytics</div>
+//                     <div className="side-popup-sub">Real-time</div>
+//                 </div>
+//             </div> */}
+//             <div className="side-popup side-popup-right-2">
+//                 <div className="side-popup-icon"><CheckCircle2 size={20} /></div>
+//                 <div>
+//                     <div className="side-popup-text">Success</div>
+//                     <div className="side-popup-sub">Guaranteed</div>
+//                 </div>
+//             </div>
+//         </>
+//     );
+// }
 
 const ROLE_DASHBOARD_ROUTE = {
     expert: 'expert-dashboard',
@@ -619,87 +619,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                 </div>
             </section >
 
-            {/* Strategic Support CTA */}
-            < section className="lb-section lb-cta-section" >
-                <div className="lb-container">
-                    <div className="lb-cta-card">
-                        {/* Left */}
-                        <div className="lb-cta-left">
-                            <h2 className="lb-cta-title">Need Strategic Support to Grow?</h2>
-                            <p className="lb-cta-sub">Get matched with the right expert to keep building and marketing your project.</p>
-                            <button className="lb-btn-white" onClick={() => nav('experts')}>Find an expert</button>
-                        </div>
-
-                        {/* Right graphic */}
-                        <div className="lb-cta-right">
-                            <div className="lb-cta-blob lb-cta-blob-1" />
-                            <div className="lb-cta-blob lb-cta-blob-2" />
-
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9, x: 20 }}
-                                whileInView={{ opacity: 1, scale: 1, x: 0 }}
-                                className="lb-cta-widget"
-                            >
-                                <div className="lb-cta-dots">
-                                    <div className="lb-dot" />
-                                    <div className="lb-dot" />
-                                    <div className="lb-dot" />
-                                </div>
-
-                                <div className="lb-cta-services-wrap">
-                                    <div className="lb-cta-services-inner">
-                                        {CTA_SERVICES.map((service, idx) => (
-                                            <motion.div
-                                                key={idx}
-                                                initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                                animate={{
-                                                    opacity: activeCtaIndex === idx ? 1 : 0,
-                                                    y: activeCtaIndex === idx ? 0 : 20,
-                                                    scale: activeCtaIndex === idx ? 1 : 0.9,
-                                                    zIndex: activeCtaIndex === idx ? 20 : 0
-                                                }}
-                                                transition={{ duration: 0.5 }}
-                                                className="lb-cta-service-item"
-                                            >
-                                                <div className="lb-cta-service-icon-wrap">
-                                                    <service.icon className="lb-cta-service-icon" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="lb-cta-service-title">{service.title}</h4>
-                                                    <p className="lb-cta-service-desc">{service.desc}</p>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                    <div className="lb-cta-indicators">
-                                        {CTA_SERVICES.map((_, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`lb-cta-dot ${activeCtaIndex === idx ? 'lb-cta-dot-active' : ''}`}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                animate={{ y: [0, -15, 0] }}
-                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                className="lb-float-icon lb-float-top"
-                            >
-                                <PhoneCall style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} />
-                            </motion.div>
-                            <motion.div
-                                animate={{ y: [0, 15, 0] }}
-                                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                                className="lb-float-icon lb-float-bottom"
-                            >
-                                <Presentation style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} />
-                            </motion.div>
-                        </div>
-                    </div>
-                </div>
-            </section >
+           
 
             {/* Subscriptions */}
             < section id="lb-subscriptions" className="lb-section lb-section-white" >
@@ -948,6 +868,88 @@ export function LandingBoard({ nav, onLogin, experts }) {
                 </div>
             </section >
             )}
+
+             {/* Strategic Support CTA */}
+            < section className="lb-section lb-cta-section" >
+                <div className="lb-container">
+                    <div className="lb-cta-card">
+                        {/* Left */}
+                        <div className="lb-cta-left">
+                            <h2 className="lb-cta-title">Need Strategic Support to Grow?</h2>
+                            <p className="lb-cta-sub">Get matched with the right expert to keep building and marketing your project.</p>
+                            <button className="lb-btn-white" onClick={() => nav('experts')}>Find an expert</button>
+                        </div>
+
+                        {/* Right graphic */}
+                        <div className="lb-cta-right">
+                            <div className="lb-cta-blob lb-cta-blob-1" />
+                            <div className="lb-cta-blob lb-cta-blob-2" />
+
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, x: 20 }}
+                                whileInView={{ opacity: 1, scale: 1, x: 0 }}
+                                className="lb-cta-widget"
+                            >
+                                <div className="lb-cta-dots">
+                                    <div className="lb-dot" />
+                                    <div className="lb-dot" />
+                                    <div className="lb-dot" />
+                                </div>
+
+                                <div className="lb-cta-services-wrap">
+                                    <div className="lb-cta-services-inner">
+                                        {CTA_SERVICES.map((service, idx) => (
+                                            <motion.div
+                                                key={idx}
+                                                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                                                animate={{
+                                                    opacity: activeCtaIndex === idx ? 1 : 0,
+                                                    y: activeCtaIndex === idx ? 0 : 20,
+                                                    scale: activeCtaIndex === idx ? 1 : 0.9,
+                                                    zIndex: activeCtaIndex === idx ? 20 : 0
+                                                }}
+                                                transition={{ duration: 0.5 }}
+                                                className="lb-cta-service-item"
+                                            >
+                                                <div className="lb-cta-service-icon-wrap">
+                                                    <service.icon className="lb-cta-service-icon" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="lb-cta-service-title">{service.title}</h4>
+                                                    <p className="lb-cta-service-desc">{service.desc}</p>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                    <div className="lb-cta-indicators">
+                                        {CTA_SERVICES.map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`lb-cta-dot ${activeCtaIndex === idx ? 'lb-cta-dot-active' : ''}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            <motion.div
+                                animate={{ y: [0, -15, 0] }}
+                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                className="lb-float-icon lb-float-top"
+                            >
+                                <PhoneCall style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} />
+                            </motion.div>
+                            <motion.div
+                                animate={{ y: [0, 15, 0] }}
+                                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                className="lb-float-icon lb-float-bottom"
+                            >
+                                <Presentation style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} />
+                            </motion.div>
+                        </div>
+                    </div>
+                </div>
+            </section >
 
             {/* Footer */}
             < footer className="lb-footer" >
