@@ -186,22 +186,14 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
     handleBuyNow(book);
   };
 
-  const handleCustomCta = (c) => {
-    if (c.ctaType === 'custom') {
-      if (c.link) {
-        window.open(c.link, '_blank', 'noopener,noreferrer');
-      } else {
-        notify('Contact the expert to inquire.');
-      }
-      return;
-    }
-    // 'book', 'contact', and any legacy/missing ctaType all use the same
-    // date-picker + checkout flow as the standard "Book Now" session button.
+  const handleBookCall = (c) => {
     if (!currentUser) {
       goToSignup();
       return;
     }
-    nav('booking', { session: { title: c.title, price: c.price || 'Contact for pricing', duration: c.duration || 'Flexible' } });
+    // A free scheduling call — BookingFlow skips checkout entirely for
+    // freeCall sessions and confirms the meeting right after date/email entry.
+    nav('booking', { session: { title: c.title, duration: c.duration || 'Flexible', freeCall: true } });
   };
 
   if (!expert) return null;
@@ -477,9 +469,19 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             eyebrow="Books"
             title="Published work"
           />
-          <div className="grid-3">
+          <div
+            style={{
+              display: 'flex',
+              gap: 16,
+              overflowX: 'auto',
+              paddingBottom: 10,
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'thin',
+            }}
+          >
             {books.map((b, i) => (
-              <div key={b.title} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div key={b.title} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, flex: '0 0 240px', width: 240, scrollSnapAlign: 'start' }}>
                 <div
                   style={{
                     width: 88,
@@ -732,7 +734,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             <SectionHeader
               icon={<Sparkles size={18} color="var(--teal)" />}
               eyebrow="Custom Offerings"
-              title="Additional ways to work together"
+              
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {customOfferings.map((c) => (
@@ -750,9 +752,18 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                     {c.price && (
                       <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>{c.price.includes('$') ? c.price : `$${c.price}`}</div>
                     )}
-                    <button className="btn btn-gr btn-sm" onClick={() => handleCustomCta(c)}>
-                      {c.ctaType === 'book' ? 'Book Now' : c.ctaType === 'custom' ? (c.ctaLabel || 'Learn More') : 'Book a Call'} →
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-gh btn-sm" onClick={() => handleBookCall(c)}>
+                        Book a Call
+                      </button>
+                      <button
+                        className="btn btn-gr btn-sm"
+                        disabled={checkoutLoading === `prod-${c.title}`}
+                        onClick={() => handleBuyNow(c)}
+                      >
+                        {checkoutLoading === `prod-${c.title}` ? '...' : 'Buy Now'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

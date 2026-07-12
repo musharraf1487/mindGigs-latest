@@ -38,6 +38,7 @@ import {
 import { db } from '../config/firebase';
 
 const BOOKINGS = 'bookings';
+const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL || '';
 
 // ─── CREATE ──────────────────────────────────────────────────────────────────
 
@@ -133,4 +134,28 @@ export async function cancelBooking(bookingId) {
   await updateDoc(doc(db, BOOKINGS, bookingId), {
     status: 'cancelled',
   });
+}
+
+/**
+ * Confirms a free "Book a Call" booking — no Stripe checkout involved.
+ * Calls the backend to create the video room and send the confirmation
+ * email server-side (both require secrets the client can't hold).
+ */
+export async function confirmFreeBooking(bookingId) {
+  if (!FUNCTIONS_URL) {
+    throw new Error('Booking system is not configured. Please contact support.');
+  }
+
+  const response = await fetch(`${FUNCTIONS_URL}/confirmFreeBooking`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookingId }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Booking confirmation failed (${response.status})`);
+  }
+
+  return response.json();
 }

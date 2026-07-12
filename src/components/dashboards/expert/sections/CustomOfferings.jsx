@@ -4,20 +4,11 @@ import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
 
-const CTA_TYPES = [
-  { id: 'book', label: 'Book Now' },
-  { id: 'contact', label: 'Book a Call' },
-  { id: 'custom', label: 'Custom Link' },
-];
-
 const EMPTY_OFFERING = {
   title: '',
   type: '',
   price: '',
   desc: '',
-  ctaType: 'contact',
-  ctaLabel: '',
-  link: '',
   active: true,
 };
 
@@ -75,49 +66,9 @@ function OfferingModal({ offering, onSave, onClose, onDelete }) {
             <textarea className="input" rows={3} value={form.desc} onChange={(e) => set('desc', e.target.value)} placeholder="Describe what this offering includes..." style={{ width: '100%', resize: 'vertical', minHeight: 80 }} />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>What should the button say?</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {CTA_TYPES.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => set('ctaType', c.id)}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, border: '1.5px solid', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s',
-                    borderColor: form.ctaType === c.id ? 'var(--teal)' : 'rgba(0,0,0,0.1)',
-                    background: form.ctaType === c.id ? 'rgba(26,184,160,0.08)' : '#fff',
-                    color: form.ctaType === c.id ? 'var(--teal)' : 'var(--sl)',
-                  }}
-                >{c.label}</button>
-              ))}
-            </div>
-          </div>
-
-          {form.ctaType === 'book' && (
-            <p style={{ fontSize: '0.78rem', color: 'var(--mu)', marginBottom: 20, lineHeight: 1.5 }}>
-              Clicking "Book Now" sends the client into your booking flow with this title and price pre-filled.
-            </p>
-          )}
-
-          {form.ctaType === 'contact' && (
-            <p style={{ fontSize: '0.78rem', color: 'var(--mu)', marginBottom: 20, lineHeight: 1.5 }}>
-              Clicking "Book a Call" sends the client into your booking flow with this title and price pre-filled.
-            </p>
-          )}
-
-          {form.ctaType === 'custom' && (
-            <>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Button Label</label>
-                <input className="input" type="text" value={form.ctaLabel} onChange={(e) => set('ctaLabel', e.target.value)} placeholder="e.g. Apply Now" style={{ width: '100%' }} />
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Link</label>
-                <input className="input" type="url" value={form.link} onChange={(e) => set('link', e.target.value)} placeholder="https://..." style={{ width: '100%' }} />
-              </div>
-            </>
-          )}
+          <p style={{ fontSize: '0.78rem', color: 'var(--mu)', marginBottom: 20, lineHeight: 1.5 }}>
+            Every offering shows both a "Book a Call" and a "Buy Now" button on your public profile — clients can either schedule a free call with you or pay for this offering directly.
+          </p>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, padding: '14px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 10 }}>
             <div>
@@ -153,12 +104,6 @@ function OfferingModal({ offering, onSave, onClose, onDelete }) {
     </div>
   );
 }
-
-const ctaDisplayLabel = (o) => {
-  if (o.ctaType === 'book') return 'Book Now';
-  if (o.ctaType === 'custom') return o.ctaLabel || 'Learn More';
-  return 'Book a Call';
-};
 
 export function CustomOfferings({ user, expertData, notify }) {
   const { currentUser, refreshUserData } = useAuth();
@@ -240,7 +185,7 @@ export function CustomOfferings({ user, expertData, notify }) {
                   {!o.active && <span className="tag tag-gh" style={{ fontSize: '0.65rem' }}>Inactive</span>}
                 </div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>{o.desc || 'No description provided.'}</p>
-                <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>Button: <strong style={{ color: 'var(--teal)' }}>{ctaDisplayLabel(o)}</strong></div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>Buttons: <strong style={{ color: 'var(--teal)' }}>Book a Call · Buy Now</strong></div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, minWidth: 120 }}>
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gb)' }}>{o.price ? (o.price.includes('$') ? o.price : `$${o.price}`) : 'Custom'}</div>

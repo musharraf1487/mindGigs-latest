@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, ArrowLeft, ArrowRight, ChevronRight, User, Calendar, Lock, Loader } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { createBooking, getExpertBookings } from '../../services/bookingService';
+import { createBooking, getExpertBookings, confirmFreeBooking } from '../../services/bookingService';
 import { initiatePayment } from '../../services/stripeService';
 import { lookupAffiliateCode } from '../../services/affiliateService';
 import { getAvailableTimesForDay, getAvailableDaysInMonth, buildTakenSlotsMap } from '../../services/availabilityService';
@@ -15,10 +15,13 @@ export function BookingFlow({ nav, notify, expert, session }) {
   // Use fallbacks to prevent crashes if data is missing, but prioritize passed props
   const expertName = expert?.name || 'Expert';
   const sessionTitle = session?.title || '60-min Strategy Deep Dive';
+  const isFreeCall = !!session?.freeCall;
   const rawSessionPrice = session?.price || '$250';
   // Custom offerings without a set price fall through as "Contact for pricing" —
   // only prepend $ when the value actually looks like an amount (has a digit).
-  const sessionPrice = rawSessionPrice.includes('$') || !/\d/.test(rawSessionPrice)
+  const sessionPrice = isFreeCall
+    ? 'Free'
+    : rawSessionPrice.includes('$') || !/\d/.test(rawSessionPrice)
     ? rawSessionPrice
     : `$${rawSessionPrice}`;
   const sessionDuration = session?.duration || '60 min';
@@ -142,6 +145,45 @@ export function BookingFlow({ nav, notify, expert, session }) {
     }
   };
 
+  // Handle a free "Book a Call" booking — no Stripe checkout, meeting +
+  // confirmation email are created immediately via confirmFreeBooking.
+  const handleFreeBooking = async () => {
+    if (!currentUser) {
+      notify('Please log in to book a call.', 'warn');
+      nav('login', { role: 'client' });
+      return;
+    }
+
+    if (!email) {
+      notify('Please enter your email address.', 'warn');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newBookingId = await createBooking({
+        expertId: expert?.id || expert?.uid || 'unknown',
+        clientId: currentUser.uid,
+        expertName: expertName,
+        clientName: userData?.name || currentUser.email || 'Client',
+        date: `${currentMonth} ${selectedDay}`,
+        time: selectedTime,
+        sessionTitle: sessionTitle,
+        price: 0,
+        clientEmail: email,
+      });
+
+      setBookingId(newBookingId);
+      await confirmFreeBooking(newBookingId);
+      setStep(2);
+    } catch (error) {
+      console.error('Free call booking error:', error);
+      notify(error?.message || 'Failed to book the call. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (step === 2)
     return (
       <div
@@ -170,13 +212,13 @@ export function BookingFlow({ nav, notify, expert, session }) {
             }}
           >
             Your <strong>{sessionTitle}</strong> with <strong>{expertName}</strong> is confirmed for <strong>{currentMonth} {selectedDay}, {selectedTime}</strong>. A
-            calendar invite and Zoom link have been sent to your email.
+            calendar invite and video call link have been sent to your email.
           </p>
 
-          {/* Payment status badge */}
+          {/* Status badge */}
           <div style={{ marginBottom: 24 }}>
             <span className="tag tag-gr" style={{ fontSize: '.78rem', padding: '6px 16px' }}>
-              ✓ Paid
+              {isFreeCall ? '✓ Confirmed' : '✓ Paid'}
             </span>
           </div>
 
@@ -217,7 +259,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 32 }}>
-          {['Select Date & Time', 'Checkout'].map((s, i) => (
+          {['Select Date & Time', isFreeCall ? 'Confirm Details' : 'Checkout'].map((s, i) => (
             <div
               key={s}
               style={{
@@ -350,7 +392,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
                 else notify('Please select a date and time.', 'warn');
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>Continue to Checkout <ArrowRight size={16} /></div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>{isFreeCall ? 'Continue' : 'Continue to Checkout'} <ArrowRight size={16} /></div>
             </button>
           </div>
         )}
@@ -365,7 +407,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
                 marginBottom: 20,
               }}
             >
-              Order Summary
+              {isFreeCall ? 'Confirm Your Call' : 'Order Summary'}
             </div>
             <div
               style={{
@@ -432,80 +474,100 @@ export function BookingFlow({ nav, notify, expert, session }) {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="field">
-              <label className="label">Coupon Code (optional)</label>
-              <input
-                className="input"
-                placeholder="Have a coupon code?"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label className="label">Note to Expert (optional)</label>
-              <textarea
-                className="textarea"
-                placeholder="What do you want to focus on in this session?"
-                style={{ minHeight: 70 }}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
-            <div
-              style={{
-                borderTop: '1px solid rgba(255,155,81,.08)',
-                paddingTop: 16,
-                marginBottom: 20,
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'var(--fu)',
-                  fontWeight: 700,
-                  fontSize: '1rem',
-                  color: 'var(--gd)',
-                }}
+
+            {isFreeCall ? (
+              <button
+                className="btn btn-gr w-full btn-lg"
+                style={{ marginTop: 8 }}
+                onClick={handleFreeBooking}
+                disabled={isProcessing}
               >
-                Total
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--fu)',
-                  fontWeight: 800,
-                  fontSize: '1.3rem',
-                  color: 'var(--gd)',
-                }}
-              >
-                {sessionPrice}
-              </span>
-            </div>
-            <button
-              className="btn w-full btn-lg"
-              style={{
-                background: isProcessing ? '#8b85ff' : '#635bff',
-                color: '#fff',
-                fontFamily: 'var(--fu)',
-                fontWeight: 700,
-                fontSize: '1rem',
-                opacity: isProcessing ? 0.8 : 1,
-                cursor: isProcessing ? 'wait' : 'pointer',
-              }}
-              onClick={handlePayment}
-              disabled={isProcessing}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                {isProcessing ? (
-                  <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
-                ) : (
-                  <><Lock size={16} /> Pay & Book</>
-                )}
-              </div>
-            </button>
-            <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--mu)', marginTop: 12 }}>
-              Secured by Stripe · 256-bit encryption
-            </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  {isProcessing ? (
+                    <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Booking...</>
+                  ) : (
+                    'Book Now'
+                  )}
+                </div>
+              </button>
+            ) : (
+              <>
+                <div className="field">
+                  <label className="label">Coupon Code (optional)</label>
+                  <input
+                    className="input"
+                    placeholder="Have a coupon code?"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">Note to Expert (optional)</label>
+                  <textarea
+                    className="textarea"
+                    placeholder="What do you want to focus on in this session?"
+                    style={{ minHeight: 70 }}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </div>
+                <div
+                  style={{
+                    borderTop: '1px solid rgba(255,155,81,.08)',
+                    paddingTop: 16,
+                    marginBottom: 20,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--fu)',
+                      fontWeight: 700,
+                      fontSize: '1rem',
+                      color: 'var(--gd)',
+                    }}
+                  >
+                    Total
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--fu)',
+                      fontWeight: 800,
+                      fontSize: '1.3rem',
+                      color: 'var(--gd)',
+                    }}
+                  >
+                    {sessionPrice}
+                  </span>
+                </div>
+                <button
+                  className="btn w-full btn-lg"
+                  style={{
+                    background: isProcessing ? '#8b85ff' : '#635bff',
+                    color: '#fff',
+                    fontFamily: 'var(--fu)',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    opacity: isProcessing ? 0.8 : 1,
+                    cursor: isProcessing ? 'wait' : 'pointer',
+                  }}
+                  onClick={handlePayment}
+                  disabled={isProcessing}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    {isProcessing ? (
+                      <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                    ) : (
+                      <><Lock size={16} /> Pay & Book</>
+                    )}
+                  </div>
+                </button>
+                <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--mu)', marginTop: 12 }}>
+                  Secured by Stripe · 256-bit encryption
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>

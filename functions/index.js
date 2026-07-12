@@ -4,6 +4,7 @@
  * Functions:
  *   createCheckoutSession  — called by frontend, creates a Stripe Checkout session
  *   stripeWebhook          — called by Stripe after payment, source of truth for all money logic
+ *   confirmFreeBooking     — called by frontend, confirms a free "Book a Call" booking (no payment)
  *   adminDeleteUser        — called by the Admin Dashboard, permanently removes a user profile
  *
  * Environment variables (set via Firebase CLI):
@@ -679,6 +680,66 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
   } catch (err) {
     console.error('[stripeWebhook] Error processing payment:', err);
     return res.status(200).json({ received: true, error: err.message });
+  }
+});
+
+// ─── confirmFreeBooking ────────────────────────────────────────────────────────
+/**
+ * Confirms a free "Book a Call" booking — no payment is involved. Called by
+ * the frontend immediately after the booking doc is created, this creates
+ * the Daily.co room, generates the Google Calendar link, and sends the
+ * confirmation email, mirroring what stripeWebhook does for paid bookings
+ * (minus payment/commission handling, since nothing was charged).
+ *
+ * Request body: { bookingId }
+ */
+exports.confirmFreeBooking = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY', 'DAILY_API_KEY'] }, async (req, res) => {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { bookingId } = req.body || {};
+  if (!bookingId) return res.status(400).json({ error: 'bookingId is required' });
+
+  try {
+    const bookingRef = db.collection('bookings').doc(bookingId);
+    const bookingSnap = await bookingRef.get();
+    if (!bookingSnap.exists) return res.status(404).json({ error: 'Booking not found' });
+
+    await bookingRef.update({
+      status: 'confirmed',
+      paymentStatus: 'free',
+      confirmedAt: new Date().toISOString(),
+    });
+
+    const booking = bookingSnap.data();
+    const room = await createDailyRoom(bookingId, booking.date, booking.time);
+    if (room && room.url) {
+      await bookingRef.update({ dailyRoomUrl: room.url, dailyRoomName: room.name || '' });
+      console.log(`[Daily.co] Room created for free booking: ${room.url}`);
+    }
+
+    const freshSnap = await bookingRef.get();
+    const freshBooking = freshSnap.data();
+
+    let calendarLink = null;
+    try {
+      calendarLink = generateCalendarLink(freshBooking);
+      if (calendarLink) await bookingRef.update({ calendarLink });
+    } catch (err) {
+      console.error('[confirmFreeBooking] Failed to generate calendar link:', err);
+    }
+
+    try {
+      await sendConfirmationEmail({ ...freshBooking, calendarLink: calendarLink || freshBooking.calendarLink });
+    } catch (err) {
+      console.error('[confirmFreeBooking] Failed to send confirmation email:', err);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('[confirmFreeBooking] Error:', err);
+    return res.status(500).json({ error: 'Failed to confirm booking.' });
   }
 });
 
