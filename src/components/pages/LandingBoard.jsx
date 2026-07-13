@@ -485,7 +485,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         <h1 className="lb-hero-title">
                             Stuck on something?{' '}
                             <br />
-                            Borrow a {' '}
+                            Book a {' '}
                             <span className="lb-hero-accent">brilliant mind.</span>
                         </h1>
 
@@ -495,7 +495,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         {/* CTA Buttons */}
                         <div className="lb-hero-cta">
                             <button className="lb-btn-hire" onClick={() => nav('experts')}>
-                                Hire an Expert
+                                Book an Expert
                             </button>
                             <button className="lb-btn-become" onClick={handleJoinAsExpert}>
                                 Become an Expert
