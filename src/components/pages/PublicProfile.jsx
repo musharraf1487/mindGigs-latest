@@ -189,6 +189,10 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
     handleBuyNow(book);
   };
 
+  const handleOpenBook = (book) => {
+    nav('book-detail', { book, expertId: expert?.id || expert?.uid, expert });
+  };
+
   const handleBookCall = (c) => {
     if (!currentUser) {
       goToSignup();
@@ -498,6 +502,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             {books.map((b, i) => (
               <div key={b.title} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, flex: '0 0 240px', width: 240, scrollSnapAlign: 'start' }}>
                 <div
+                  onClick={() => handleOpenBook(b)}
                   style={{
                     width: 88,
                     aspectRatio: '2/3',
@@ -509,6 +514,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
+                    cursor: 'pointer',
                   }}
                 >
                   {b.coverUrl ? (
@@ -519,7 +525,10 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                   <div>
-                    <div style={{ fontFamily: 'var(--fu)', fontSize: '1rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.3 }}>
+                    <div
+                      onClick={() => handleOpenBook(b)}
+                      style={{ fontFamily: 'var(--fu)', fontSize: '1rem', fontWeight: 700, color: 'var(--gd)', lineHeight: 1.3, cursor: 'pointer' }}
+                    >
                       {b.title}
                     </div>
                     {b.author && (

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, BookOpen, X } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ReorderArrows } from '../../../common/ReorderArrows';
+import { FormattingToolbar } from '../../../common/FormattingToolbar';
 import { formatOfferPrice } from '../../../../utils/price';
+import { renderFormattedText } from '../../../../utils/richText';
 
 const CTA_OPTIONS = ['Buy Now', 'Buy on Amazon'];
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
@@ -20,6 +22,8 @@ const EMPTY_BOOK = {
   link: '',
   deliveryLink: '',
   coverUrl: null,
+  backCoverUrl: null,
+  overview: '',
   active: true,
 };
 
@@ -54,8 +58,12 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
   const [form, setForm] = useState(book || EMPTY_BOOK);
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(book?.coverUrl || null);
+  const [backCoverFile, setBackCoverFile] = useState(null);
+  const [backCoverPreview, setBackCoverPreview] = useState(book?.backCoverUrl || null);
   const [dragging, setDragging] = useState(false);
+  const [backDragging, setBackDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const overviewRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -82,6 +90,29 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
     set('coverUrl', null);
   };
 
+  const handleBackFile = (file) => {
+    if (!file || !ACCEPTED_TYPES.includes(file.type)) {
+      notify && notify('Please upload a PNG or JPEG image.', 'warn');
+      return;
+    }
+    setBackCoverFile(file);
+    setBackCoverPreview(URL.createObjectURL(file));
+  };
+
+  const handleBackDrop = (e) => {
+    e.preventDefault();
+    setBackDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleBackFile(file);
+  };
+
+  const removeBackCover = (e) => {
+    e.stopPropagation();
+    setBackCoverFile(null);
+    setBackCoverPreview(null);
+    set('backCoverUrl', null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
@@ -97,7 +128,13 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
         await uploadBytes(storageRef, coverFile);
         coverUrl = await getDownloadURL(storageRef);
       }
-      onSave({ ...form, coverUrl });
+      let backCoverUrl = form.backCoverUrl || null;
+      if (backCoverFile && currentUser) {
+        const backStorageRef = ref(storage, `books/${currentUser.uid}/${Date.now()}-back-${backCoverFile.name}`);
+        await uploadBytes(backStorageRef, backCoverFile);
+        backCoverUrl = await getDownloadURL(backStorageRef);
+      }
+      onSave({ ...form, coverUrl, backCoverUrl });
     } catch (err) {
       console.error('Failed to upload cover image:', err);
       notify && notify('Failed to upload cover image. Please try again.', 'error');
@@ -169,6 +206,52 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
             </div>
           </div>
 
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>
+              Back Cover Image <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PNG or JPG, optional)</span>
+            </label>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setBackDragging(true); }}
+              onDragLeave={() => setBackDragging(false)}
+              onDrop={handleBackDrop}
+              onClick={() => document.getElementById('book-back-cover-input').click()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 16, padding: 16,
+                border: `2px dashed ${backDragging ? 'var(--teal)' : 'rgba(0,0,0,0.12)'}`,
+                borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                background: backDragging ? 'rgba(26,184,160,0.04)' : 'rgba(0,0,0,0.01)',
+              }}
+            >
+              <input
+                id="book-back-cover-input"
+                type="file"
+                accept="image/png,image/jpeg"
+                style={{ display: 'none' }}
+                onChange={(e) => handleBackFile(e.target.files[0])}
+              />
+              <div style={{ position: 'relative' }}>
+                <BookCoverThumb coverUrl={backCoverPreview} />
+                {backCoverPreview && (
+                  <button
+                    type="button"
+                    onClick={removeBackCover}
+                    style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid rgba(0,0,0,0.12)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <X size={12} color="var(--sl)" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gd)' }}>
+                  {backCoverPreview ? 'Change back cover image' : 'Upload back cover image'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 4 }}>
+                  Shown alongside the front cover on the book's detail page
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Book Title <span style={{ color: '#e84444' }}>*</span></label>
             <input className="input" type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. The Founder's Playbook" required style={{ width: '100%' }} />
@@ -184,6 +267,32 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Tagline</label>
             <input className="input" type="text" value={form.tagline} onChange={(e) => set('tagline', e.target.value)} placeholder="One-line description of the book" style={{ width: '100%' }} />
+            <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>Shown on your profile's book card</div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>
+              Overview <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <FormattingToolbar textareaRef={overviewRef} value={form.overview} onChange={(v) => set('overview', v)} />
+            <textarea
+              ref={overviewRef}
+              className="input"
+              rows={4}
+              value={form.overview}
+              onChange={(e) => set('overview', e.target.value)}
+              placeholder="A detailed description shown on the book's own detail page..."
+              style={{ width: '100%', resize: 'vertical', minHeight: 100 }}
+            />
+            <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>
+              Shown on the book's dedicated detail page, opened when clicking the cover on your profile
+            </div>
+            {form.overview && (
+              <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, fontSize: '0.82rem', color: 'var(--sl)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', marginBottom: 6 }}>Preview</div>
+                {renderFormattedText(form.overview)}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>

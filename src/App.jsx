@@ -6,6 +6,7 @@ import { SignupPage } from './components/pages/SignupPage';
 import { OnboardingPage } from './components/pages/OnboardingPage';
 import { PublicProfile } from './components/pages/PublicProfile';
 import { BookingFlow } from './components/pages/BookingFlow';
+import { BookDetailPage } from './components/pages/BookDetailPage';
 import { ExpertsDirectory } from './components/pages/ExpertsDirectory';
 import { LandingBoard } from './components/pages/LandingBoard';
 import { ExpertDashboard } from './components/dashboards/expert/ExpertDashboard';
@@ -68,6 +69,7 @@ export default function App() {
   const [activeExpert, setActiveExpert] = useState(null);
   const [activeExpertId, setActiveExpertId] = useState(() => window.history.state?.expertId || null);
   const [activeSession, setActiveSession] = useState(null);
+  const [activeBook, setActiveBook] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [signupRole, setSignupRole] = useState('expert');
   // Path A referral tracking: which expert's profile link a signup came
@@ -101,7 +103,7 @@ export default function App() {
   // History state init + popstate handler
   useEffect(() => {
     if (!window.history.state?.page) {
-      window.history.replaceState({ page: 'landingboard', expertId: null, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, showLoginSelector: false }, '', window.location.href);
+      window.history.replaceState({ page: 'landingboard', expertId: null, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null, showLoginSelector: false }, '', window.location.href);
     }
     const handlePopState = (e) => {
       const s = e.state;
@@ -119,6 +121,7 @@ export default function App() {
       if (s.signupExpertId !== undefined) setSignupExpertId(s.signupExpertId);
       if (s.category !== undefined) setActiveCategory(s.category);
       if (s.activeSession !== undefined) setActiveSession(s.activeSession);
+      if (s.activeBook !== undefined) setActiveBook(s.activeBook);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -152,7 +155,7 @@ export default function App() {
             setActiveExpertId(match.id);
             setPage('public-profile');
             window.history.replaceState(
-              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null },
+              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null },
               '',
               '/' + pendingSlug
             );
@@ -199,7 +202,7 @@ export default function App() {
 
   const openLoginSelector = () => {
     setShowLoginSelector(true);
-    window.history.pushState({ page, expertId: activeExpertId, category: activeCategory, loginRole, signupRole, signupExpertId, activeSession, showLoginSelector: true }, '', window.location.href);
+    window.history.pushState({ page, expertId: activeExpertId, category: activeCategory, loginRole, signupRole, signupExpertId, activeSession, activeBook, showLoginSelector: true }, '', window.location.href);
   };
 
   const nav = (p, ctx) => {
@@ -233,6 +236,8 @@ export default function App() {
     else if (p !== 'experts') setActiveCategory(null);
     if (ctx?.session !== undefined) setActiveSession(ctx.session);
     else if (p !== 'booking') setActiveSession(null);
+    if (ctx?.book !== undefined) setActiveBook(ctx.book);
+    else if (p !== 'book-detail') setActiveBook(null);
 
     // Give an expert's public profile a real, shareable address-bar path.
     // Every other page keeps today's behavior (URL left untouched) to avoid
@@ -254,6 +259,7 @@ export default function App() {
       signupRole: p === 'signup' ? (ctx?.role || signupRole) : signupRole,
       signupExpertId: p === 'signup' ? (ctx?.expertId ?? null) : signupExpertId,
       activeSession: p === 'booking' ? (ctx?.session || activeSession) : null,
+      activeBook: p === 'book-detail' ? (ctx?.book || activeBook) : null,
     }, '', urlPath);
     setPage(p);
   };
@@ -277,6 +283,7 @@ export default function App() {
       {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={openLoginSelector} experts={experts} selectedCategory={activeCategory} />}
       {page === 'public-profile' && <PublicProfile nav={nav} notify={notify} expert={resolvedExpert} />}
       {page === 'booking' && <BookingFlow nav={nav} notify={notify} expert={resolvedExpert} session={activeSession} />}
+      {page === 'book-detail' && <BookDetailPage nav={nav} notify={notify} expert={resolvedExpert} book={activeBook} />}
       {page === 'expert-dashboard' && userData?.role === 'expert' && <ExpertDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
       {page === 'admin-dashboard' && userData?.role === 'admin' && <AdminDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
       {page === 'affiliate-dashboard' && userData?.role === 'affiliate' && <AffiliateDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
