@@ -19,6 +19,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
 import { formatOfferPrice } from '../../utils/price';
+import { renderFormattedText } from '../../utils/richText';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 const BIO_PREVIEW_LENGTH = 300;
@@ -760,7 +761,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                         {c.type}
                       </span>
                     )}
-                    {c.desc && <div style={{ fontSize: '.9rem', color: 'var(--sl)' }}>{c.desc}</div>}
+                    {c.desc && renderFormattedText(c.desc, { fontSize: '.9rem', color: 'var(--sl)' })}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                     {c.price && (

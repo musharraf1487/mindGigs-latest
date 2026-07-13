@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Trash2, Sparkles, Bold, Italic, Underline, List } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
 import { ReorderArrows } from '../../../common/ReorderArrows';
 import { formatOfferPrice } from '../../../../utils/price';
+import { renderFormattedText } from '../../../../utils/richText';
 
 const EMPTY_OFFERING = {
   title: '',
@@ -14,11 +15,66 @@ const EMPTY_OFFERING = {
   active: true,
 };
 
+const toolbarBtnStyle = {
+  width: 30,
+  height: 30,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 6,
+  border: '1px solid rgba(0,0,0,0.1)',
+  background: '#fff',
+  cursor: 'pointer',
+  color: 'var(--sl)',
+};
+
 function OfferingModal({ offering, onSave, onClose, onDelete }) {
   const isNew = !offering;
   const [form, setForm] = useState(offering || EMPTY_OFFERING);
+  const descRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  // Wraps the current textarea selection with formatting markers (e.g. "**"
+  // for bold). If nothing is selected, inserts placeholder text pre-selected
+  // so typing immediately replaces it.
+  const wrapSelection = (before, after = before, placeholder = 'text') => {
+    const ta = descRef.current;
+    if (!ta) return;
+    const { selectionStart: start, selectionEnd: end, value } = ta;
+    const hasSelection = end > start;
+    const selected = hasSelection ? value.slice(start, end) : placeholder;
+    const newValue = value.slice(0, start) + before + selected + after + value.slice(end);
+    set('desc', newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + before.length, start + before.length + selected.length);
+    });
+  };
+
+  // Toggles "- " bullet prefixes on every line the selection touches.
+  const toggleBulletLines = () => {
+    const ta = descRef.current;
+    if (!ta) return;
+    const { selectionStart: start, selectionEnd: end, value } = ta;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    let lineEnd = value.indexOf('\n', end);
+    if (lineEnd === -1) lineEnd = value.length;
+    const block = value.slice(lineStart, lineEnd);
+    const lines = block.split('\n');
+    const allBulleted = lines.every((l) => l.trim() === '' || /^\s*-\s/.test(l));
+    const newLines = lines.map((l) => {
+      if (l.trim() === '') return l;
+      return allBulleted ? l.replace(/^(\s*)-\s/, '$1') : `- ${l}`;
+    });
+    const newBlock = newLines.join('\n');
+    const newValue = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+    set('desc', newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(lineStart, lineStart + newBlock.length);
+    });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -65,7 +121,27 @@ function OfferingModal({ offering, onSave, onClose, onDelete }) {
 
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Description</label>
-            <textarea className="input" rows={3} value={form.desc} onChange={(e) => set('desc', e.target.value)} placeholder="Describe what this offering includes..." style={{ width: '100%', resize: 'vertical', minHeight: 80 }} />
+            <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+              <button type="button" title="Bold" onClick={() => wrapSelection('**')} style={toolbarBtnStyle}><Bold size={14} /></button>
+              <button type="button" title="Italic" onClick={() => wrapSelection('*')} style={toolbarBtnStyle}><Italic size={14} /></button>
+              <button type="button" title="Underline" onClick={() => wrapSelection('__')} style={toolbarBtnStyle}><Underline size={14} /></button>
+              <button type="button" title="Bullet list" onClick={toggleBulletLines} style={toolbarBtnStyle}><List size={14} /></button>
+            </div>
+            <textarea
+              ref={descRef}
+              className="input"
+              rows={4}
+              value={form.desc}
+              onChange={(e) => set('desc', e.target.value)}
+              placeholder="Describe what this offering includes..."
+              style={{ width: '100%', resize: 'vertical', minHeight: 100 }}
+            />
+            {form.desc && (
+              <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, fontSize: '0.82rem', color: 'var(--sl)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', marginBottom: 6 }}>Preview</div>
+                {renderFormattedText(form.desc)}
+              </div>
+            )}
           </div>
 
           <p style={{ fontSize: '0.78rem', color: 'var(--mu)', marginBottom: 20, lineHeight: 1.5 }}>
@@ -195,7 +271,11 @@ export function CustomOfferings({ user, expertData, notify }) {
                   {o.type && <span className="tag tag-tl" style={{ fontSize: '0.65rem' }}>{o.type}</span>}
                   {!o.active && <span className="tag tag-gh" style={{ fontSize: '0.65rem' }}>Inactive</span>}
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>{o.desc || 'No description provided.'}</p>
+                {o.desc ? (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>{renderFormattedText(o.desc)}</div>
+                ) : (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>No description provided.</p>
+                )}
                 <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>Buttons: <strong style={{ color: 'var(--teal)' }}>Book a Call · Buy Now</strong></div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, minWidth: 120 }}>
