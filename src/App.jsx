@@ -18,6 +18,7 @@ import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { RESERVED_HANDLES, normalizeHandle } from './services/handleService';
+import { slugify } from './utils/slug';
 
 import './styles/globals.css';
 import './styles/utilities.css';
@@ -79,11 +80,15 @@ export default function App() {
   const [signupExpertId, setSignupExpertId] = useState(() => window.history.state?.signupExpertId ?? null);
   const [loginEmailHint, setLoginEmailHint] = useState('');
   const [preLoginPage, setPreLoginPage] = useState('landingboard');
-  // A bare path like mindgigs.com/username may be an expert's vanity URL —
-  // held here until the experts list loads and we can resolve it by handle.
-  const [pendingSlug, setPendingSlug] = useState(() => {
-    const slug = normalizeHandle(window.location.pathname.replace(/^\/+|\/+$/g, ''));
-    return slug && !RESERVED_HANDLES.has(slug) ? slug : null;
+  // A bare path like mindgigs.com/username is an expert's vanity URL, and
+  // mindgigs.com/username/book-slug is a shareable link to one of their
+  // books — held here until the experts list loads and we can resolve it.
+  const [pendingPath, setPendingPath] = useState(() => {
+    const parts = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+    if (parts.length === 0) return null;
+    const handle = normalizeHandle(parts[0]);
+    if (!handle || RESERVED_HANDLES.has(handle)) return null;
+    return { handle, bookSlug: parts[1] ? parts[1].toLowerCase() : null };
   });
 
   // Handle Stripe redirect return (?payment=success or ?payment=cancelled)
@@ -144,23 +149,36 @@ export default function App() {
         // — direct vanity-URL links below still resolve against the full list.
         setExperts(live.filter(e => e.profileActive !== false));
 
-        // Resolve a pending vanity-URL slug against the freshly-loaded expert
+        // Resolve a pending vanity-URL path against the freshly-loaded expert
         // list. Only runs once — cleared below regardless of outcome, so a
         // later re-fetch (e.g. after login) can't re-trigger vanity routing
         // after the user has already navigated elsewhere.
-        if (pendingSlug) {
-          const match = live.find(e => e.handle === pendingSlug);
+        if (pendingPath) {
+          const match = live.find(e => e.handle === pendingPath.handle);
           if (match) {
+            const book = pendingPath.bookSlug
+              ? (match.booksList || []).find(b => slugify(b.title) === pendingPath.bookSlug)
+              : null;
             setActiveExpert(match);
             setActiveExpertId(match.id);
-            setPage('public-profile');
-            window.history.replaceState(
-              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null },
-              '',
-              '/' + pendingSlug
-            );
+            if (book) {
+              setActiveBook(book);
+              setPage('book-detail');
+              window.history.replaceState(
+                { page: 'book-detail', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: book },
+                '',
+                `/${pendingPath.handle}/${pendingPath.bookSlug}`
+              );
+            } else {
+              setPage('public-profile');
+              window.history.replaceState(
+                { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null },
+                '',
+                '/' + pendingPath.handle
+              );
+            }
           }
-          setPendingSlug(null);
+          setPendingPath(null);
         }
       } catch (err) {
         console.error('Error fetching experts:', err);
@@ -247,7 +265,10 @@ export default function App() {
     let urlPath = window.location.href;
     if (p === 'public-profile') {
       urlPath = resolvedForNav?.handle ? '/' + resolvedForNav.handle : '/';
-    } else if (page === 'public-profile') {
+    } else if (p === 'book-detail') {
+      const bookSlug = ctx?.book?.title ? slugify(ctx.book.title) : '';
+      urlPath = resolvedForNav?.handle && bookSlug ? `/${resolvedForNav.handle}/${bookSlug}` : '/';
+    } else if (page === 'public-profile' || page === 'book-detail') {
       urlPath = '/';
     }
 

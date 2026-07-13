@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen, Share2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { initiateProductPayment } from '../../services/stripeService';
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
+import { slugify } from '../../utils/slug';
 
 function CoverPanel({ url, label }) {
   return (
@@ -74,14 +75,26 @@ export function BookDetailPage({ nav, notify, expert, book }) {
     }
   };
 
+  const handleShare = () => {
+    if (!expert?.handle) { notify('This profile has no public link yet.', 'warn'); return; }
+    const url = `https://mindgigs.com/${expert.handle}/${slugify(book.title)}`;
+    navigator.clipboard.writeText(url);
+    notify('Book link copied!');
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gmt)', padding: '80px 24px 64px' }}>
       <div style={{ maxWidth: 880, margin: '0 auto' }}>
-        <div
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 32, fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)' }}
-          onClick={() => nav('public-profile')}
-        >
-          <ArrowLeft size={18} /> Back to {expert?.name ? `${expert.name}'s Profile` : 'Profile'}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
+          <div
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)' }}
+            onClick={() => nav('public-profile')}
+          >
+            <ArrowLeft size={18} /> Back to {expert?.name ? `${expert.name}'s Profile` : 'Profile'}
+          </div>
+          <button className="btn btn-gh btn-sm" onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Share2 size={14} /> Share
+          </button>
         </div>
 
         <div className="card" style={{ padding: 40 }}>
