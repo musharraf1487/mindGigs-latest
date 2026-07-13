@@ -334,7 +334,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <XLogo size={16} /> X
+                  <XLogo size={16} />
                 </a>
               )}
               {expert.linkedin && (
