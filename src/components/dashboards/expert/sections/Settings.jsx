@@ -22,6 +22,7 @@ export function Settings({ user, notify, logout, nav }) {
   const [tags, setTags] = useState((user?.tags || []).join(', '));
   const [linkedin, setLinkedin] = useState(user?.linkedin || '');
   const [twitter, setTwitter] = useState(user?.twitter || '');
+  const [youtube, setYoutube] = useState(user?.youtube || '');
   const [loading, setLoading] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -58,6 +59,7 @@ export function Settings({ user, notify, logout, nav }) {
     setTags((user?.tags || []).join(', '));
     setLinkedin(user?.linkedin || '');
     setTwitter(user?.twitter || '');
+    setYoutube(user?.youtube || '');
     setHandle(user?.handle || '');
   }, [user]);
 
@@ -120,6 +122,7 @@ export function Settings({ user, notify, logout, nav }) {
         tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         linkedin: linkedin || null,
         twitter: twitter || null,
+        youtube: youtube || null,
         image: photoUrl,
       });
       setAvatarFile(null);
@@ -292,14 +295,28 @@ export function Settings({ user, notify, logout, nav }) {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>Twitter / X (optional)</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>X (optional)</label>
               <input
                 type="text"
                 className="input"
                 value={twitter}
                 onChange={(e) => setTwitter(e.target.value)}
                 style={{ width: '100%' }}
-                placeholder="https://twitter.com/yourhandle"
+                placeholder="https://x.com/yourhandle"
+              />
+            </div>
+          </div>
+
+          <div className="grid-2" style={{ gap: '24px', marginBottom: '24px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>YouTube (optional)</label>
+              <input
+                type="text"
+                className="input"
+                value={youtube}
+                onChange={(e) => setYoutube(e.target.value)}
+                style={{ width: '100%' }}
+                placeholder="https://youtube.com/@yourchannel"
               />
             </div>
           </div>

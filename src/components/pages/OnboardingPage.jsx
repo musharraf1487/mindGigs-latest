@@ -51,6 +51,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
   const [tags, setTags] = useState('');
   const [linkedin, setLinkedin] = useState('');
   const [twitter, setTwitter] = useState('');
+  const [youtube, setYoutube] = useState('');
 
   // 1:1 Session
   const [sessionTitle, setSessionTitle] = useState('');
@@ -239,8 +240,12 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                 <input className="input" placeholder="https://linkedin.com/in/yourname" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
               </div>
               <div className="field">
-                <label className="label">Twitter / X (optional)</label>
-                <input className="input" placeholder="https://twitter.com/yourhandle" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
+                <label className="label">X (optional)</label>
+                <input className="input" placeholder="https://x.com/yourhandle" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">YouTube (optional)</label>
+                <input className="input" placeholder="https://youtube.com/@yourchannel" value={youtube} onChange={(e) => setYoutube(e.target.value)} />
               </div>
             </>
           )}
@@ -483,6 +488,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                       bio: bio || '',
                       linkedin: linkedin || null,
                       twitter: twitter || null,
+                      youtube: youtube || null,
                       rating: userData?.rating ?? 0,
                       sessions: userData?.sessions ?? 0,
                       startingPrice,

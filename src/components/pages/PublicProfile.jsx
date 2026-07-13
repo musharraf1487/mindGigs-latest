@@ -5,8 +5,9 @@ import {
   Package,
   Share2,
   BookOpen,
-  Twitter,
+  X as XLogo,
   Linkedin,
+  Youtube,
   FileText,
   Clock,
   Check,
@@ -318,7 +319,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             )}
           </div>
 
-          {(expert.tags?.length > 0 || expert.twitter || expert.linkedin) && (
+          {(expert.tags?.length > 0 || expert.twitter || expert.linkedin || expert.youtube) && (
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 16 }}>
               {expert.tags?.map((t) => (
                 <span key={t} className="tag tag-gr">{t}</span>
@@ -328,11 +329,11 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   href={expert.twitter.startsWith('http') ? expert.twitter : `https://${expert.twitter}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: '.85rem', color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+                  style={{ fontSize: '.85rem', color: 'var(--gd)', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <Twitter size={16} /> Twitter
+                  <XLogo size={16} /> X
                 </a>
               )}
               {expert.linkedin && (
@@ -345,6 +346,18 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
                   <Linkedin size={16} color="#0A66C2" /> LinkedIn
+                </a>
+              )}
+              {expert.youtube && (
+                <a
+                  href={expert.youtube.startsWith('http') ? expert.youtube : `https://${expert.youtube}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '.85rem', color: '#FF0000', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  <Youtube size={16} color="#FF0000" /> YouTube
                 </a>
               )}
             </div>

@@ -80,7 +80,9 @@ async function createDailyRoom(bookingId, dateStr, timeStr) {
 }
 
 // ─── Helper: Google Calendar link generation ──────────────────────────────────
-function generateCalendarLink(booking) {
+// `titleOverride` lets the expert's version of the link show the client's name
+// instead of the expert's own name (which is what the client's link shows).
+function generateCalendarLink(booking, titleOverride) {
   if (!booking || !booking.date || !booking.time) return null;
 
   // Reconstruct a real Date from the freeform "date"/"time" strings (no year on booking.date, so assume current year)
@@ -94,7 +96,7 @@ function generateCalendarLink(booking) {
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: `Session with ${booking.expertName || 'Expert'}`,
+    text: titleOverride || `Session with ${booking.expertName || 'Expert'}`,
     dates: `${fmt(start)}/${fmt(end)}`,
     details: `Join your session: ${booking.dailyRoomUrl || ''}`,
     location: 'Online (Google Meet)',
@@ -207,6 +209,112 @@ async function sendConfirmationEmail(booking) {
   });
 
   console.log(`[Resend] Confirmation email sent to ${booking.clientEmail}`);
+}
+
+// ─── Helper: Resend new-booking notification email (to the expert) ───────────
+async function sendExpertNotificationEmail(booking, expertEmail, expertCalendarLink) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Resend] RESEND_API_KEY not set — skipping expert notification email');
+    return;
+  }
+  if (!expertEmail) {
+    console.warn('[sendExpertNotificationEmail] No expertEmail — skipping expert notification email');
+    return;
+  }
+  if (!booking.dailyRoomUrl) {
+    console.warn('[sendExpertNotificationEmail] No dailyRoomUrl on booking — skipping email to avoid broken Join Session link.');
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const clientName = booking.clientName || 'A client';
+  const sessionTitle = booking.sessionTitle || 'Session';
+  const date = booking.date || '';
+  const time = booking.time || '';
+  const dailyRoomUrl = booking.dailyRoomUrl || '#';
+  const calendarLink = expertCalendarLink || '#';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+    <!-- Header -->
+    <div style="background:#1ab8a0;padding:32px 40px;">
+      <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">mindGigs</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:4px;">Expert Sessions</div>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px;">
+      <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0 0 8px;">You have a new booking!</h1>
+      <p style="font-size:14px;color:#6b7280;margin:0 0 32px;">${clientName} just booked a session with you. Here are the details.</p>
+
+      <!-- Session details box -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:32px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Client</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${clientName}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Session</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${sessionTitle}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;">
+          <span style="font-size:13px;color:#6b7280;">Date</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${date}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;">
+          <span style="font-size:13px;color:#6b7280;">Time</span>
+          <span style="font-size:13px;font-weight:600;color:#111827;">${time}</span>
+        </div>
+      </div>
+
+      <!-- Join button -->
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${dailyRoomUrl}"
+           style="display:inline-block;background:#1ab8a0;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+          Join Session
+        </a>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#9ca3af;margin:0 0 32px;">
+        This link activates 15 minutes before the session
+      </p>
+
+      <!-- Calendar button -->
+      <div style="text-align:center;margin-bottom:40px;">
+        <a href="${calendarLink}"
+           style="display:inline-block;background:#ffffff;color:#1ab8a0;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;text-decoration:none;border:2px solid #1ab8a0;">
+          Add to Google Calendar
+        </a>
+      </div>
+
+      <!-- Footer note -->
+      <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
+        <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.6;">
+          Manage this booking any time from your
+          <a href="https://mindgigs.com" style="color:#1ab8a0;">mindGigs dashboard</a>.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+
+  await resend.emails.send({
+    from: 'bookings@mindgigs.com',
+    to: expertEmail,
+    subject: `New booking: ${clientName} booked ${sessionTitle}`,
+    html,
+  });
+
+  console.log(`[Resend] Expert notification email sent to ${expertEmail}`);
 }
 
 // ─── Helper: Resend purchase confirmation email (books / digital products) ───
@@ -622,12 +730,24 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
         }
       }
 
-      // ── 1d. Send Resend confirmation email ──────────────────────────────
+      // ── 1d. Send Resend confirmation email (to the client) ──────────────
       if (freshBookingData) {
         try {
           await sendConfirmationEmail({ ...freshBookingData, calendarLink: calendarLink || freshBookingData.calendarLink });
         } catch (err) {
           console.error('[Resend] Failed to send confirmation email:', err);
+        }
+      }
+
+      // ── 1e. Send Resend notification email (to the expert) ──────────────
+      if (freshBookingData && freshBookingData.expertId) {
+        try {
+          const expertSnap = await db.collection('users').doc(freshBookingData.expertId).get();
+          const expertEmail = expertSnap.exists ? expertSnap.data().email : null;
+          const expertCalendarLink = generateCalendarLink(freshBookingData, `Session with ${freshBookingData.clientName || 'Client'}`);
+          await sendExpertNotificationEmail(freshBookingData, expertEmail, expertCalendarLink);
+        } catch (err) {
+          console.error('[Resend] Failed to send expert notification email:', err);
         }
       }
     }
@@ -734,6 +854,17 @@ exports.confirmFreeBooking = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY
       await sendConfirmationEmail({ ...freshBooking, calendarLink: calendarLink || freshBooking.calendarLink });
     } catch (err) {
       console.error('[confirmFreeBooking] Failed to send confirmation email:', err);
+    }
+
+    if (freshBooking.expertId) {
+      try {
+        const expertSnap = await db.collection('users').doc(freshBooking.expertId).get();
+        const expertEmail = expertSnap.exists ? expertSnap.data().email : null;
+        const expertCalendarLink = generateCalendarLink(freshBooking, `Session with ${freshBooking.clientName || 'Client'}`);
+        await sendExpertNotificationEmail(freshBooking, expertEmail, expertCalendarLink);
+      } catch (err) {
+        console.error('[confirmFreeBooking] Failed to send expert notification email:', err);
+      }
     }
 
     return res.status(200).json({ success: true });
