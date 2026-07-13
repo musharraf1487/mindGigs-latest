@@ -32,6 +32,13 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
+      - name: Package build
+        # A single archive avoids the multi-file glob upload silently dropping
+        # the large JS bundle (observed: small files like CSS/favicon made it
+        # over but the ~1.3MB JS bundle didn't, even though the step reported
+        # success) — one file transfer is far more reliable than many.
+        run: tar -czf dist.tar.gz -C dist .
+
       - name: Clean public_html
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -41,13 +48,25 @@ jobs:
           port: 18765
           script: |
             rm -rf /home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/*
-      - name: Upload dist
+
+      - name: Upload build archive
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: 18765
-          source: "dist/*"
-          target: "/home/u2515-rp4l0byu3ngk/www/mindgigs.com/public_html/"
-          strip_components: 1
+          source: "dist.tar.gz"
+          target: "/home/u2515-rp4l0byu3ngk/www/mindgigs.com/"
+
+      - name: Extract build archive
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 18765
+          script: |
+            cd /home/u2515-rp4l0byu3ngk/www/mindgigs.com
+            tar -xzf dist.tar.gz -C public_html
+            rm -f dist.tar.gz
