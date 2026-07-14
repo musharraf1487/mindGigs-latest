@@ -166,6 +166,7 @@ export function Bookings({ user, expertData, notify }) {
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase' }}>Client</th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase' }}>Contact</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase' }}>Date & Time</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase' }}>Type</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase' }}>Status</th>
@@ -177,6 +178,11 @@ export function Bookings({ user, expertData, notify }) {
                 {filteredBookings.map((booking, i) => (
                   <tr key={getKey(booking, i)} style={{ borderBottom: i === filteredBookings.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.03)', opacity: isActioning(booking) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
                     <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--gd)', fontSize: '0.9rem' }}>{getClientName(booking)}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '0.82rem', color: 'var(--sl)' }}>
+                      {booking.clientEmail && <div>{booking.clientEmail}</div>}
+                      {booking.clientPhone && <div>{booking.clientPhone}</div>}
+                      {!booking.clientEmail && !booking.clientPhone && '—'}
+                    </td>
                     <td style={{ padding: '16px 20px', fontSize: '0.85rem', color: 'var(--sl)' }}>{getDate(booking)}</td>
                     <td style={{ padding: '16px 20px', fontSize: '0.85rem', color: 'var(--sl)' }}>{getType(booking)}</td>
                     <td style={{ padding: '16px 20px' }}>

@@ -13,6 +13,8 @@
  *   time          : string  (e.g. "10:00 AM")
  *   sessionTitle  : string
  *   price         : number  (in cents, e.g. 25000 = $250)
+ *   clientEmail   : string
+ *   clientPhone   : string | null
  *   status        : "pending" | "confirmed" | "cancelled"
  *   paymentStatus : "unpaid" | "paid"
  *   createdAt     : ISO string
@@ -56,6 +58,7 @@ export async function createBooking({
   sessionTitle,
   price,           // number in cents
   clientEmail,
+  clientPhone,
 }) {
   const docRef = await addDoc(collection(db, BOOKINGS), {
     expertId,
@@ -67,6 +70,7 @@ export async function createBooking({
     sessionTitle,
     price,
     clientEmail,
+    clientPhone: clientPhone || null,
     status: 'pending',
     paymentStatus: 'unpaid',
     createdAt: new Date().toISOString(),

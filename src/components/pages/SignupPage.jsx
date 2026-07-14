@@ -84,6 +84,7 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [pass, setPass] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -115,6 +116,7 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
     try {
       await signup(email, pass, role, {
         name,
+        phone: phone.trim() || null,
         handle: username || normalizeHandle(name),
         onboardingComplete: role !== 'expert',
       }, { expertId, couponCode });
@@ -308,6 +310,16 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label className="label">Phone Number (Optional)</label>
+        <input
+          className="input"
+          type="tel"
+          placeholder="+1 (555) 000-0000"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
         />
       </div>
       <div className="field">

@@ -26,6 +26,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [email, setEmail] = useState(userData?.email || '');
+  const [phone, setPhone] = useState(userData?.phone || '');
   const [couponCode, setCouponCode] = useState('');
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -121,6 +122,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
         sessionTitle: sessionTitle,
         price: parsePriceCents(sessionPrice),
         clientEmail: email,
+        clientPhone: phone,
       });
 
       setBookingId(newBookingId);
@@ -168,6 +170,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
         sessionTitle: sessionTitle,
         price: 0,
         clientEmail: email,
+        clientPhone: phone,
       });
 
       setBookingId(newBookingId);
@@ -469,6 +472,16 @@ export function BookingFlow({ nav, notify, expert, session }) {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label className="label">Phone Number (Optional)</label>
+              <input
+                className="input"
+                type="tel"
+                placeholder="+1 (555) 000-0000"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
 
