@@ -8,7 +8,7 @@ import { Referrals } from './sections/Referrals';
 import { Campaigns } from './sections/Campaigns';
 import { Earnings } from './sections/Earnings';
 import { Settings } from './sections/Settings';
-import { getAffiliateCommissions, getAffiliateReferredUsers } from '../../../services/affiliateService';
+import { getAffiliateRoleCommissions, getOnboardedExperts } from '../../../services/affiliateService';
 import { useAuth } from '../../../context/AuthContext';
 
 export function AffiliateDashboard({ user, nav, logout, notify }) {
@@ -23,10 +23,13 @@ export function AffiliateDashboard({ user, nav, logout, notify }) {
     async function load() {
       try {
         const [commissions, referrals] = await Promise.all([
-          getAffiliateCommissions(currentUser.uid),
-          getAffiliateReferredUsers(currentUser.uid),
+          getAffiliateRoleCommissions(currentUser.uid),
+          getOnboardedExperts(currentUser.uid),
         ]);
-        const totalEarned = commissions.reduce((s, c) => s + (c.affiliateAmount || 0), 0) / 100;
+        // affiliateEarnings/pendingPayout are authoritative on the user doc
+        // (kept in sync server-side by processCommissionSplit) — commissions
+        // here are only for the history/breakdown views, not the totals.
+        const totalEarned = (user?.affiliateEarnings || 0) / 100;
         const pending = (user?.pendingPayout || 0) / 100;
         setAffiliateData({
           commissions,
@@ -71,8 +74,8 @@ export function AffiliateDashboard({ user, nav, logout, notify }) {
     switch (active) {
       case 'overview': return <Overview user={user} affiliateData={affiliateData} notify={notify} />;
       case 'referrals': return <Referrals user={user} affiliateData={affiliateData} notify={notify} />;
-      case 'campaigns': return <Campaigns user={user} affiliateData={affiliateData} notify={notify} />;
-      case 'earnings': return <Earnings user={user} affiliateData={affiliateData} notify={notify} />;
+      case 'campaigns': return <Campaigns />;
+      case 'earnings': return <Earnings user={user} notify={notify} />;
       case 'settings': return <Settings user={user} notify={notify} logout={logout} nav={nav} />;
       default: return <Overview user={user} affiliateData={affiliateData} notify={notify} />;
     }

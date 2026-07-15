@@ -1,15 +1,21 @@
 /**
  * affiliateService.js
- * Core engine for the 4-scenario commission model.
+ * Core engine for the 8-scenario commission model.
  *
- * Path A — expert profile-link referral (tracked via users.referredByExpertId):
- *   Same expert buys back:      expert 80% (70 sell + 10 referral) | mindGigs 20%
- *   Different expert:           selling expert 70% | referring expert 10% | mindGigs 20%
+ * Two code types:
+ *   Experts   — no separate coupon code. Their `handle` (public vanity URL)
+ *               doubles as their coupon.
+ *   Affiliates — no public profile. A system-generated 6-char code lives in
+ *               the `affiliateCodes` collection.
  *
- * Path B — dedicated affiliate coupon (tracked via users.affiliateId):
- *   expert 70% | affiliate 10% | mindGigs 20%
+ * Two earnings buckets on every user doc, never mixed:
+ *   sellingEarnings   — this user's cut as the SELLER.
+ *   affiliateEarnings — this user's cut for bringing in a sale (Person A/B),
+ *                       never touched by their own direct sales.
  *
- * No referral, no coupon:       expert 70% | mindGigs 30%
+ * The actual split math lives server-side in functions/index.js
+ * (processCommissionSplit / resolveCouponCode) — this file only mints/looks up
+ * codes and reads back the resulting commissions for the dashboards.
  */
 
 import {
@@ -21,12 +27,27 @@ import {
   query,
   where,
   orderBy,
+  limit,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { isHandleAvailable } from './handleService';
+
+// Shared scenario labels — used by expert/affiliate/admin dashboards so the
+// same commission doc always reads the same way everywhere.
+export const SCENARIO_LABELS = {
+  1: 'Direct',
+  2: 'Self-referral',
+  3: 'Expert referral',
+  4: 'Own coupon',
+  5: 'Expert coupon',
+  6: 'Affiliate coupon',
+  7: 'Onboarding lifetime',
+  8: 'Dual commission',
+};
 
 const CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
-function generateAffiliateCode() {
+function generateRandomCode() {
   let out = '';
   for (let i = 0; i < 6; i++) out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
   return out;
@@ -34,17 +55,26 @@ function generateAffiliateCode() {
 
 /**
  * Mints a unique 6-char coupon code for a new affiliate and writes it to the
- * affiliateCodes collection (doc ID == the code). A collision is rejected by
- * Firestore rules as an unauthorized "update" to an existing doc, so this
- * retries with a fresh code on failure.
+ * affiliateCodes collection (doc ID == the code). Also checked against the
+ * `handles/` registry so a generated code can never collide with an existing
+ * expert's handle (which is itself a valid coupon) — an ambiguous checkout
+ * lookup would always resolve the affiliateCodes match first, silently
+ * shadowing that expert's coupon.
+ *
+ * A same-code collision on affiliateCodes itself is rejected by Firestore
+ * rules as an unauthorized "update" to an existing doc (no update rule
+ * exists there), so that half of the race is retried safely by construction.
  */
-export async function createAffiliateCode(uid, attempts = 5) {
+export async function createAffiliateCoupon(uid, attempts = 10) {
   for (let i = 0; i < attempts; i++) {
-    const code = generateAffiliateCode();
+    const code = generateRandomCode();
+    const handleAvailable = await isHandleAvailable(code.toLowerCase(), null);
+    if (!handleAvailable) continue; // collides with an existing expert handle — retry
     try {
       await setDoc(doc(db, 'affiliateCodes', code), {
         code,
-        affiliateId: uid,
+        ownerId: uid,
+        ownerRole: 'affiliate',
         createdAt: new Date().toISOString(),
       });
       return code;
@@ -52,19 +82,42 @@ export async function createAffiliateCode(uid, attempts = 5) {
       if (i === attempts - 1) throw err;
     }
   }
+  throw new Error('Could not generate a unique coupon code. Please try again.');
 }
 
-/** Returns the affiliateId that owns `code`, or null if the code doesn't exist. */
-export async function lookupAffiliateCode(code) {
+/**
+ * Resolves a checkout/signup-time coupon code to its owner. Checks
+ * affiliateCodes (uppercase match) first, then falls back to an expert's
+ * handle (lowercase match). Mirrors the Admin SDK version in functions/index.js.
+ * Returns { ownerId, ownerRole: 'affiliate' | 'expert' } or null.
+ */
+export async function resolveCouponCode(code) {
   if (!code) return null;
-  const trimmed = code.trim().toUpperCase();
-  if (!trimmed) return null;
-  const snap = await getDoc(doc(db, 'affiliateCodes', trimmed));
-  return snap.exists() ? (snap.data().affiliateId || null) : null;
+  const normalized = String(code).trim();
+  if (!normalized) return null;
+
+  const affSnap = await getDoc(doc(db, 'affiliateCodes', normalized.toUpperCase()));
+  if (affSnap.exists()) {
+    const d = affSnap.data();
+    return { ownerId: d.ownerId, ownerRole: 'affiliate' };
+  }
+
+  const q = query(
+    collection(db, 'users'),
+    where('handle', '==', normalized.toLowerCase()),
+    where('role', '==', 'expert'),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    return { ownerId: snap.docs[0].id, ownerRole: 'expert' };
+  }
+  return null;
 }
 
-// ─── Expert-side: buyers this expert referred via their profile link ──────────
+// ─── Expert-side ────────────────────────────────────────────────────────────
 
+/** Buyers who signed up via this expert's public profile link (lifetime). */
 export async function getExpertReferrals(expertId) {
   const q = query(
     collection(db, 'users'),
@@ -72,74 +125,59 @@ export async function getExpertReferrals(expertId) {
     orderBy('createdAt', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/** Commissions where this expert was the selling expert (expertAmount). */
-export async function getExpertCommissions(expertId) {
+/** Commissions where this user was the seller (sellerAmount / sellingEarnings). */
+export async function getSellerCommissions(sellerId) {
   const q = query(
     collection(db, 'commissions'),
-    where('expertId', '==', expertId),
+    where('sellerId', '==', sellerId),
     orderBy('createdAt', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/** Commissions where this expert earned the scenario-3 referral bonus (referrerAmount). */
-export async function getExpertReferralCommissions(expertId) {
+// ─── Affiliate-role earnings (Person A = lifetime onboarding, Person B = one-time coupon) ──
+
+/** Commissions where this user earned the lifetime "onboarded this seller" bonus. */
+export async function getPersonACommissions(uid) {
   const q = query(
     collection(db, 'commissions'),
-    where('referrerId', '==', expertId),
+    where('personAId', '==', uid),
     orderBy('createdAt', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function getExpertAffiliateStats(expertId) {
-  const [referrals, sellingCommissions, referralCommissions] = await Promise.all([
-    getExpertReferrals(expertId),
-    getExpertCommissions(expertId),
-    getExpertReferralCommissions(expertId),
-  ]);
-
-  const sellingEarnings = sellingCommissions.reduce((s, c) => s + (c.expertAmount || 0), 0);
-  const referralEarnings = referralCommissions.reduce((s, c) => s + (c.referrerAmount || 0), 0);
-  const pendingCount = [...sellingCommissions, ...referralCommissions].filter(c => c.status === 'pending').length;
-
-  return {
-    referralCount: referrals.length,
-    sellingEarnings,   // cents, earned as the selling expert
-    referralEarnings,  // cents, earned as the referring expert (scenario 3 bonus)
-    totalEarned: sellingEarnings + referralEarnings,
-    pendingCount,
-    referrals,
-    sellingCommissions,
-    referralCommissions,
-  };
+/** Commissions where this user's coupon (or profile link) brought a one-time sale. */
+export async function getPersonBCommissions(uid) {
+  const q = query(
+    collection(db, 'commissions'),
+    where('personBId', '==', uid),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// ─── Affiliate-side: buyers who used this affiliate's coupon ──────────────────
+/** Combined affiliate-role commission history (both Person A and Person B roles), newest first. */
+export async function getAffiliateRoleCommissions(uid) {
+  const [asA, asB] = await Promise.all([getPersonACommissions(uid), getPersonBCommissions(uid)]);
+  return [...asA, ...asB].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
 
-export async function getAffiliateReferredUsers(affiliateId) {
+/** Experts this affiliate onboarded at signup (lifetime commission source). */
+export async function getOnboardedExperts(affiliateId) {
   const q = query(
     collection(db, 'users'),
-    where('affiliateId', '==', affiliateId),
+    where('onboardedByAffiliateId', '==', affiliateId),
     orderBy('createdAt', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function getAffiliateCommissions(affiliateId) {
-  const q = query(
-    collection(db, 'commissions'),
-    where('affiliateId', '==', affiliateId),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 // ─── Admin ──────────────────────────────────────────────────────────────────
@@ -147,5 +185,5 @@ export async function getAffiliateCommissions(affiliateId) {
 export async function getAllCommissions() {
   const q = query(collection(db, 'commissions'), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

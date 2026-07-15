@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
-import { DollarSign, Users, Brain, CreditCard, CheckCircle, Clock } from 'lucide-react';
+import { Users, Brain, CreditCard, CheckCircle, Clock } from 'lucide-react';
 
 export function Overview({ user, adminData, notify }) {
   const [liveStats, setLiveStats] = useState(null);
   const [liveTxns, setLiveTxns] = useState([]);
+  const [platformStats, setPlatformStats] = useState(null);
 
   // Real-time user count
   useEffect(() => {
@@ -28,25 +29,35 @@ export function Overview({ user, adminData, notify }) {
           status: data.paymentStatus === 'paid' ? 'completed' : 'pending',
         };
       });
-      const totalRevenue = snap.docs.reduce((s, d) => {
-        const p = d.data().paymentStatus === 'paid' ? (d.data().price || 0) / 100 : 0;
-        return s + p;
-      }, 0);
       setLiveTxns(txns);
-      setLiveStats(prev => ({ ...prev, totalRevenue, totalTxns: snap.size }));
+      setLiveStats(prev => ({ ...prev, totalTxns: snap.size }));
     }, () => {});
 
-    return () => { unsubUsers(); unsubTxns(); };
+    // Single-doc aggregate the webhook keeps updated on every commission —
+    // this is mindGigs' real financial position, not a re-sum of raw booking prices.
+    const unsubPlatform = onSnapshot(doc(db, 'platformStats', 'earnings'), (snap) => {
+      setPlatformStats(snap.exists() ? snap.data() : null);
+    }, () => {});
+
+    return () => { unsubUsers(); unsubTxns(); unsubPlatform(); };
   }, []);
 
+  const totalRevenue = (platformStats?.totalRevenue || 0) / 100;
+  const totalPlatformEarnings = (platformStats?.totalPlatformEarnings || 0) / 100;
+  const totalSellerPayouts = (platformStats?.totalSellerPayouts || 0) / 100;
+  const totalAffiliatePayouts = (platformStats?.totalAffiliatePayouts || 0) / 100;
+  const totalCommissionTxns = platformStats?.totalTransactions || 0;
+  const takeRate = totalRevenue > 0 ? (totalPlatformEarnings / totalRevenue) * 100 : 0;
+
+  const revenueStats = [
+    { label: 'Total Revenue', val: `$${totalRevenue.toFixed(2)}`, ch: 'All money through the platform', color: 'var(--gd)' },
+    { label: 'mindGigs Earnings', val: `$${totalPlatformEarnings.toFixed(2)}`, ch: `${takeRate.toFixed(1)}% avg platform cut`, color: 'var(--teal)', prominent: true },
+    { label: 'Paid to Experts', val: `$${totalSellerPayouts.toFixed(2)}`, ch: 'Seller earnings', color: 'var(--gb)' },
+    { label: 'Paid to Affiliates', val: `$${totalAffiliatePayouts.toFixed(2)}`, ch: 'Referral & coupon earnings', color: 'var(--gl)' },
+    { label: 'Total Transactions', val: totalCommissionTxns, ch: 'Commission events', color: 'var(--mu)' },
+  ];
+
   const stats = [
-    {
-      label: 'Platform Revenue',
-      val: liveStats?.totalRevenue != null ? `$${liveStats.totalRevenue.toFixed(2)}` : (adminData?.stats?.[1]?.val || '$0'),
-      ch: 'All-time revenue',
-      color: 'var(--teal)',
-      icon: <DollarSign size={18} color="var(--teal)" />,
-    },
     {
       label: 'Total Users',
       val: liveStats?.totalUsers ?? (adminData?.stats?.[0]?.val || '0'),
@@ -62,9 +73,9 @@ export function Overview({ user, adminData, notify }) {
       icon: <Brain size={18} color="var(--teal)" />,
     },
     {
-      label: 'Total Transactions',
+      label: 'Total Bookings',
       val: liveStats?.totalTxns ?? (adminData?.stats?.[3]?.val || '0'),
-      ch: 'Platform bookings',
+      ch: 'Session bookings',
       color: 'var(--gb)',
       icon: <CreditCard size={18} color="var(--gb)" />,
     },
@@ -82,8 +93,24 @@ export function Overview({ user, adminData, notify }) {
         <p style={{ fontSize: '0.875rem', color: 'var(--mu)' }}>Real-time platform metrics and insights</p>
       </div>
 
+      {/* Platform Revenue — real financial position, live from platformStats/earnings */}
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1rem', color: 'var(--gd)', marginBottom: '4px' }}>Platform Revenue</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--mu)', marginBottom: '16px' }}>Live from the commission ledger — this is mindGigs' actual financial position.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+          {revenueStats.map((s, i) => (
+            <div key={i} className="stat-card" style={{ position: 'relative', overflow: 'hidden', ...(s.prominent ? { border: '1.5px solid rgba(26,184,160,0.3)' } : {}) }}>
+              <div className="stat-label" style={{ marginBottom: '10px' }}>{s.label}</div>
+              <div className="stat-val" style={{ color: s.color, fontSize: s.prominent ? '1.9rem' : undefined }}>{s.val}</div>
+              <div style={{ fontSize: '0.72rem', color: s.color, fontWeight: 600, marginTop: '6px' }}>{s.ch}</div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: s.color, opacity: s.prominent ? 0.5 : 0.25 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
         {stats.map((s, i) => (
           <div key={i} className="stat-card" style={{ position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -106,7 +133,7 @@ export function Overview({ user, adminData, notify }) {
               <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: '2px' }}>Last 12 months</div>
             </div>
             <span style={{ fontSize: '1.2rem', fontFamily: 'var(--fu)', fontWeight: 800, color: 'var(--teal)' }}>
-              {liveStats?.totalRevenue != null ? `$${liveStats.totalRevenue.toFixed(0)}` : adminData?.stats?.[1]?.val}
+              {platformStats ? `$${totalRevenue.toFixed(0)}` : adminData?.stats?.[1]?.val}
             </span>
           </div>
           <div className="chart-bars" style={{ height: '140px' }}>

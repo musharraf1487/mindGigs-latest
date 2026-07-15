@@ -52,24 +52,18 @@ export async function isHandleAvailable(handle, currentUid) {
  * field — this is the ONLY code path that should ever write `handle` on a
  * users doc, so it can never diverge from the `handles/` registry.
  *
- * By default, `referralCode` is synced to the new handle for experts only
- * (the unified vanity-URL/referral-code decision) — affiliates keep their
- * own `referralCode` fixed once assigned. Pass `syncReferralCode: true`
- * explicitly to also assign it for an affiliate's one-time signup-completion
- * claim; omit it on later handle edits (e.g. from Settings) so an affiliate's
- * already-shared coupon code doesn't shift under them.
+ * An expert's handle doubles as their coupon code directly — there is no
+ * separate field to keep in sync.
  *
  * Throws if the new handle is already claimed by someone else (Firestore
  * rule denies the create), which callers should surface as "username taken."
  */
-export async function claimHandle({ uid, role, oldHandle, newHandle, syncReferralCode }) {
+export async function claimHandle({ uid, role, oldHandle, newHandle }) {
   const { valid, reason, handle } = validateHandleFormat(newHandle);
   if (!valid) throw new Error(reason);
 
   const normalizedOld = oldHandle ? normalizeHandle(oldHandle) : null;
   if (normalizedOld === handle) return handle; // no-op, unchanged
-
-  const shouldSyncReferralCode = syncReferralCode !== undefined ? syncReferralCode : role === 'expert';
 
   const batch = writeBatch(db);
   if (normalizedOld) {
@@ -80,9 +74,7 @@ export async function claimHandle({ uid, role, oldHandle, newHandle, syncReferra
     role,
     createdAt: new Date().toISOString(),
   });
-  const userUpdates = { handle };
-  if (shouldSyncReferralCode) userUpdates.referralCode = handle;
-  batch.update(doc(db, 'users', uid), userUpdates);
+  batch.update(doc(db, 'users', uid), { handle });
 
   try {
     await batch.commit();

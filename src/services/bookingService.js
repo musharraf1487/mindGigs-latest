@@ -20,12 +20,13 @@
  *                   (pending_bank_transfer/failed are set by stripeWebhook
  *                   when the buyer pays via US bank transfer, which settles
  *                   1-2 business days after checkout instead of instantly)
+ *   couponCode    : string | null  (entered at checkout — expert handle or
+ *                   affiliate code, resolved server-side by the webhook)
  *   createdAt     : ISO string
  * }
  *
  * clientId is the source of truth the stripeWebhook uses to look up the
- * buyer's referredByExpertId/affiliateId for commission splitting — do not
- * remove it.
+ * buyer's referredByExpertId for commission splitting — do not remove it.
  */
 
 import {
@@ -62,6 +63,7 @@ export async function createBooking({
   price,           // number in cents
   clientEmail,
   clientPhone,
+  couponCode,
 }) {
   const docRef = await addDoc(collection(db, BOOKINGS), {
     expertId,
@@ -74,6 +76,7 @@ export async function createBooking({
     price,
     clientEmail,
     clientPhone: clientPhone || null,
+    couponCode: couponCode || null,
     status: 'pending',
     paymentStatus: 'unpaid',
     createdAt: new Date().toISOString(),

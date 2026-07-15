@@ -10,7 +10,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { saveAccountToStorage } from '../components/common/AccountSwitcher';
-import { createAffiliateCode, lookupAffiliateCode } from '../services/affiliateService';
+import { createAffiliateCoupon, resolveCouponCode } from '../services/affiliateService';
 import { claimHandle, validateHandleFormat, isHandleAvailable, normalizeHandle } from '../services/handleService';
 
 const AuthContext = createContext();
@@ -26,7 +26,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function signup(email, password, role = 'expert', additionalData = {}, signupContext = {}) {
-    const claimsHandle = ['expert', 'affiliate'].includes(role);
+    // Only experts claim a handle — it doubles as their public profile URL
+    // and their coupon code. Affiliates have no public profile.
+    const claimsHandle = role === 'expert';
     const requestedHandle = additionalData.handle ? normalizeHandle(additionalData.handle) : '';
 
     // Pre-check before creating the Auth user, to avoid orphaned accounts on a doomed handle.
@@ -37,25 +39,38 @@ export function AuthProvider({ children }) {
       if (!available) throw new Error('That username is taken. Please choose another.');
     }
 
-    const { user } = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Path B — resolve an entered affiliate coupon code, if any. A bad/typo'd
-    // code never blocks signup, it just doesn't attach an affiliate.
-    let resolvedAffiliateId = null;
+    // Resolve an entered coupon code (expert handle or affiliate code) before
+    // creating the Auth user too — an invalid code blocks signup rather than
+    // silently failing after an account already exists.
+    let resolvedCoupon = null;
     if (signupContext.couponCode) {
-      try {
-        resolvedAffiliateId = await lookupAffiliateCode(signupContext.couponCode);
-      } catch (err) {
-        console.error('Affiliate coupon lookup failed during signup:', err);
-      }
+      resolvedCoupon = await resolveCouponCode(signupContext.couponCode);
+      if (!resolvedCoupon) throw new Error('That coupon code was not recognized.');
     }
 
+    const { user } = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Person A — set once, for life, only for a new EXPERT onboarded via a
+    // valid affiliate coupon at signup.
+    const onboardedByAffiliateId = (role === 'expert' && resolvedCoupon?.ownerRole === 'affiliate')
+      ? resolvedCoupon.ownerId
+      : null;
+
+    // referredByExpertId — set once, for life, from a coupon that resolved to
+    // an expert's handle, or from the profile-link signup context if no
+    // coupon was entered. The coupon wins if both are present. Never set if
+    // the new user is that expert.
+    const resolvedExpertId = resolvedCoupon?.ownerRole === 'expert' ? resolvedCoupon.ownerId : null;
+    const linkExpertId = signupContext.expertId || null;
+    const candidateExpertId = resolvedExpertId || linkExpertId;
+    const referredByExpertId = (candidateExpertId && candidateExpertId !== user.uid) ? candidateExpertId : null;
+
     // Dedicated affiliates get their own coupon code minted before the user
-    // doc is written, so users.affiliateCode always points at an existing
+    // doc is written, so users.couponCode always points at an existing
     // affiliateCodes doc.
-    let ownAffiliateCode = null;
+    let ownCouponCode = null;
     if (role === 'affiliate') {
-      ownAffiliateCode = await createAffiliateCode(user.uid);
+      ownCouponCode = await createAffiliateCoupon(user.uid);
     }
 
     const userDoc = {
@@ -65,15 +80,10 @@ export function AuthProvider({ children }) {
       name: additionalData.name || '',
       onboardingComplete: role !== 'expert',
       createdAt: new Date().toISOString(),
-      // Path A — set once, for life, when this user signed up via an
-      // expert's public profile link. Never set if they are that expert.
-      referredByExpertId: (signupContext.expertId && signupContext.expertId !== user.uid) ? signupContext.expertId : null,
-      // Path B — set once, for life, if a valid affiliate coupon was entered at signup.
-      affiliateId: resolvedAffiliateId,
-      // Only present on dedicated affiliate accounts — their own coupon.
-      affiliateCode: role === 'affiliate' ? ownAffiliateCode : null,
-      affiliateEarnings: 0,
-      pendingPayout: 0,
+      referredByExpertId,
+      ...(role === 'expert' ? { onboardedByAffiliateId, sellingEarnings: 0 } : {}),
+      ...(role === 'affiliate' ? { couponCode: ownCouponCode } : {}),
+      ...(role === 'expert' || role === 'affiliate' ? { affiliateEarnings: 0, pendingPayout: 0 } : {}),
       ...additionalData,
       // Never persist the raw, unclaimed handle here — claimHandle() below is
       // the only code path allowed to write `handle`, so users.handle can
@@ -85,7 +95,7 @@ export function AuthProvider({ children }) {
 
     if (claimsHandle && requestedHandle) {
       try {
-        const claimed = await claimHandle({ uid: user.uid, role, oldHandle: null, newHandle: requestedHandle, syncReferralCode: true });
+        const claimed = await claimHandle({ uid: user.uid, role, oldHandle: null, newHandle: requestedHandle });
         userDoc.handle = claimed;
       } catch (err) {
         console.error('Handle claim failed after signup:', err);
@@ -130,23 +140,36 @@ export function AuthProvider({ children }) {
       setUserRole(data.role);
       setUserData(data);
     } else {
-      const claimsHandle = ['expert', 'affiliate'].includes(expectedRole);
+      // Only experts claim a handle — affiliates have no public profile.
+      const claimsHandle = expectedRole === 'expert';
       const fallbackHandle = user.displayName
         ? normalizeHandle(user.displayName) + Math.floor(Math.random() * 1000)
         : '';
 
-      let resolvedAffiliateId = null;
+      // Google sign-in is a one-click flow with no separate "submit" step to
+      // block, so (unlike signup()) a bad/typo'd coupon here doesn't abort —
+      // it just doesn't attach anything, same resilience as the fallback
+      // handle claim below.
+      let resolvedCoupon = null;
       if (signupContext.couponCode) {
         try {
-          resolvedAffiliateId = await lookupAffiliateCode(signupContext.couponCode);
+          resolvedCoupon = await resolveCouponCode(signupContext.couponCode);
         } catch (err) {
-          console.error('Affiliate coupon lookup failed during Google signup:', err);
+          console.error('Coupon lookup failed during Google signup:', err);
         }
       }
 
-      let ownAffiliateCode = null;
+      const onboardedByAffiliateId = (expectedRole === 'expert' && resolvedCoupon?.ownerRole === 'affiliate')
+        ? resolvedCoupon.ownerId
+        : null;
+      const resolvedExpertId = resolvedCoupon?.ownerRole === 'expert' ? resolvedCoupon.ownerId : null;
+      const linkExpertId = signupContext.expertId || null;
+      const candidateExpertId = resolvedExpertId || linkExpertId;
+      const referredByExpertId = (candidateExpertId && candidateExpertId !== user.uid) ? candidateExpertId : null;
+
+      let ownCouponCode = null;
       if (expectedRole === 'affiliate') {
-        ownAffiliateCode = await createAffiliateCode(user.uid);
+        ownCouponCode = await createAffiliateCoupon(user.uid);
       }
 
       const userDoc = {
@@ -160,17 +183,16 @@ export function AuthProvider({ children }) {
         onboardingComplete: expectedRole !== 'expert',
         createdAt: new Date().toISOString(),
         image: user.photoURL || '',
-        referredByExpertId: (signupContext.expertId && signupContext.expertId !== user.uid) ? signupContext.expertId : null,
-        affiliateId: resolvedAffiliateId,
-        affiliateCode: expectedRole === 'affiliate' ? ownAffiliateCode : null,
-        affiliateEarnings: 0,
-        pendingPayout: 0,
+        referredByExpertId,
+        ...(expectedRole === 'expert' ? { onboardedByAffiliateId, sellingEarnings: 0 } : {}),
+        ...(expectedRole === 'affiliate' ? { couponCode: ownCouponCode } : {}),
+        ...(expectedRole === 'expert' || expectedRole === 'affiliate' ? { affiliateEarnings: 0, pendingPayout: 0 } : {}),
       };
       await setDoc(docRef, userDoc);
 
       if (claimsHandle && fallbackHandle) {
         try {
-          const claimed = await claimHandle({ uid: user.uid, role: expectedRole, oldHandle: null, newHandle: fallbackHandle, syncReferralCode: true });
+          const claimed = await claimHandle({ uid: user.uid, role: expectedRole, oldHandle: null, newHandle: fallbackHandle });
           userDoc.handle = claimed;
         } catch (err) {
           console.error('Handle claim failed after Google signup:', err);

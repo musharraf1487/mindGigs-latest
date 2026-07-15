@@ -16,7 +16,7 @@ service cloud.firestore {
       allow read: if (request.auth != null && request.auth.uid == uid) ||
         (resource.data.role == 'expert' && resource.data.onboardingComplete == true) ||
         (request.auth != null && resource.data.referredByExpertId == request.auth.uid) ||
-        (request.auth != null && resource.data.affiliateId == request.auth.uid);
+        (request.auth != null && resource.data.onboardedByAffiliateId == request.auth.uid);
       allow create: if request.auth != null && request.auth.uid == uid &&
         request.resource.data.role != 'admin';
       allow update: if request.auth != null && request.auth.uid == uid &&
@@ -35,31 +35,28 @@ service cloud.firestore {
          resource.data.expertId == request.auth.uid);
     }
 
-    // Commissions — readable by selling expert, referring expert, or affiliate involved
+    // Commissions — readable by the seller, or Person A / Person B (the
+    // onboarding affiliate / coupon-or-referral source) involved in the sale
     match /commissions/{id} {
       allow read: if request.auth != null &&
-        (resource.data.expertId == request.auth.uid ||
-         resource.data.referrerId == request.auth.uid ||
-         resource.data.affiliateId == request.auth.uid);
+        (resource.data.sellerId == request.auth.uid ||
+         resource.data.personAId == request.auth.uid ||
+         resource.data.personBId == request.auth.uid);
     }
 
     // Affiliate coupon codes — doc ID is the code itself, so a collision
     // (writing to an existing code) is denied as an unauthorized "update"
     // (no update rule exists here), making code generation collision-safe.
-    // Read requires auth since lookup only happens after signup/login.
+    // Read is public (like handles/) so a coupon can be pre-validated before
+    // the Auth account creating step of signup, avoiding an orphaned account
+    // on a doomed code — codes are meant to be shared publicly anyway.
     match /affiliateCodes/{code} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if request.auth != null &&
-        request.resource.data.affiliateId == request.auth.uid &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerRole == 'affiliate' &&
         request.resource.data.code == code &&
         code.matches('^[A-Z0-9]{6}$');
-    }
-
-    // Referrals — readable by the expert who owns them
-    match /referrals/{id} {
-      allow read: if request.auth != null &&
-        resource.data.expertId == request.auth.uid;
-      allow create: if request.auth != null;
     }
 
     // Payout requests — readable/writable by the affiliate/expert who made them

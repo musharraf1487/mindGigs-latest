@@ -26,12 +26,44 @@ const db = getFirestore();
 
 setGlobalOptions({ region: 'us-central1' });
 
-// ─── Commission rates — 4 scenarios, computed from the buyer's user doc ───────
-// 1. No referral, no coupon:                    expert 70% · platform 30%
-// 2. Buyer referred by THIS expert's profile link: expert 80% (70 sell + 10 referral) · platform 20%
-// 3. Buyer referred by a DIFFERENT expert's link:  expert 70% · referring expert 10% · platform 20%
-// 4. Buyer has an affiliateId (coupon used):        expert 70% · affiliate 10% · platform 20%
-// Priority when a buyer has both a referral and a coupon: affiliateId (coupon) wins.
+// ─── Commission rates — 8 scenarios ────────────────────────────────────────────
+// Two people can earn a cut of a sale beyond the seller:
+//   Person A — the affiliate who onboarded the SELLER at signup (users.onboardedByAffiliateId).
+//              Lifetime: applies to every sale this seller ever makes.
+//   Person B — resolved from THIS transaction's coupon code (expert handle or
+//              affiliate code), or failing that, the BUYER's own signup-time
+//              expert referral (users.referredByExpertId). One-time (this sale only).
+// See resolveCouponCode() and processCommissionSplit() below for the full matrix
+// (1 Direct / 2 Self-referral / 3 Cross-expert referral / 4 Own coupon /
+//  5 Expert coupon / 6 Affiliate coupon / 7 Onboarding lifetime / 8 Dual commission).
+//
+// Experts don't have a separate generated coupon code — their `handle` doubles
+// as their coupon. Affiliates have no public profile; they get a system-generated
+// 6-char code in the `affiliateCodes` collection.
+
+// ─── Helper: resolve a checkout-time coupon code to its owner ─────────────────
+// Checks affiliateCodes (uppercase match) first, then falls back to an expert's
+// handle (lowercase match). Mirrors the client-side version in affiliateService.js.
+async function resolveCouponCode(code) {
+  if (!code) return null;
+  const normalized = String(code).trim();
+  if (!normalized) return null;
+
+  const affSnap = await db.collection('affiliateCodes').doc(normalized.toUpperCase()).get();
+  if (affSnap.exists) {
+    const d = affSnap.data();
+    return { ownerId: d.ownerId, ownerRole: 'affiliate' };
+  }
+
+  const expSnap = await db.collection('users')
+    .where('handle', '==', normalized.toLowerCase())
+    .where('role', '==', 'expert')
+    .limit(1).get();
+  if (!expSnap.empty) {
+    return { ownerId: expSnap.docs[0].id, ownerRole: 'expert' };
+  }
+  return null;
+}
 
 // ─── Helper: Daily.co room creation ──────────────────────────────────────────
 async function createDailyRoom(bookingId, dateStr, timeStr) {
@@ -426,85 +458,132 @@ function setCors(res) {
 }
 
 // ─── Helper: commission split ─────────────────────────────────────────────────
-async function processCommissionSplit(bookingId, expertId, saleAmount, buyerUid) {
-  let scenario = 1;
-  let referrerId = null;
-  let affiliateId = null;
+// Person A — the affiliate who onboarded the seller (lifetime, every sale).
+// Person B — resolved from this transaction's coupon, or the buyer's own
+//            signup-time expert referral if no coupon was used (one-time).
+// See functions/index.js commit history / plan doc for the full 8-scenario matrix.
+async function processCommissionSplit(bookingId, sellerId, saleAmount, buyerUid, saleType, couponCode) {
+  const sellerDoc = await db.collection('users').doc(sellerId).get();
+  const seller = sellerDoc.data() || {};
+  const personAId = seller.onboardedByAffiliateId || null;
 
+  let buyer = {};
   if (buyerUid) {
-    const buyerSnap = await db.collection('users').doc(buyerUid).get();
-    if (buyerSnap.exists) {
-      const buyer = buyerSnap.data();
-      if (buyer.affiliateId) {
-        // Scenario 4 — dedicated affiliate coupon takes priority over any referral
-        scenario = 4;
-        affiliateId = buyer.affiliateId;
-      } else if (buyer.referredByExpertId) {
-        if (buyer.referredByExpertId === expertId) {
-          scenario = 2; // buying from the same expert who referred them
-        } else {
-          scenario = 3; // buying from a different expert
-          referrerId = buyer.referredByExpertId;
-        }
-      }
+    const buyerDoc = await db.collection('users').doc(buyerUid).get();
+    buyer = buyerDoc.data() || {};
+  }
+  const referredByExpertId = buyer.referredByExpertId || null;
+
+  // Resolve Person B — coupon wins over the buyer's lifetime referral.
+  let personBId = null;
+  let personBRole = null;
+  if (couponCode) {
+    const resolved = await resolveCouponCode(couponCode);
+    if (resolved) {
+      personBId = resolved.ownerId;
+      personBRole = resolved.ownerRole;
     }
+  } else if (referredByExpertId) {
+    personBId = referredByExpertId;
+    personBRole = 'expert';
   }
 
-  let expertAmount, referrerAmount = 0, affiliateAmount = 0;
-  if (scenario === 2) {
-    expertAmount = Math.round(saleAmount * 0.80);
-  } else if (scenario === 3) {
-    expertAmount = Math.round(saleAmount * 0.70);
-    referrerAmount = Math.round(saleAmount * 0.10);
-  } else if (scenario === 4) {
-    expertAmount = Math.round(saleAmount * 0.70);
-    affiliateAmount = Math.round(saleAmount * 0.10);
-  } else {
-    expertAmount = Math.round(saleAmount * 0.70); // scenario 1
-  }
-  // Platform always gets the remainder rather than a computed percentage,
-  // so the three independent Math.round() calls above can never lose or
-  // gain a cent off the total.
-  const platformAmount = saleAmount - expertAmount - referrerAmount - affiliateAmount;
+  // Determine scenario
+  let scenario;
+  if (personAId && personBId) scenario = 8;
+  else if (personAId) scenario = 7;
+  else if (personBId === sellerId) scenario = couponCode ? 4 : 2;
+  else if (personBId && personBRole === 'expert') scenario = couponCode ? 5 : 3;
+  else if (personBId && personBRole === 'affiliate') scenario = 6;
+  else scenario = 1;
 
+  // Calculate split
+  const seventy = Math.round(saleAmount * 0.70);
+  const sevenHalf = Math.round(saleAmount * 0.075);
+
+  let sellerAmount = seventy;
+  let sellerAffiliateBonus = 0;
+  let personAAmount = 0;
+  let personBAmount = 0;
+
+  if (scenario === 8) {
+    personAAmount = sevenHalf;
+    personBAmount = sevenHalf;
+  } else if (scenario === 7) {
+    personAAmount = sevenHalf;
+  } else if (scenario === 2 || scenario === 4) {
+    sellerAffiliateBonus = sevenHalf;
+  } else if ([3, 5, 6].includes(scenario)) {
+    personBAmount = sevenHalf;
+  }
+  // Platform always gets the remainder rather than a computed percentage, so
+  // the independent Math.round() calls above can never lose or gain a cent.
+  const platformAmount = saleAmount - sellerAmount - sellerAffiliateBonus - personAAmount - personBAmount;
+
+  // Write commission record
   await db.collection('commissions').add({
     bookingId: bookingId || null,
-    buyerId: buyerUid || null,
+    saleType,
     saleAmount,
     scenario,
-    expertId: expertId || '',
-    expertAmount,
-    referrerId: referrerId || null,
-    referrerAmount,
-    affiliateId: affiliateId || null,
-    affiliateAmount,
+    sellerId,
+    sellerAmount: sellerAmount + sellerAffiliateBonus,
+    personAId,
+    personAAmount,
+    personBId: (personBId !== sellerId) ? personBId : null,
+    personBAmount: (personBId !== sellerId) ? personBAmount : 0,
     platformAmount,
     status: 'pending',
     createdAt: new Date().toISOString(),
   });
 
-  const writes = [];
-  if (expertId && expertAmount > 0) {
-    writes.push(db.collection('users').doc(expertId).update({
-      affiliateEarnings: FieldValue.increment(expertAmount),
-      pendingPayout:     FieldValue.increment(expertAmount),
-    }));
+  // Seller: 70% → sellingEarnings, self-coupon/self-referral bonus → affiliateEarnings
+  const sellerUpdates = {
+    sellingEarnings: FieldValue.increment(sellerAmount),
+    pendingPayout: FieldValue.increment(sellerAmount + sellerAffiliateBonus),
+  };
+  if (sellerAffiliateBonus > 0) {
+    sellerUpdates.affiliateEarnings = FieldValue.increment(sellerAffiliateBonus);
   }
-  if (referrerId && referrerAmount > 0) {
-    writes.push(db.collection('users').doc(referrerId).update({
-      affiliateEarnings: FieldValue.increment(referrerAmount),
-      pendingPayout:     FieldValue.increment(referrerAmount),
-    }));
-  }
-  if (affiliateId && affiliateAmount > 0) {
-    writes.push(db.collection('users').doc(affiliateId).update({
-      affiliateEarnings: FieldValue.increment(affiliateAmount),
-      pendingPayout:     FieldValue.increment(affiliateAmount),
-    }));
-  }
-  await Promise.all(writes);
+  await db.collection('users').doc(sellerId).update(sellerUpdates);
 
-  return { scenario, expertAmount, referrerAmount, affiliateAmount, platformAmount };
+  // Person A — affiliateEarnings only, never sellingEarnings
+  if (personAId && personAAmount > 0) {
+    const inc = (personAId === personBId) ? personAAmount + personBAmount : personAAmount;
+    await db.collection('users').doc(personAId).update({
+      affiliateEarnings: FieldValue.increment(inc),
+      pendingPayout: FieldValue.increment(inc),
+    });
+  }
+
+  // Person B — affiliateEarnings only (skip if same as A or the seller, both handled above)
+  if (personBId && personBAmount > 0 && personBId !== personAId && personBId !== sellerId) {
+    await db.collection('users').doc(personBId).update({
+      affiliateEarnings: FieldValue.increment(personBAmount),
+      pendingPayout: FieldValue.increment(personBAmount),
+    });
+  }
+
+  // Platform earnings ledger — the fast aggregate the admin dashboard reads,
+  // so it never needs to sum every commission doc on load.
+  const totalAffiliatePaid = personAAmount + ((personBId !== sellerId) ? personBAmount : 0) + sellerAffiliateBonus;
+  await db.collection('platformStats').doc('earnings').set({
+    totalRevenue: FieldValue.increment(saleAmount),
+    totalPlatformEarnings: FieldValue.increment(platformAmount),
+    totalSellerPayouts: FieldValue.increment(sellerAmount),
+    totalAffiliatePayouts: FieldValue.increment(totalAffiliatePaid),
+    totalTransactions: FieldValue.increment(1),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  if (bookingId) {
+    await db.collection('bookings').doc(bookingId).update({
+      commissionPaid: true,
+      commissionScenario: scenario,
+    });
+  }
+
+  return { scenario, sellerAmount: sellerAmount + sellerAffiliateBonus, personAAmount, personBAmount, platformAmount };
 }
 
 // ─── 1. createCheckoutSession ─────────────────────────────────────────────────
@@ -557,7 +636,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
   };
 
   try {
-    const { saleType = 'booking', bookingId, amount, email, title, expertId, deliveryLink, buyerId } = req.body;
+    const { saleType = 'booking', bookingId, amount, email, title, expertId, deliveryLink, buyerId, couponCode } = req.body;
 
     if (!amount || !email) {
       return res.status(400).json({ error: 'amount and email are required' });
@@ -595,6 +674,10 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
           bookingId,
           saleType: 'booking',
           expertId: booking.expertId || expertId || '',
+          // Coupon is entered and saved on the booking doc itself (BookingFlow),
+          // not re-sent by the client here — this is the source of truth the
+          // webhook reads from, same as every other field derived from `booking`.
+          couponCode: booking.couponCode || '',
         },
         success_url: `${clientUrl}?payment=success&bookingId=${bookingId}`,
         cancel_url:  `${clientUrl}?payment=cancelled`,
@@ -620,6 +703,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
           saleType: 'subscription',
           expertId,
           buyerId: buyerId || '',
+          couponCode: couponCode || '',
         },
         success_url: `${clientUrl}?payment=success`,
         cancel_url:  `${clientUrl}?payment=cancelled`,
@@ -646,6 +730,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
           itemTitle: title,
           deliveryLink: deliveryLink || '',
           buyerId: buyerId || '',
+          couponCode: couponCode || '',
         },
         success_url: `${clientUrl}?payment=success`,
         cancel_url:  `${clientUrl}?payment=cancelled`,
@@ -710,7 +795,7 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
   }
 
   const session = event.data.object;
-  const { bookingId, saleType = 'booking', expertId, itemTitle, deliveryLink, buyerId } = session.metadata || {};
+  const { bookingId, saleType = 'booking', expertId, itemTitle, deliveryLink, buyerId, couponCode } = session.metadata || {};
   const saleAmount = session.amount_total;
 
   if (saleAmount == null) {
@@ -851,18 +936,10 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
     // for bookings, or from the buyerId metadata for subscriptions/products.
     const buyerUid = saleType === 'booking' ? (confirmedBookingData?.clientId || null) : (buyerId || null);
 
-    const { scenario, expertAmount, referrerAmount, affiliateAmount, platformAmount } =
-      await processCommissionSplit(bookingId || null, expertId, saleAmount, buyerUid);
+    const { scenario, sellerAmount, personAAmount, personBAmount, platformAmount } =
+      await processCommissionSplit(bookingId || null, expertId, saleAmount, buyerUid, saleType, couponCode || null);
 
-    // ── 3. Mark booking commission as processed (booking type only) ────────
-    if (saleType === 'booking' && bookingId) {
-      await db.collection('bookings').doc(bookingId).update({
-        commissionPaid: true,
-        scenario,
-      });
-    }
-
-    console.log(`[stripeWebhook] ${saleType} processed (session ${session.id}). Scenario ${scenario} — Expert: ${expertAmount}, Referrer: ${referrerAmount}, Affiliate: ${affiliateAmount}, Platform: ${platformAmount}`);
+    console.log(`[stripeWebhook] ${saleType} processed (session ${session.id}). Scenario ${scenario} — Seller: ${sellerAmount}, Person A: ${personAAmount}, Person B: ${personBAmount}, Platform: ${platformAmount}`);
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('[stripeWebhook] Error processing payment:', err);

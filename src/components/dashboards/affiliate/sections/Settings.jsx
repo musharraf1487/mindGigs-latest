@@ -5,8 +5,7 @@ import {
   collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, deleteDoc
 } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, deleteUser } from 'firebase/auth';
-import { User, DollarSign, Bell, Shield, Trash2, Link } from 'lucide-react';
-import { claimHandle, normalizeHandle, validateHandleFormat, isHandleAvailable } from '../../../../services/handleService';
+import { User, DollarSign, Bell, Shield, Trash2 } from 'lucide-react';
 
 const inputStyle = {
   width: '100%', padding: '10px 14px',
@@ -35,12 +34,6 @@ export function Settings({ user, notify, logout, nav }) {
   const [name, setName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
 
-  // Public display username — unrelated to the affiliate's coupon code
-  // (affiliateCode is minted once at signup and never derived from this).
-  const [handle, setHandle] = useState(user?.handle || '');
-  const [handleStatus, setHandleStatus] = useState(null); // null | 'checking' | 'available' | 'taken' | 'invalid'
-  const [savingHandle, setSavingHandle] = useState(false);
-
   // Password change
   const [showPassModal, setShowPassModal] = useState(false);
   const [passForm, setPassForm] = useState({ current: '', newPass: '', confirm: '' });
@@ -66,48 +59,7 @@ export function Settings({ user, notify, logout, nav }) {
 
   useEffect(() => {
     setName(user?.name || '');
-    setHandle(user?.handle || '');
   }, [user]);
-
-  useEffect(() => {
-    if (!handle || handle === user?.handle) { setHandleStatus(null); return; }
-    const { valid, reason } = validateHandleFormat(handle);
-    if (!valid) { setHandleStatus('invalid'); return; }
-    setHandleStatus('checking');
-    const t = setTimeout(async () => {
-      try {
-        const available = await isHandleAvailable(normalizeHandle(handle), currentUser?.uid);
-        setHandleStatus(available ? 'available' : 'taken');
-      } catch {
-        setHandleStatus(null);
-      }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [handle, user?.handle, currentUser?.uid]);
-
-  const handleSaveHandle = async () => {
-    if (!currentUser) return;
-    setSavingHandle(true);
-    try {
-      // Note: claimHandle does not touch referralCode for affiliates — an
-      // affiliate's coupon code stays fixed once assigned at signup, even
-      // if they later change their public handle.
-      const claimed = await claimHandle({
-        uid: currentUser.uid,
-        role: 'affiliate',
-        oldHandle: user?.handle || null,
-        newHandle: handle,
-      });
-      setHandle(claimed);
-      setHandleStatus(null);
-      await refreshUserData();
-      notify('Username updated!', 'success');
-    } catch (err) {
-      notify(err.message || 'Failed to update username', 'error');
-    } finally {
-      setSavingHandle(false);
-    }
-  };
 
   const handleSaveProfile = async () => {
     if (!currentUser) return notify('Demo mode: cannot save', 'warn');
@@ -256,21 +208,10 @@ export function Settings({ user, notify, logout, nav }) {
             <input type="email" value={user?.email || ''} disabled style={{ ...inputStyle, background: 'rgba(0,0,0,0.02)', cursor: 'not-allowed' }} />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Username</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '.8rem', color: 'var(--mu)' }}>mindgigs.com/</span>
-              <input type="text" value={handle} onChange={e => setHandle(normalizeHandle(e.target.value))}
-                style={{ ...inputStyle, paddingLeft: 108 }} placeholder="yourname" />
-            </div>
-            {handleStatus === 'checking' && <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 6 }}>Checking availability…</div>}
-            {handleStatus === 'available' && <div style={{ fontSize: '0.75rem', color: 'var(--teal)', marginTop: 6 }}>✓ Available</div>}
-            {handleStatus === 'taken' && <div style={{ fontSize: '0.75rem', color: '#e84444', marginTop: 6 }}>That username is taken.</div>}
-            {handleStatus === 'invalid' && <div style={{ fontSize: '0.75rem', color: '#e84444', marginTop: 6 }}>Use 3-30 letters, numbers, or hyphens, starting with a letter.</div>}
-            <button onClick={handleSaveHandle}
-              disabled={savingHandle || !handle || handle === user?.handle || handleStatus === 'taken' || handleStatus === 'invalid' || handleStatus === 'checking'}
-              style={{ marginTop: 10, padding: '8px 16px', background: 'rgba(26,184,160,0.08)', color: 'var(--teal)', border: '1px solid rgba(26,184,160,0.2)', borderRadius: '8px', fontFamily: 'var(--fu)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
-              {savingHandle ? 'Saving...' : 'Save Username'}
-            </button>
+            <label style={labelStyle}>Coupon Code</label>
+            <input type="text" value={user?.couponCode || 'Not assigned yet'} disabled
+              style={{ ...inputStyle, background: 'rgba(0,0,0,0.02)', cursor: 'not-allowed', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.06em' }} />
+            <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>Assigned once at signup — affiliates have no public profile or username.</div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
             <button onClick={handleSaveProfile} disabled={saving}

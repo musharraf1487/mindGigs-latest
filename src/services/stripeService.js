@@ -49,8 +49,9 @@ export async function initiatePayment(bookingId, amount, email) {
  * @param {number} amount     Monthly amount in cents
  * @param {string} email      Customer email
  * @param {string|null} buyerId  Firestore uid of the buyer, so the webhook can look up their referral/affiliate status
+ * @param {string|null} couponCode  Coupon entered at checkout (expert handle or affiliate code)
  */
-export async function initiateSubscriptionPayment(expertId, title, amount, email, buyerId) {
+export async function initiateSubscriptionPayment(expertId, title, amount, email, buyerId, couponCode) {
   if (!FUNCTIONS_URL) {
     throw new Error('Payment system is not configured. Please contact support.');
   }
@@ -58,7 +59,7 @@ export async function initiateSubscriptionPayment(expertId, title, amount, email
   const response = await fetch(`${FUNCTIONS_URL}/createCheckoutSession`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ saleType: 'subscription', expertId, title, amount, email, buyerId: buyerId || null }),
+    body: JSON.stringify({ saleType: 'subscription', expertId, title, amount, email, buyerId: buyerId || null, couponCode: couponCode || null }),
   });
 
   if (!response.ok) {
@@ -111,8 +112,9 @@ export async function confirmFreeProduct(expertId, title, email, deliveryLink, b
  * @param {string} email      Customer email
  * @param {string|null} deliveryLink  Link emailed to the buyer after purchase (books/digital products)
  * @param {string|null} buyerId       Firestore uid of the buyer, so the purchase can be tied to their account and the webhook can look up their referral/affiliate status
+ * @param {string|null} couponCode    Coupon entered at checkout (expert handle or affiliate code)
  */
-export async function initiateProductPayment(expertId, title, amount, email, deliveryLink, buyerId) {
+export async function initiateProductPayment(expertId, title, amount, email, deliveryLink, buyerId, couponCode) {
   if (!FUNCTIONS_URL) {
     throw new Error('Payment system is not configured. Please contact support.');
   }
@@ -120,7 +122,7 @@ export async function initiateProductPayment(expertId, title, amount, email, del
   const response = await fetch(`${FUNCTIONS_URL}/createCheckoutSession`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ saleType: 'product', expertId, title, amount, email, deliveryLink: deliveryLink || null, buyerId: buyerId || null }),
+    body: JSON.stringify({ saleType: 'product', expertId, title, amount, email, deliveryLink: deliveryLink || null, buyerId: buyerId || null, couponCode: couponCode || null }),
   });
 
   if (!response.ok) {

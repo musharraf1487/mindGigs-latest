@@ -1,8 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
+import { db } from '../../../../config/firebase';
+import { SCENARIO_LABELS } from '../../../../services/affiliateService';
 
 export function Analytics({ user, adminData }) {
   const bars = adminData?.chartBars || [];
   const months = ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
+
+  // Platform earnings by scenario — which channel makes mindGigs the most money.
+  const [scenarioBreakdown, setScenarioBreakdown] = useState([]);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'commissions'), (snap) => {
+      const sums = {};
+      snap.docs.forEach((d) => {
+        const c = d.data();
+        sums[c.scenario] = (sums[c.scenario] || 0) + (c.platformAmount || 0);
+      });
+      const total = Object.values(sums).reduce((s, v) => s + v, 0);
+      const rows = Object.entries(sums)
+        .map(([scenario, amount]) => ({
+          scenario: Number(scenario),
+          label: SCENARIO_LABELS[scenario] || `Scenario ${scenario}`,
+          amount: amount / 100,
+          pct: total > 0 ? (amount / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.amount - a.amount);
+      setScenarioBreakdown(rows);
+    }, (err) => console.error('Scenario breakdown listener error:', err));
+    return () => unsubscribe();
+  }, []);
+
+  // Top 10 affiliate performers (experts + affiliates), by affiliate-role earnings.
+  const [topAffiliates, setTopAffiliates] = useState([]);
+  useEffect(() => {
+    const q = query(
+      collection(db, 'users'),
+      where('role', 'in', ['expert', 'affiliate']),
+      orderBy('affiliateEarnings', 'desc'),
+      limit(10)
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setTopAffiliates(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error('Top affiliates listener error:', err));
+    return () => unsubscribe();
+  }, []);
 
   const userGrowth = [
     { label: 'Experts', val: '1,840', pct: 74, color: 'var(--gl)' },
@@ -118,6 +159,67 @@ export function Analytics({ user, adminData }) {
             <span style={{ fontFamily: 'var(--fu)', fontWeight: 800, fontSize: '1.15rem', color: 'var(--gl)' }}>{adminData?.keyMetrics?.[3]?.value}</span>
           </div>
         </div>
+      </div>
+
+      {/* Platform earnings by scenario — which channel makes mindGigs the most money */}
+      <div className="stat-card" style={{ marginBottom: '24px' }}>
+        <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--gd)', marginBottom: '4px' }}>
+          Platform Earnings by Scenario
+        </div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginBottom: '18px' }}>Live from the commissions collection</div>
+        {scenarioBreakdown.length > 0 ? scenarioBreakdown.map((s) => (
+          <div key={s.scenario} style={{ marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--sl)' }}>{s.scenario} — {s.label}</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--teal)' }}>${s.amount.toFixed(2)} ({s.pct.toFixed(1)}%)</span>
+            </div>
+            <div style={{ height: '8px', background: 'var(--gmt)', borderRadius: '100px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${s.pct}%`, background: 'var(--teal)', borderRadius: '100px', transition: 'width 0.6s ease' }} />
+            </div>
+          </div>
+        )) : (
+          <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--mu)', fontSize: '0.85rem' }}>No commissions yet</div>
+        )}
+      </div>
+
+      {/* Top 10 affiliate performers */}
+      <div className="table-wrap" style={{ marginBottom: '24px' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--gd)' }}>Top Affiliate Performers</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: '2px' }}>Experts and affiliates ranked by affiliate-role earnings (referrals + coupons)</div>
+        </div>
+        {topAffiliates.length > 0 ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Affiliate Earnings</th>
+                <th>Pending Payout</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topAffiliates.map((u, i) => (
+                <tr key={u.id}>
+                  <td style={{ color: 'var(--mu)', fontFamily: 'var(--fu)', fontWeight: 700 }}>#{i + 1}</td>
+                  <td style={{ fontWeight: 600 }}>{u.name || '—'}</td>
+                  <td>
+                    <span style={{
+                      padding: '3px 10px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: 700, fontFamily: 'var(--fu)', textTransform: 'capitalize',
+                      background: u.role === 'expert' ? 'rgba(255,178,122,0.1)' : 'rgba(191,201,209,0.1)',
+                      color: u.role === 'expert' ? 'var(--gl)' : 'var(--teal)',
+                    }}>{u.role}</span>
+                  </td>
+                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>${((u.affiliateEarnings || 0) / 100).toFixed(2)}</td>
+                  <td style={{ color: 'var(--sl)' }}>${((u.pendingPayout || 0) / 100).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--mu)', fontSize: '0.85rem' }}>No affiliate earnings yet</div>
+        )}
       </div>
 
       {/* Top Users Table */}

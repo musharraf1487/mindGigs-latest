@@ -470,8 +470,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                       setIsSubmitting(false);
                       return;
                     }
-                    // Claiming the handle also syncs referralCode to match it —
-                    // this is the moment the expert's profile (and vanity/referral URL) go public.
+                    // This is the moment the expert's profile (and vanity/coupon URL) go public.
                     const claimedHandle = await claimHandle({
                       uid: currentUser.uid,
                       role: 'expert',
@@ -503,7 +502,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
 
                     await updateDoc(doc(db, 'users', currentUser.uid), expertUpdates);
 
-                    const newExpertProfile = { ...userData, ...expertUpdates, handle: claimedHandle, referralCode: claimedHandle, id: currentUser.uid };
+                    const newExpertProfile = { ...userData, ...expertUpdates, handle: claimedHandle, id: currentUser.uid };
                     if (addExpert) addExpert(newExpertProfile);
                     if (refreshUserData) await refreshUserData();
 

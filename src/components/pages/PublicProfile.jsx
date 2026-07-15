@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment, confirmFreeProduct } from '../../services/stripeService';
+import { resolveCouponCode } from '../../services/affiliateService';
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
 
@@ -89,6 +90,40 @@ function ExpandableOfferingDesc({ desc }) {
   );
 }
 
+// Optional coupon-code affordance for products/subscriptions/custom offerings
+// (not books — see handleBuyBook). Collapsed behind a link by default so it
+// doesn't clutter every card; validated on blur via resolveCouponCode.
+function CouponField({ code, status, onChange, onValidate }) {
+  const [isOpen, setIsOpen] = useState(!!code);
+
+  if (!isOpen) {
+    return (
+      <span
+        onClick={() => setIsOpen(true)}
+        style={{ fontSize: '.72rem', color: 'var(--teal)', cursor: 'pointer', textDecoration: 'underline' }}
+      >
+        Have a coupon?
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }}>
+      <input
+        className="input"
+        style={{ fontSize: '.78rem', padding: '6px 10px', width: 140 }}
+        placeholder="Coupon code"
+        value={code}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onValidate}
+      />
+      {status === 'checking' && <span style={{ fontSize: '.68rem', color: 'var(--mu)' }}>Checking…</span>}
+      {status === 'valid' && <span style={{ fontSize: '.68rem', color: 'var(--teal)' }}>✓ Applied</span>}
+      {status === 'invalid' && <span style={{ fontSize: '.68rem', color: '#e84444' }}>Invalid code</span>}
+    </div>
+  );
+}
+
 const ROLE_DASHBOARD_ROUTE = {
   expert: 'expert-dashboard',
   client: 'client-dashboard',
@@ -151,6 +186,22 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
   const isLoggedIn = !!currentUser && !!userData?.role;
   const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
   const [checkoutLoading, setCheckoutLoading] = useState(null);
+  // Optional per-item coupon state, keyed the same way checkoutLoading is
+  // (`prod-${title}` / `sub-${title}`) — { code, status: null|'checking'|'valid'|'invalid' }
+  const [coupons, setCoupons] = useState({});
+
+  const setItemCoupon = (key, code) => setCoupons((prev) => ({ ...prev, [key]: { code, status: null } }));
+  const validateItemCoupon = async (key) => {
+    const code = (coupons[key]?.code || '').trim();
+    if (!code) return;
+    setCoupons((prev) => ({ ...prev, [key]: { code, status: 'checking' } }));
+    try {
+      const resolved = await resolveCouponCode(code);
+      setCoupons((prev) => ({ ...prev, [key]: { code, status: resolved ? 'valid' : 'invalid' } }));
+    } catch {
+      setCoupons((prev) => ({ ...prev, [key]: { code, status: null } }));
+    }
+  };
 
   // Different entry points (Featured Experts carousel, ExpertsDirectory,
   // vanity URLs, etc.) have historically passed in different, sometimes
@@ -194,19 +245,24 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     if (!String(sub.price ?? '').trim()) { notify('Invalid subscription price.', 'error'); return; }
+    const couponKey = `sub-${sub.title}`;
+    const couponEntry = coupons[couponKey];
+    if (couponEntry?.status === 'invalid') { notify('That coupon code is invalid — fix it or clear it.', 'error'); return; }
+    const appliedCoupon = couponEntry?.status === 'valid' ? couponEntry.code.trim() : null;
     if (isExplicitlyFree(sub.price)) {
       notify("You're subscribed — no payment required!", 'success');
       return;
     }
     const amount = parsePriceCents(sub.price);
-    setCheckoutLoading(`sub-${sub.title}`);
+    setCheckoutLoading(couponKey);
     try {
       await initiateSubscriptionPayment(
         expert?.id || expert?.uid || '',
         sub.title,
         amount,
         currentUser.email,
-        currentUser.uid
+        currentUser.uid,
+        appliedCoupon
       );
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
@@ -220,8 +276,12 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     if (!String(product.price ?? '').trim()) { notify('Invalid product price.', 'error'); return; }
+    const couponKey = `prod-${product.title}`;
+    const couponEntry = coupons[couponKey];
+    if (couponEntry?.status === 'invalid') { notify('That coupon code is invalid — fix it or clear it.', 'error'); return; }
+    const appliedCoupon = couponEntry?.status === 'valid' ? couponEntry.code.trim() : null;
     if (isExplicitlyFree(product.price)) {
-      setCheckoutLoading(`prod-${product.title}`);
+      setCheckoutLoading(couponKey);
       try {
         await confirmFreeProduct(
           expert?.id || expert?.uid || '',
@@ -239,7 +299,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     const amount = parsePriceCents(product.price);
-    setCheckoutLoading(`prod-${product.title}`);
+    setCheckoutLoading(couponKey);
     try {
       await initiateProductPayment(
         expert?.id || expert?.uid || '',
@@ -247,7 +307,8 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
         amount,
         currentUser.email,
         product.deliveryLink || product.fileUrl || null,
-        currentUser.uid
+        currentUser.uid,
+        appliedCoupon
       );
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
@@ -748,6 +809,12 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   >
                     {checkoutLoading === `sub-${sub.title}` ? 'Redirecting...' : 'Subscribe →'}
                   </button>
+                  <CouponField
+                    code={coupons[`sub-${sub.title}`]?.code || ''}
+                    status={coupons[`sub-${sub.title}`]?.status || null}
+                    onChange={(v) => setItemCoupon(`sub-${sub.title}`, v)}
+                    onValidate={() => validateItemCoupon(`sub-${sub.title}`)}
+                  />
                   <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
                     Do you want to become an Affiliate?
                   </a>
@@ -819,6 +886,14 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                       {checkoutLoading === `prod-${p.title}` ? '...' : 'Buy Now'}
                     </button>
                   </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <CouponField
+                      code={coupons[`prod-${p.title}`]?.code || ''}
+                      status={coupons[`prod-${p.title}`]?.status || null}
+                      onChange={(v) => setItemCoupon(`prod-${p.title}`, v)}
+                      onValidate={() => validateItemCoupon(`prod-${p.title}`)}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
@@ -862,6 +937,12 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                         {checkoutLoading === `prod-${c.title}` ? '...' : 'Buy Now'}
                       </button>
                     </div>
+                    <CouponField
+                      code={coupons[`prod-${c.title}`]?.code || ''}
+                      status={coupons[`prod-${c.title}`]?.status || null}
+                      onChange={(v) => setItemCoupon(`prod-${c.title}`, v)}
+                      onValidate={() => validateItemCoupon(`prod-${c.title}`)}
+                    />
                   </div>
                 </div>
               ))}

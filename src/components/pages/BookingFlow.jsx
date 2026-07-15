@@ -3,15 +3,15 @@ import { CheckCircle2, ArrowLeft, ArrowRight, ChevronRight, User, Calendar, Lock
 import { useAuth } from '../../context/AuthContext';
 import { createBooking, getExpertBookings, confirmFreeBooking } from '../../services/bookingService';
 import { initiatePayment } from '../../services/stripeService';
-import { lookupAffiliateCode } from '../../services/affiliateService';
+import { resolveCouponCode } from '../../services/affiliateService';
 import { getAvailableTimesForDay, getAvailableDaysInMonth, buildTakenSlotsMap } from '../../services/availabilityService';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { formatOfferPrice } from '../../utils/price';
 
 
 export function BookingFlow({ nav, notify, expert, session }) {
-  const { currentUser, userData, refreshUserData } = useAuth();
+  const { currentUser, userData } = useAuth();
 
   // Use fallbacks to prevent crashes if data is missing, but prioritize passed props
   const expertName = expert?.name || 'Expert';
@@ -28,6 +28,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.phone || '');
   const [couponCode, setCouponCode] = useState('');
+  const [couponStatus, setCouponStatus] = useState(null); // null | 'checking' | 'valid' | 'invalid'
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingId, setBookingId] = useState(null);
@@ -92,26 +93,16 @@ export function BookingFlow({ nav, notify, expert, session }) {
       return;
     }
 
+    if (couponStatus === 'invalid') {
+      notify('That coupon code is invalid — fix it or clear it before continuing.', 'warn');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      // 0. Checkout-time affiliate coupon (Path B). Lifetime commission is
-      // first-write-wins — never overwrite an affiliateId this buyer already has.
-      const trimmedCoupon = (couponCode || '').trim().toUpperCase();
-      if (trimmedCoupon && !userData?.affiliateId) {
-        try {
-          const foundAffiliateId = await lookupAffiliateCode(trimmedCoupon);
-          if (foundAffiliateId) {
-            await updateDoc(doc(db, 'users', currentUser.uid), { affiliateId: foundAffiliateId });
-            await refreshUserData?.();
-          } else {
-            notify('Coupon code not recognized — continuing without it.', 'warn');
-          }
-        } catch (err) {
-          console.error('Coupon lookup failed:', err);
-        }
-      }
-
-      // 1. Create booking in Firestore
+      // Create booking in Firestore — couponCode is saved here and read
+      // server-side by createCheckoutSession/stripeWebhook for commission
+      // splitting. Nothing is written to the buyer's own user doc.
       const newBookingId = await createBooking({
         expertId: expert?.id || expert?.uid || 'unknown',
         clientId: currentUser.uid,
@@ -123,6 +114,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
         price: parsePriceCents(sessionPrice),
         clientEmail: email,
         clientPhone: phone,
+        couponCode: (couponCode || '').trim() || null,
       });
 
       setBookingId(newBookingId);
@@ -508,8 +500,22 @@ export function BookingFlow({ nav, notify, expert, session }) {
                     className="input"
                     placeholder="Have a coupon code?"
                     value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
+                    onChange={(e) => { setCouponCode(e.target.value); setCouponStatus(null); }}
+                    onBlur={async () => {
+                      const trimmed = couponCode.trim();
+                      if (!trimmed) { setCouponStatus(null); return; }
+                      setCouponStatus('checking');
+                      try {
+                        const resolved = await resolveCouponCode(trimmed);
+                        setCouponStatus(resolved ? 'valid' : 'invalid');
+                      } catch {
+                        setCouponStatus(null);
+                      }
+                    }}
                   />
+                  {couponStatus === 'checking' && <div style={{ fontSize: '.75rem', color: 'var(--mu)', marginTop: 6 }}>Checking code…</div>}
+                  {couponStatus === 'valid' && <div style={{ fontSize: '.75rem', color: 'var(--teal)', marginTop: 6 }}>✓ Code applied</div>}
+                  {couponStatus === 'invalid' && <div style={{ fontSize: '.75rem', color: '#e84444', marginTop: 6 }}>Invalid code</div>}
                 </div>
                 <div className="field">
                   <label className="label">Note to Expert (optional)</label>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { claimHandle, normalizeHandle } from '../../services/handleService';
+import { normalizeHandle } from '../../services/handleService';
+import { resolveCouponCode } from '../../services/affiliateService';
 
 function AuthShell({ children, nav }) {
   return (
@@ -70,8 +71,8 @@ const ROLE_CONFIG = {
   affiliate: {
     badge: 'Affiliate Program',
     title: 'Join as an Affiliate',
-    sub: 'Get your own coupon code and earn a 10% lifetime commission on every sale it brings in.',
-    showHandle: true,
+    sub: 'Get your own coupon code and earn a 7.5% lifetime commission on every seller you onboard, plus 7.5% one-time on every coupon sale.',
+    showHandle: false,
     btnLabel: 'Join Affiliate Program →',
     successMsg: 'Affiliate account created! Welcome to the program.',
     redirect: 'affiliate-dashboard',
@@ -80,7 +81,7 @@ const ROLE_CONFIG = {
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
-  const { signup, loginWithGoogle, currentUser, userData, refreshUserData } = useAuth();
+  const { signup, loginWithGoogle } = useAuth();
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -89,8 +90,10 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [couponCode, setCouponCode] = useState('');
-  // Post-Google handle setup for roles that need a handle but skip onboarding
-  const [needsHandleSetup, setNeedsHandleSetup] = useState(false);
+  // null | 'checking' | 'valid' | 'invalid' — an invalid code blocks submit
+  // until it's fixed or cleared, so no orphaned Auth account gets created on
+  // a doomed coupon (mirrors the username availability pre-check below).
+  const [couponStatus, setCouponStatus] = useState(null);
 
   // Admin has no self-service signup — there is exactly one admin account,
   // provisioned out-of-band. Bounce away from this route entirely rather than
@@ -102,15 +105,29 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
       nav('landingboard');
     }
   }, [role]);
-  const [pendingHandle, setPendingHandle] = useState('');
-  const [savingHandle, setSavingHandle] = useState(false);
 
   const cfg = ROLE_CONFIG[role] || ROLE_CONFIG.expert;
+
+  useEffect(() => {
+    if (!couponCode.trim()) { setCouponStatus(null); return; }
+    setCouponStatus('checking');
+    const t = setTimeout(async () => {
+      try {
+        const resolved = await resolveCouponCode(couponCode);
+        setCouponStatus(resolved ? 'valid' : 'invalid');
+      } catch {
+        setCouponStatus(null);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [couponCode]);
 
   const handleSignup = async () => {
     if (!agreed) return notify('Please agree to terms first.', 'warn');
     if (!name || !email || !pass) return notify('Please fill all fields', 'warn');
     if (cfg.showHandle && !username) return notify('Please enter a username', 'warn');
+    if (couponStatus === 'invalid') return notify('That coupon code is invalid — fix it or clear it before continuing.', 'warn');
+    if (couponStatus === 'checking') return notify('Still checking your coupon code — one moment.', 'warn');
 
     setLoading(true);
     try {
@@ -119,7 +136,7 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
         phone: phone.trim() || null,
         handle: username || normalizeHandle(name),
         onboardingComplete: role !== 'expert',
-      }, { expertId, couponCode });
+      }, { expertId, couponCode: couponCode.trim() || null });
       notify(cfg.successMsg);
       nav(cfg.redirect);
     } catch (err) {
@@ -129,64 +146,6 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
       setLoading(false);
     }
   };
-
-  if (needsHandleSetup) {
-    return (
-      <AuthShell nav={nav}>
-        <div className="slabel">One More Step</div>
-        <h2 className="stitle" style={{ fontSize: '1.6rem' }}>Choose Your Affiliate Handle</h2>
-        <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginBottom: 24 }}>
-          This is your public referral URL that you share with others.
-        </p>
-        <div className="field">
-          <label className="label">Your Handle</label>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '.85rem', color: 'var(--mu)' }}>
-              mindgigs.com/
-            </span>
-            <input
-              className="input"
-              style={{ paddingLeft: 120 }}
-              placeholder="yourname"
-              value={pendingHandle}
-              onChange={(e) => setPendingHandle(normalizeHandle(e.target.value))}
-            />
-          </div>
-        </div>
-        <button
-          className="btn btn-gr w-full btn-lg"
-          disabled={savingHandle || !pendingHandle}
-          onClick={async () => {
-            if (!pendingHandle) return notify('Please enter a handle', 'warn');
-            setSavingHandle(true);
-            try {
-              const uid = currentUser?.uid;
-              if (uid) {
-                // One-time: this step is completing signup, so the affiliate's
-                // referral code is also set to match the handle they just chose.
-                await claimHandle({
-                  uid,
-                  role: 'affiliate',
-                  oldHandle: userData?.handle || null,
-                  newHandle: pendingHandle,
-                  syncReferralCode: true,
-                });
-                await refreshUserData?.();
-              }
-              notify(cfg.successMsg);
-              nav(cfg.redirect);
-            } catch (err) {
-              notify(err.message || 'Failed to save handle: Unknown error', 'error');
-            } finally {
-              setSavingHandle(false);
-            }
-          }}
-        >
-          {savingHandle ? 'Saving...' : 'Complete Setup →'}
-        </button>
-      </AuthShell>
-    );
-  }
 
   if (role === 'admin') return null;
 
@@ -237,14 +196,9 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
           if (!agreed) return notify('Please agree to terms first.', 'warn');
           setLoading(true);
           try {
-            await loginWithGoogle(role || 'expert', { expertId, couponCode });
-            // Affiliates need to choose a public handle before going to dashboard
-            if (role === 'affiliate') {
-              setNeedsHandleSetup(true);
-            } else {
-              notify(cfg.successMsg);
-              nav(cfg.redirect);
-            }
+            await loginWithGoogle(role || 'expert', { expertId, couponCode: couponCode.trim() || null });
+            notify(cfg.successMsg);
+            nav(cfg.redirect);
           } catch (err) {
             console.error('Google Signup Error:', err);
             notify(err.message?.replace('Firebase: ', '') || 'Failed to sign up with Google.', 'error');
@@ -334,13 +288,16 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
       </div>
 
       <div className="field">
-        <label className="label">Have a Coupon Code? (Optional)</label>
+        <label className="label">Have a Referral Code? (Optional)</label>
         <input
           className="input"
-          placeholder="e.g. MGX7K2"
+          placeholder="e.g. an expert's username or an affiliate code"
           value={couponCode}
-          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+          onChange={(e) => setCouponCode(e.target.value)}
         />
+        {couponStatus === 'checking' && <div style={{ fontSize: '.75rem', color: 'var(--mu)', marginTop: 6 }}>Checking code…</div>}
+        {couponStatus === 'valid' && <div style={{ fontSize: '.75rem', color: 'var(--teal)', marginTop: 6 }}>✓ Code applied</div>}
+        {couponStatus === 'invalid' && <div style={{ fontSize: '.75rem', color: '#e84444', marginTop: 6 }}>Invalid code — fix it or clear the field to continue.</div>}
       </div>
 
       <label className="checkbox-row" style={{ marginBottom: 20 }}>
@@ -353,7 +310,7 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
         <button
           className="btn btn-gr w-full btn-lg"
           type="submit"
-          disabled={loading}
+          disabled={loading || couponStatus === 'invalid' || couponStatus === 'checking'}
         >
           {loading ? 'Creating Account...' : cfg.btnLabel}
         </button>

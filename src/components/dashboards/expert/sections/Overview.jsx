@@ -33,10 +33,10 @@ export function Overview({ user, notify, nav, setActive }) {
   const fmt = v => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const displayStats = [
-    { label: 'Total Earnings', val: fmt(stats.totalEarnings), ch: 'All-time', color: 'gr' },
+    { label: 'Selling Earnings', val: fmt((user?.sellingEarnings || 0) / 100), ch: 'All-time', color: 'gr' },
     { label: 'Monthly Revenue', val: fmt(stats.monthlyRevenue), ch: 'This month', color: 'gr' },
     { label: 'Upcoming Sessions', val: stats.upcoming, ch: 'Confirmed', color: 'tl' },
-    { label: 'Affiliate Earned', val: fmt((user?.affiliateEarnings || 0) / 100), ch: 'From referrals', color: 'gd' },
+    { label: 'Affiliate Earnings', val: fmt((user?.affiliateEarnings || 0) / 100), ch: 'From referrals & coupons', color: 'gd' },
   ];
 
   if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--mu)' }}>Loading dashboard...</div>;

@@ -9,12 +9,12 @@ export function Overview({ user, affiliateData, notify }) {
   const [payoutRequested, setPayoutRequested] = useState(false);
   const stats = [
     { label: 'Total Earnings', val: affiliateData?.totalEarnings || '$0', ch: 'All-time commission', color: 'var(--teal)', icon: 'dollar' },
-    { label: 'Referred Buyers', val: affiliateData?.referrals?.length || 0, ch: 'Used your coupon', color: 'var(--teal)', icon: 'users' },
-    { label: 'Active Campaigns', val: affiliateData?.campaigns?.length || 0, ch: 'Marketing efforts', color: 'var(--gb)', icon: 'megaphone' },
+    { label: 'Experts Onboarded', val: affiliateData?.referrals?.length || 0, ch: 'Lifetime commission source', color: 'var(--teal)', icon: 'users' },
+    { label: 'Commission Events', val: affiliateData?.commissions?.length || 0, ch: 'All-time', color: 'var(--gb)', icon: 'megaphone' },
     { label: 'Pending Payout', val: `$${affiliateData?.pendingPayout || '0'}`, ch: 'Ready to withdraw', color: 'var(--gb)', icon: 'clock' },
   ];
 
-  const affiliateCode = user?.affiliateCode || null;
+  const couponCode = user?.couponCode || null;
 
   return (
     <div>
@@ -53,17 +53,17 @@ export function Overview({ user, affiliateData, notify }) {
             <ProfIcon icon="link" size={14} /> Your Coupon Code
           </div>
           <div className="ref-box" style={{ marginTop: 0 }}>
-            <span className="ref-url" style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.06em' }}>{affiliateCode || 'Not assigned yet'}</span>
+            <span className="ref-url" style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.06em' }}>{couponCode || 'Not assigned yet'}</span>
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>
-            Buyers enter this at signup or checkout — you earn 10% lifetime on every sale it's tied to.
+            Buyers enter this at signup (to onboard a new expert, lifetime) or at checkout (one-time, 7.5% of that sale).
           </div>
         </div>
         <button
-          disabled={!affiliateCode}
+          disabled={!couponCode}
           onClick={() => {
-            if (!affiliateCode) return;
-            navigator.clipboard.writeText(affiliateCode);
+            if (!couponCode) return;
+            navigator.clipboard.writeText(couponCode);
             notify?.('Coupon code copied!', 'success');
           }}
           style={{

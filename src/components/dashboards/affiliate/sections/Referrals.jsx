@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { Users, DollarSign, Copy, Mail, Plus, Lightbulb, User } from 'lucide-react';
 
-function InviteModal({ onClose, notify, affiliateCode }) {
+function InviteModal({ onClose, notify, couponCode }) {
   const [email, setEmail] = useState('');
 
   const handleSendInvite = (e) => {
     e.preventDefault();
     if (!email) return;
-    if (!affiliateCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
-    const subject = encodeURIComponent("Save with my mindGigs coupon!");
-    const body = encodeURIComponent(`Hi there,\n\nUse my coupon code ${affiliateCode} at signup or checkout on mindGigs.\n\nBest,`);
+    if (!couponCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
+    const subject = encodeURIComponent("Join mindGigs with my coupon!");
+    const body = encodeURIComponent(`Hi there,\n\nUse my coupon code ${couponCode} when you sign up as an expert on mindGigs — I'll earn a lifetime referral commission, at no cost to you.\n\nBest,`);
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     notify?.(`Invite email draft opened for ${email}`, 'success');
     onClose();
   };
 
   const handleCopy = () => {
-    if (!affiliateCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
-    navigator.clipboard.writeText(affiliateCode);
+    if (!couponCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
+    navigator.clipboard.writeText(couponCode);
     notify?.('Coupon code copied!', 'success');
   };
 
@@ -29,11 +29,11 @@ function InviteModal({ onClose, notify, affiliateCode }) {
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(26,184,160,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Mail size={18} color="var(--teal)" />
           </div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--gd)' }}>Invite a Buyer</h3>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--gd)' }}>Invite a New Expert</h3>
         </div>
 
         <p style={{ fontSize: '0.85rem', color: 'var(--mu)', marginBottom: 20 }}>
-          Share your coupon code <strong style={{ fontFamily: 'monospace' }}>{affiliateCode}</strong> — tell them to enter it at signup or checkout on any expert's session, subscription, or product.
+          Share your coupon code <strong style={{ fontFamily: 'monospace' }}>{couponCode}</strong> — an expert who enters it while signing up gets tied to you for life. You earn 7.5% of every sale they ever make.
         </p>
 
         <form onSubmit={handleSendInvite}>
@@ -58,42 +58,48 @@ function InviteModal({ onClose, notify, affiliateCode }) {
 
 export function Referrals({ user, affiliateData, notify }) {
   const [showInvite, setShowInvite] = useState(false);
-  const affiliateCode = user?.affiliateCode || null;
+  const couponCode = user?.couponCode || null;
 
-  const referredUsers = affiliateData?.referrals || [];
-  const total = referredUsers.length;
+  // Experts onboarded via this affiliate's coupon at signup (onboardedByAffiliateId) —
+  // the lifetime commission source. Buyers are no longer persistently attached
+  // to an affiliate; one-time coupon sales show up in the Earnings tab instead.
+  const onboardedExperts = affiliateData?.referrals || [];
+  const total = onboardedExperts.length;
 
-  // Per-buyer commission earned, derived from the commissions list already
-  // loaded by AffiliateDashboard.jsx (each commission doc carries buyerId).
+  // Per-expert lifetime commission earned, derived from the combined
+  // commissions list already loaded by AffiliateDashboard.jsx — only the
+  // Person A (lifetime) entries count toward "what this expert has earned you".
   const commissions = affiliateData?.commissions || [];
-  const earningsByBuyer = commissions.reduce((acc, c) => {
-    if (!c.buyerId) return acc;
-    acc[c.buyerId] = (acc[c.buyerId] || 0) + (c.affiliateAmount || 0);
+  const earningsByExpert = commissions.reduce((acc, c) => {
+    if (!c.sellerId || c.personAId !== user?.uid) return acc;
+    acc[c.sellerId] = (acc[c.sellerId] || 0) + (c.personAAmount || 0);
     return acc;
   }, {});
-  const totalEarned = commissions.reduce((s, c) => s + (c.affiliateAmount || 0), 0) / 100;
+  const totalEarned = commissions
+    .filter((c) => c.personAId === user?.uid)
+    .reduce((s, c) => s + (c.personAAmount || 0), 0) / 100;
 
   return (
     <div>
-      {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} affiliateCode={affiliateCode} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} couponCode={couponCode} />}
 
       {/* Header */}
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 700, color: 'var(--gd)', marginBottom: '4px' }}>My Referrals</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--mu)' }}>Buyers who used your coupon code, and what they've earned you</p>
+          <h2 style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 700, color: 'var(--gd)', marginBottom: '4px' }}>Experts Onboarded</h2>
+          <p style={{ fontSize: '0.875rem', color: 'var(--mu)' }}>Experts who joined with your coupon code, and what they've earned you — for life</p>
         </div>
         <button onClick={() => setShowInvite(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'var(--teal)', color: '#fff', borderRadius: '8px', fontFamily: 'var(--fu)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
-          <Plus size={14} /> Invite a Buyer
+          <Plus size={14} /> Invite an Expert
         </button>
       </div>
 
       {/* Stats Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {[
-          { label: 'Total Referred', val: total, color: 'var(--teal)', icon: <Users size={18} color="var(--teal)" /> },
-          { label: 'Total Commission Earned', val: `$${totalEarned.toFixed(2)}`, color: 'var(--gd)', icon: <DollarSign size={18} color="var(--gd)" /> },
+          { label: 'Experts Onboarded', val: total, color: 'var(--teal)', icon: <Users size={18} color="var(--teal)" /> },
+          { label: 'Lifetime Commission Earned', val: `$${totalEarned.toFixed(2)}`, color: 'var(--gd)', icon: <DollarSign size={18} color="var(--gd)" /> },
         ].map((s, i) => (
           <div key={i} className="stat-card" style={{ position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
@@ -106,35 +112,35 @@ export function Referrals({ user, affiliateData, notify }) {
         ))}
       </div>
 
-      {/* Referrals Table */}
+      {/* Onboarded Experts Table */}
       <div className="table-wrap">
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--gd)' }}>
-            Referral List <span style={{ fontWeight: 400, color: 'var(--mu)', fontSize: '0.82rem' }}>({total})</span>
+            Expert List <span style={{ fontWeight: 400, color: 'var(--mu)', fontSize: '0.82rem' }}>({total})</span>
           </div>
         </div>
         {total > 0 ? (
           <table className="table">
             <thead>
               <tr>
-                <th>Buyer</th>
+                <th>Expert</th>
                 <th>Joined</th>
-                <th>Earnings</th>
+                <th>Lifetime Earnings</th>
               </tr>
             </thead>
             <tbody>
-              {referredUsers.map((r) => (
+              {onboardedExperts.map((r) => (
                 <tr key={r.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(26,184,160,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <User size={14} color="var(--teal)" />
                       </div>
-                      <span style={{ fontWeight: 600, color: 'var(--ch)' }}>{r.name || r.email || 'Buyer'}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--ch)' }}>{r.name || r.email || 'Expert'}</span>
                     </div>
                   </td>
                   <td style={{ color: 'var(--mu)' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ''}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>${((earningsByBuyer[r.id] || 0) / 100).toFixed(2)}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--teal)' }}>${((earningsByExpert[r.id] || 0) / 100).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -144,8 +150,8 @@ export function Referrals({ user, affiliateData, notify }) {
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(26,184,160,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <Users size={22} color="var(--teal)" />
             </div>
-            <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, marginBottom: 4 }}>No referrals yet</div>
-            <div style={{ fontSize: '0.82rem', marginBottom: 16 }}>Start sharing your coupon code to earn commissions.</div>
+            <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, marginBottom: 4 }}>No experts onboarded yet</div>
+            <div style={{ fontSize: '0.82rem', marginBottom: 16 }}>Share your coupon code with an expert signing up to start earning.</div>
           </div>
         )}
       </div>
@@ -158,7 +164,7 @@ export function Referrals({ user, affiliateData, notify }) {
       }}>
         <div style={{ marginTop: 2 }}><Lightbulb size={16} color="var(--teal)" /></div>
         <div>
-          <strong style={{ color: 'var(--teal)' }}>Pro Tip:</strong> Share your coupon code <strong style={{ fontFamily: 'monospace' }}>{affiliateCode || '—'}</strong> anywhere — you earn a 10% lifetime commission on every sale it's tied to, forever.
+          <strong style={{ color: 'var(--teal)' }}>Pro Tip:</strong> Share your coupon code <strong style={{ fontFamily: 'monospace' }}>{couponCode || '—'}</strong> with experts signing up — you earn a 7.5% lifetime commission on every sale they ever make. Buyers can also use it as a one-time checkout coupon (see the Earnings tab).
         </div>
       </div>
     </div>
