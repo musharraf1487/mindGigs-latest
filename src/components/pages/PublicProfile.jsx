@@ -21,6 +21,7 @@ import { initiateSubscriptionPayment, initiateProductPayment, confirmFreeProduct
 import { resolveCouponCode } from '../../services/affiliateService';
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
+import { getBookPurchaseFlags } from '../../utils/book';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 const BIO_PREVIEW_LENGTH = 300;
@@ -316,12 +317,11 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
     }
   };
 
-  const handleBuyBook = (book) => {
-    if (book.link) {
-      window.open(book.link, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    handleBuyNow(book);
+  const handleBuyBookNow = (book) => handleBuyNow(book);
+
+  const handleBuyBookAmazon = (book) => {
+    if (!book.link) return;
+    window.open(book.link, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenBook = (book) => {
@@ -686,13 +686,27 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                       {b.format}
                     </span>
                   </div>
-                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
-                    <span style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
+                  <div style={{ marginTop: 'auto', paddingTop: 6 }}>
+                    <div style={{ fontFamily: 'var(--fu)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums', marginBottom: 8 }}>
                       {formatOfferPrice(b.price)}
-                    </span>
-                    <button className="btn btn-pr btn-sm" onClick={() => handleBuyBook(b)}>
-                      {b.cta || 'Buy Now'}
-                    </button>
+                    </div>
+                    {(() => {
+                      const { buyNow, amazon } = getBookPurchaseFlags(b);
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {buyNow && (
+                            <button className="btn btn-pr btn-sm" style={{ width: '100%' }} onClick={() => handleBuyBookNow(b)}>
+                              {checkoutLoading === `prod-${b.title}` ? '...' : 'Buy Now'}
+                            </button>
+                          )}
+                          {amazon && (
+                            <button className="btn btn-gh btn-sm" style={{ width: '100%' }} onClick={() => handleBuyBookAmazon(b)}>
+                              Buy on Amazon
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

@@ -8,8 +8,8 @@ import { ReorderArrows } from '../../../common/ReorderArrows';
 import { FormattingToolbar } from '../../../common/FormattingToolbar';
 import { formatOfferPrice } from '../../../../utils/price';
 import { renderFormattedText } from '../../../../utils/richText';
+import { getBookPurchaseFlags } from '../../../../utils/book';
 
-const CTA_OPTIONS = ['Buy Now', 'Buy on Amazon'];
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
 const EMPTY_BOOK = {
@@ -18,7 +18,8 @@ const EMPTY_BOOK = {
   tagline: '',
   format: 'Ebook',
   price: '',
-  cta: 'Buy Now',
+  buyNowEnabled: true,
+  amazonEnabled: false,
   link: '',
   deliveryLink: '',
   coverUrl: null,
@@ -26,6 +27,23 @@ const EMPTY_BOOK = {
   overview: '',
   active: true,
 };
+
+function ToggleRow({ title, sub, checked, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
+      <div>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gd)' }}>{title}</div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 2 }}>{sub}</div>
+      </div>
+      <div
+        onClick={onChange}
+        style={{ width: 40, height: 22, borderRadius: 12, cursor: 'pointer', transition: 'background 0.2s', position: 'relative', flexShrink: 0, background: checked ? 'var(--teal)' : 'rgba(0,0,0,0.15)' }}
+      >
+        <div style={{ position: 'absolute', top: 3, left: checked ? 21 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
+      </div>
+    </div>
+  );
+}
 
 function BookCoverThumb({ coverUrl, size = 64 }) {
   return (
@@ -55,7 +73,11 @@ function BookCoverThumb({ coverUrl, size = 64 }) {
 function BookModal({ book, onSave, onClose, onDelete, notify }) {
   const { currentUser } = useAuth();
   const isNew = !book;
-  const [form, setForm] = useState(book || EMPTY_BOOK);
+  const [form, setForm] = useState(() => {
+    if (!book) return EMPTY_BOOK;
+    const { buyNow, amazon } = getBookPurchaseFlags(book);
+    return { ...book, buyNowEnabled: buyNow, amazonEnabled: amazon };
+  });
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(book?.coverUrl || null);
   const [backCoverFile, setBackCoverFile] = useState(null);
@@ -116,8 +138,16 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.price.trim()) return;
-    if (form.cta === 'Buy Now' && !form.deliveryLink.trim()) {
+    if (!form.buyNowEnabled && !form.amazonEnabled) {
+      notify && notify('Enable at least one purchase option — Buy Now or Buy on Amazon.', 'warn');
+      return;
+    }
+    if (form.buyNowEnabled && !form.deliveryLink.trim()) {
       notify && notify('Please add a delivery link — it\'s what gets emailed to buyers after purchase.', 'warn');
+      return;
+    }
+    if (form.amazonEnabled && !form.link.trim()) {
+      notify && notify('Please add a retailer link for Buy on Amazon.', 'warn');
       return;
     }
     setUploading(true);
@@ -295,37 +325,48 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Price <span style={{ color: '#e84444' }}>*</span></label>
-              <input className="input" type="text" value={form.price} onChange={(e) => set('price', e.target.value)} placeholder="e.g. $24" required style={{ width: '100%' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Buy Button Label</label>
-              <select className="select" value={form.cta} onChange={(e) => set('cta', e.target.value)} style={{ width: '100%' }}>
-                {CTA_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Price <span style={{ color: '#e84444' }}>*</span></label>
+            <input className="input" type="text" value={form.price} onChange={(e) => set('price', e.target.value)} placeholder="e.g. $24" required style={{ width: '100%' }} />
           </div>
 
-          {form.cta === 'Buy on Amazon' && (
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Retailer Link</label>
-              <input className="input" type="url" value={form.link} onChange={(e) => set('link', e.target.value)} placeholder="https://amazon.com/..." style={{ width: '100%' }} />
-            </div>
-          )}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 8 }}>
+              Purchase Options <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(enable at least one)</span>
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <ToggleRow
+                title="Buy Now"
+                sub="Checkout on mindGigs — delivered by email"
+                checked={form.buyNowEnabled}
+                onChange={() => set('buyNowEnabled', !form.buyNowEnabled)}
+              />
+              {form.buyNowEnabled && (
+                <div style={{ paddingLeft: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>
+                    Delivery Link <span style={{ color: '#e84444' }}>*</span> <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PDF, Google Drive, Dropbox, etc.)</span>
+                  </label>
+                  <input className="input" type="url" value={form.deliveryLink} onChange={(e) => set('deliveryLink', e.target.value)} placeholder="https://drive.google.com/..." required style={{ width: '100%' }} />
+                  <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>
+                    This is what gets emailed to buyers automatically right after purchase.
+                  </div>
+                </div>
+              )}
 
-          {form.cta === 'Buy Now' && (
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>
-                Delivery Link <span style={{ color: '#e84444' }}>*</span> <span style={{ color: 'var(--mu)', fontWeight: 400 }}>(PDF, Google Drive, Dropbox, etc.)</span>
-              </label>
-              <input className="input" type="url" value={form.deliveryLink} onChange={(e) => set('deliveryLink', e.target.value)} placeholder="https://drive.google.com/..." required style={{ width: '100%' }} />
-              <div style={{ fontSize: '0.72rem', color: 'var(--mu)', marginTop: 6 }}>
-                This is what gets emailed to buyers automatically right after purchase.
-              </div>
+              <ToggleRow
+                title="Buy on Amazon"
+                sub="Sends buyers to an external retailer link"
+                checked={form.amazonEnabled}
+                onChange={() => set('amazonEnabled', !form.amazonEnabled)}
+              />
+              {form.amazonEnabled && (
+                <div style={{ paddingLeft: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Retailer Link <span style={{ color: '#e84444' }}>*</span></label>
+                  <input className="input" type="url" value={form.link} onChange={(e) => set('link', e.target.value)} placeholder="https://amazon.com/..." required style={{ width: '100%' }} />
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, padding: '14px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 10 }}>
             <div>

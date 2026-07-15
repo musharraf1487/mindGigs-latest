@@ -5,6 +5,7 @@ import { initiateProductPayment, confirmFreeProduct } from '../../services/strip
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
 import { slugify } from '../../utils/slug';
+import { getBookPurchaseFlags } from '../../utils/book';
 
 function CoverPanel({ url, label }) {
   return (
@@ -48,11 +49,12 @@ export function BookDetailPage({ nav, notify, expert, book }) {
 
   const goToSignup = () => nav('signup', { role: 'client', expertId: expert?.id || expert?.uid });
 
-  const handleBuyBook = async () => {
-    if (book.link) {
-      window.open(book.link, '_blank', 'noopener,noreferrer');
-      return;
-    }
+  const handleBuyBookAmazon = () => {
+    if (!book.link) return;
+    window.open(book.link, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleBuyBookNow = async () => {
     if (!currentUser) {
       goToSignup();
       return;
@@ -168,9 +170,23 @@ export function BookDetailPage({ nav, notify, expert, book }) {
             <span style={{ fontFamily: 'var(--fu)', fontSize: '1.5rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>
               {formatOfferPrice(book.price)}
             </span>
-            <button className="btn btn-pr btn-lg" disabled={checkoutLoading} onClick={handleBuyBook}>
-              {checkoutLoading ? '...' : (book.cta || 'Buy Now')}
-            </button>
+            {(() => {
+              const { buyNow, amazon } = getBookPurchaseFlags(book);
+              return (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {buyNow && (
+                    <button className="btn btn-pr btn-lg" disabled={checkoutLoading} onClick={handleBuyBookNow}>
+                      {checkoutLoading ? '...' : 'Buy Now'}
+                    </button>
+                  )}
+                  {amazon && (
+                    <button className="btn btn-gh btn-lg" onClick={handleBuyBookAmazon}>
+                      Buy on Amazon
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
