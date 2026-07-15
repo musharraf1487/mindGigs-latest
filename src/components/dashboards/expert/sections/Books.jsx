@@ -362,7 +362,7 @@ function BookModal({ book, onSave, onClose, onDelete, notify }) {
               {form.amazonEnabled && (
                 <div style={{ paddingLeft: 4 }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Retailer Link <span style={{ color: '#e84444' }}>*</span></label>
-                  <input className="input" type="url" value={form.link} onChange={(e) => set('link', e.target.value)} placeholder="https://amazon.com/..." required style={{ width: '100%' }} />
+                  <input className="input" type="url" value={form.link} onChange={(e) => set('link', e.target.value)} placeholder="https://amazon/..." required style={{ width: '100%' }} />
                 </div>
               )}
             </div>
