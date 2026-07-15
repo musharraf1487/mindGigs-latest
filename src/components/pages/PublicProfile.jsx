@@ -23,6 +23,7 @@ import { renderFormattedText } from '../../utils/richText';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 const BIO_PREVIEW_LENGTH = 300;
+const OFFERING_DESC_PREVIEW_LENGTH = 140;
 
 function ExpandableBio({ bio }) {
   const [expanded, setExpanded] = useState(false);
@@ -41,6 +42,40 @@ function ExpandableBio({ bio }) {
         </span>
       )}
     </p>
+  );
+}
+
+// Custom offering descriptions can run long — clamp to a few lines by default
+// so the section doesn't dominate the page, with a toggle to see the rest.
+function ExpandableOfferingDesc({ desc }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = desc.length > OFFERING_DESC_PREVIEW_LENGTH;
+
+  return (
+    <div>
+      <div
+        style={
+          expanded || !isLong
+            ? undefined
+            : {
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }
+        }
+      >
+        {renderFormattedText(desc, { fontSize: '.9rem', color: 'var(--sl)' })}
+      </div>
+      {isLong && (
+        <span
+          onClick={() => setExpanded((v) => !v)}
+          style={{ color: 'var(--gd)', fontWeight: 600, cursor: 'pointer', fontSize: '.82rem', display: 'inline-block', marginTop: 4 }}
+        >
+          {expanded ? 'Read less' : 'Read more'}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -791,7 +826,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {customOfferings.map((c) => (
-                <div key={c.title} className="card" style={{ padding: '28px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                <div key={c.title} className="card" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', fontSize: '1.05rem', marginBottom: 4 }}>{c.title}</div>
                     {c.type && (
@@ -799,7 +834,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                         {c.type}
                       </span>
                     )}
-                    {c.desc && renderFormattedText(c.desc, { fontSize: '.9rem', color: 'var(--sl)' })}
+                    {c.desc && <ExpandableOfferingDesc desc={c.desc} />}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                     {c.price && (
