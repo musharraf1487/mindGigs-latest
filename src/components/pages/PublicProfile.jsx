@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   Calendar,
   RefreshCw,
@@ -23,7 +23,6 @@ import { renderFormattedText } from '../../utils/richText';
 
 const BADGE_BG = 'rgba(25, 181, 166, 0.08)';
 const BIO_PREVIEW_LENGTH = 300;
-const OFFERING_DESC_PREVIEW_LENGTH = 140;
 
 function ExpandableBio({ bio }) {
   const [expanded, setExpanded] = useState(false);
@@ -47,15 +46,26 @@ function ExpandableBio({ bio }) {
 
 // Custom offering descriptions can run long — clamp to a few lines by default
 // so the section doesn't dominate the page, with a toggle to see the rest.
+// Whether the toggle shows at all is based on measured overflow (scrollHeight
+// vs clientHeight while clamped), not a character-count guess — a short desc
+// in a wide card can fit in 3 lines even past a fixed character threshold.
 function ExpandableOfferingDesc({ desc }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = desc.length > OFFERING_DESC_PREVIEW_LENGTH;
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const textRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [desc]);
 
   return (
     <div>
       <div
+        ref={textRef}
         style={
-          expanded || !isLong
+          expanded
             ? undefined
             : {
                 display: '-webkit-box',
@@ -67,10 +77,10 @@ function ExpandableOfferingDesc({ desc }) {
       >
         {renderFormattedText(desc, { fontSize: '.9rem', color: 'var(--sl)' })}
       </div>
-      {isLong && (
+      {isOverflowing && (
         <span
           onClick={() => setExpanded((v) => !v)}
-          style={{ color: 'var(--gd)', fontWeight: 600, cursor: 'pointer', fontSize: '.82rem', display: 'inline-block', marginTop: 4 }}
+          style={{ color: 'var(--teal)', fontWeight: 600, cursor: 'pointer', fontSize: '.82rem', display: 'inline-block', marginTop: 4, textDecoration: 'underline' }}
         >
           {expanded ? 'Read less' : 'Read more'}
         </span>
