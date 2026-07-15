@@ -93,6 +93,8 @@ export function Bookings({ user, expertData, notify }) {
     return b.date || '—';
   };
   const getType = (b) => b.sessionTitle || b.type || '1:1 Session';
+  const getPaymentStatusLabel = (status) =>
+    status === 'pending_bank_transfer' ? 'Awaiting Bank Transfer' : (status || 'unpaid');
   const getKey = (b, i) => b.id || `${b.client}-${i}`;
   const isActioning = (b) => actionLoading === (b.id || b.client || 'cancel');
 
@@ -191,8 +193,8 @@ export function Bookings({ user, expertData, notify }) {
                       </span>
                     </td>
                     <td style={{ padding: '16px 20px' }}>
-                      <span className={`tag ${booking.paymentStatus === 'paid' ? 'tag-gr' : 'tag-yl'}`} style={{ fontSize: '0.7rem' }}>
-                        {booking.paymentStatus || 'unpaid'}
+                      <span className={`tag ${booking.paymentStatus === 'paid' ? 'tag-gr' : booking.paymentStatus === 'failed' ? 'tag-rd' : 'tag-yl'}`} style={{ fontSize: '0.7rem' }}>
+                        {getPaymentStatusLabel(booking.paymentStatus)}
                       </span>
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'right' }}>

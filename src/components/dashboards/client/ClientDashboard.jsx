@@ -261,8 +261,8 @@ function MyBookings({ nav, notify, realBookings, onCancelBooking, currentUser })
                                     <StatusBadge status={getStatus(b)} />
                                 </td>
                                 <td>
-                                    <span className={`tag ${b.paymentStatus === 'paid' ? 'tag-gr' : 'tag-yl'}`} style={{ fontSize: '0.65rem' }}>
-                                        {b.paymentStatus || (b.status === 'completed' ? 'paid' : 'unpaid')}
+                                    <span className={`tag ${b.paymentStatus === 'paid' ? 'tag-gr' : b.paymentStatus === 'failed' ? 'tag-rd' : 'tag-yl'}`} style={{ fontSize: '0.65rem' }}>
+                                        {b.paymentStatus === 'pending_bank_transfer' ? 'Awaiting Bank Transfer' : (b.paymentStatus || (b.status === 'completed' ? 'paid' : 'unpaid'))}
                                     </span>
                                 </td>
                                 <td>

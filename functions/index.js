@@ -536,12 +536,36 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const clientUrl = process.env.CLIENT_URL || 'https://mindgigs.com';
 
+  // US bank transfer (via customer_balance) settles 1-2 business days after
+  // checkout — Stripe issues the buyer a virtual account/routing number and
+  // fires checkout.session.async_payment_succeeded once funds land. Only
+  // valid for mode: 'payment' — Checkout doesn't support delayed payment
+  // methods like this in mode: 'subscription' (bank transfer can't
+  // auto-renew), so subscriptions stay card-only regardless of amount.
+  // customer_creation: 'always' is required so the funding instructions
+  // have a Customer to attach to.
+  const BANK_TRANSFER_MIN_CENTS = 100000; // $1000 — below this, card only
+  const bankTransferOptions = {
+    payment_method_types: ['card', 'customer_balance'],
+    payment_method_options: {
+      customer_balance: {
+        funding_type: 'bank_transfer',
+        bank_transfer: { type: 'us_bank_transfer' },
+      },
+    },
+    customer_creation: 'always',
+  };
+
   try {
     const { saleType = 'booking', bookingId, amount, email, title, expertId, deliveryLink, buyerId } = req.body;
 
     if (!amount || !email) {
       return res.status(400).json({ error: 'amount and email are required' });
     }
+
+    const paymentMethodConfig = (saleType !== 'subscription' && amount >= BANK_TRANSFER_MIN_CENTS)
+      ? bankTransferOptions
+      : { payment_method_types: ['card'] };
 
     let sessionConfig;
 
@@ -553,7 +577,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       const booking = bookingSnap.data();
 
       sessionConfig = {
-        payment_method_types: ['card'],
+        ...paymentMethodConfig,
         mode: 'payment',
         customer_email: email,
         line_items: [{
@@ -580,7 +604,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       if (!expertId || !title) return res.status(400).json({ error: 'expertId and title are required for subscription payments' });
 
       sessionConfig = {
-        payment_method_types: ['card'],
+        ...paymentMethodConfig,
         mode: 'subscription',
         customer_email: email,
         line_items: [{
@@ -605,7 +629,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       if (!expertId || !title) return res.status(400).json({ error: 'expertId and title are required for product payments' });
 
       sessionConfig = {
-        payment_method_types: ['card'],
+        ...paymentMethodConfig,
         mode: 'payment',
         customer_email: email,
         line_items: [{
@@ -645,7 +669,16 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
  * This is the ONLY place that confirms bookings and writes commission splits.
  * Handles: booking payments, subscription sign-ups, and digital product purchases.
  *
- * Listens for: checkout.session.completed
+ * Listens for: checkout.session.completed, checkout.session.async_payment_succeeded,
+ * checkout.session.async_payment_failed
+ *
+ * Card payments settle synchronously, so `checkout.session.completed` arrives
+ * with payment_status: 'paid' and fulfillment runs immediately. Bank transfer
+ * (customer_balance) is a delayed payment method — `completed` fires first
+ * with payment_status: 'unpaid' while Stripe waits for funds to actually
+ * arrive (1-2 business days), then a separate async_payment_succeeded (or
+ * _failed) event follows. Fulfillment must wait for the "paid" signal,
+ * whichever event carries it.
  */
 exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'RESEND_API_KEY', 'DAILY_API_KEY'] }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
@@ -667,7 +700,12 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type !== 'checkout.session.completed') {
+  const relevantEvents = [
+    'checkout.session.completed',
+    'checkout.session.async_payment_succeeded',
+    'checkout.session.async_payment_failed',
+  ];
+  if (!relevantEvents.includes(event.type)) {
     return res.status(200).json({ received: true });
   }
 
@@ -677,6 +715,35 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
 
   if (saleAmount == null) {
     console.error('[stripeWebhook] Missing amount_total on session', session.id);
+    return res.status(200).json({ received: true });
+  }
+
+  // Bank transfer chose but funds haven't landed yet — record the pending
+  // state (booking type only; product/subscription have no pre-existing doc
+  // to update at this point) and stop. Fulfillment runs once payment_status
+  // flips to 'paid' via async_payment_succeeded below.
+  if (event.type === 'checkout.session.completed' && session.payment_status !== 'paid') {
+    if (saleType === 'booking' && bookingId) {
+      await db.collection('bookings').doc(bookingId).update({
+        paymentStatus: 'pending_bank_transfer',
+        stripeSessionId: session.id,
+      });
+      console.log(`[stripeWebhook] Booking ${bookingId} awaiting bank transfer settlement.`);
+    }
+    return res.status(200).json({ received: true });
+  }
+
+  // Bank transfer failed to settle — release the hold so the client can retry.
+  if (event.type === 'checkout.session.async_payment_failed') {
+    if (saleType === 'booking' && bookingId) {
+      await db.collection('bookings').doc(bookingId).update({
+        paymentStatus: 'failed',
+        stripeSessionId: session.id,
+      });
+      console.log(`[stripeWebhook] Booking ${bookingId} bank transfer failed.`);
+    } else {
+      console.log(`[stripeWebhook] ${saleType} bank transfer failed for session ${session.id}.`);
+    }
     return res.status(200).json({ received: true });
   }
 

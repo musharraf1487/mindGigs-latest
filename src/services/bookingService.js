@@ -16,7 +16,10 @@
  *   clientEmail   : string
  *   clientPhone   : string | null
  *   status        : "pending" | "confirmed" | "cancelled"
- *   paymentStatus : "unpaid" | "paid"
+ *   paymentStatus : "unpaid" | "pending_bank_transfer" | "paid" | "failed"
+ *                   (pending_bank_transfer/failed are set by stripeWebhook
+ *                   when the buyer pays via US bank transfer, which settles
+ *                   1-2 business days after checkout instead of instantly)
  *   createdAt     : ISO string
  * }
  *

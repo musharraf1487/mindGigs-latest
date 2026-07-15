@@ -18,6 +18,7 @@ import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { RESERVED_HANDLES, normalizeHandle } from './services/handleService';
+import { getBooking } from './services/bookingService';
 import { slugify } from './utils/slug';
 
 import './styles/globals.css';
@@ -95,8 +96,24 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
+    const bookingId = params.get('bookingId');
     if (payment === 'success') {
-      notify('Payment confirmed! Your session is booked.', 'success');
+      // Bank transfer settles 1-2 business days later — Checkout redirects
+      // here right after the buyer picks it, before funds actually land, so
+      // don't claim the booking is confirmed until we know paymentStatus.
+      if (bookingId) {
+        getBooking(bookingId)
+          .then((booking) => {
+            if (booking?.paymentStatus === 'pending_bank_transfer') {
+              notify('Bank transfer initiated — your session will be confirmed once funds arrive (1-2 business days).', 'success');
+            } else {
+              notify('Payment confirmed! Your session is booked.', 'success');
+            }
+          })
+          .catch(() => notify('Payment confirmed! Your session is booked.', 'success'));
+      } else {
+        notify('Payment confirmed! Your session is booked.', 'success');
+      }
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (payment === 'cancelled') {
