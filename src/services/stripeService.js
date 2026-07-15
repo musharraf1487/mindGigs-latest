@@ -76,6 +76,34 @@ export async function initiateSubscriptionPayment(expertId, title, amount, email
 }
 
 /**
+ * Grants access to a zero-priced product/book/custom offering without a Stripe
+ * checkout — records the purchase directly and emails the delivery link.
+ * @param {string} expertId   Expert's Firestore uid
+ * @param {string} title      Item name
+ * @param {string} email      Buyer email
+ * @param {string|null} deliveryLink  Link emailed to the buyer, if any
+ * @param {string|null} buyerId       Firestore uid of the buyer
+ */
+export async function confirmFreeProduct(expertId, title, email, deliveryLink, buyerId) {
+  if (!FUNCTIONS_URL) {
+    throw new Error('Payment system is not configured. Please contact support.');
+  }
+
+  const response = await fetch(`${FUNCTIONS_URL}/confirmFreeSale`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expertId, title, email, deliveryLink: deliveryLink || null, buyerId: buyerId || null }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Request failed (${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
  * Initiates a one-time Stripe checkout for a digital product purchase.
  * @param {string} expertId   Expert's Firestore uid
  * @param {string} title      Product name shown in Stripe checkout

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, BookOpen, Share2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { initiateProductPayment } from '../../services/stripeService';
+import { initiateProductPayment, confirmFreeProduct } from '../../services/stripeService';
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
 import { slugify } from '../../utils/slug';
@@ -57,8 +57,27 @@ export function BookDetailPage({ nav, notify, expert, book }) {
       goToSignup();
       return;
     }
+    const priceStr = String(book.price ?? '').trim();
+    if (!priceStr) { notify('Invalid product price.', 'error'); return; }
     const amount = parsePriceCents(book.price);
-    if (!amount) { notify('Invalid product price.', 'error'); return; }
+    if (amount === 0) {
+      setCheckoutLoading(true);
+      try {
+        await confirmFreeProduct(
+          expert?.id || expert?.uid || '',
+          book.title,
+          currentUser.email,
+          book.deliveryLink || book.fileUrl || null,
+          currentUser.uid
+        );
+        notify('You now have access — check your email for the details.', 'success');
+      } catch (err) {
+        notify(err.message || 'Failed to complete your free purchase. Please try again.', 'error');
+      } finally {
+        setCheckoutLoading(false);
+      }
+      return;
+    }
     setCheckoutLoading(true);
     try {
       await initiateProductPayment(

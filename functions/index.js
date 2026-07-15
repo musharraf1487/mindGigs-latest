@@ -941,6 +941,49 @@ exports.confirmFreeBooking = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY
   }
 });
 
+// ─── confirmFreeSale ────────────────────────────────────────────────────────────
+/**
+ * Grants access to a zero-priced digital product/book/custom offering without
+ * going through Stripe. Mirrors the "product" branch of stripeWebhook (record
+ * purchase + send delivery email) but skips payment and commission entirely
+ * since nothing was charged.
+ *
+ * Request body: { expertId, title, email, deliveryLink, buyerId }
+ */
+exports.confirmFreeSale = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY'] }, async (req, res) => {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { expertId, title, email, deliveryLink, buyerId } = req.body || {};
+  if (!expertId || !title) return res.status(400).json({ error: 'expertId and title are required' });
+
+  try {
+    await db.collection('purchases').add({
+      buyerId: buyerId || null,
+      buyerEmail: email || null,
+      expertId,
+      itemTitle: title,
+      deliveryLink: deliveryLink || null,
+      price: 0,
+      stripeSessionId: null,
+      createdAt: new Date().toISOString(),
+    });
+    console.log(`[confirmFreeSale] Recorded free purchase of "${title}" for ${email || buyerId || 'unknown buyer'}`);
+
+    try {
+      await sendPurchaseConfirmationEmail({ buyerEmail: email, itemTitle: title, deliveryLink, expertId, price: 0 });
+    } catch (err) {
+      console.error('[confirmFreeSale] Failed to send confirmation email:', err);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('[confirmFreeSale] Error:', err);
+    return res.status(500).json({ error: 'Failed to record free purchase.' });
+  }
+});
+
 // ─── adminDeleteUser ───────────────────────────────────────────────────────────
 /**
  * Called by the Admin Dashboard to permanently remove a user profile from the

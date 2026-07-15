@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { initiateSubscriptionPayment, initiateProductPayment } from '../../services/stripeService';
+import { initiateSubscriptionPayment, initiateProductPayment, confirmFreeProduct } from '../../services/stripeService';
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
 
@@ -136,13 +136,24 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
 
   const goToSignup = () => nav('signup', { role: 'client', expertId: expert?.id || expert?.uid });
 
+  // A blank price (e.g. an unpriced "Custom" offering) is not the same as an
+  // explicit "$0" — only the latter should skip checkout and grant free access.
+  const isExplicitlyFree = (priceStr) => {
+    const trimmed = String(priceStr ?? '').trim();
+    return trimmed !== '' && parsePriceCents(trimmed) === 0;
+  };
+
   const handleSubscribe = async (sub) => {
     if (!currentUser) {
       goToSignup();
       return;
     }
+    if (!String(sub.price ?? '').trim()) { notify('Invalid subscription price.', 'error'); return; }
+    if (isExplicitlyFree(sub.price)) {
+      notify("You're subscribed — no payment required!", 'success');
+      return;
+    }
     const amount = parsePriceCents(sub.price);
-    if (!amount) { notify('Invalid subscription price.', 'error'); return; }
     setCheckoutLoading(`sub-${sub.title}`);
     try {
       await initiateSubscriptionPayment(
@@ -163,8 +174,26 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       goToSignup();
       return;
     }
+    if (!String(product.price ?? '').trim()) { notify('Invalid product price.', 'error'); return; }
+    if (isExplicitlyFree(product.price)) {
+      setCheckoutLoading(`prod-${product.title}`);
+      try {
+        await confirmFreeProduct(
+          expert?.id || expert?.uid || '',
+          product.title,
+          currentUser.email,
+          product.deliveryLink || product.fileUrl || null,
+          currentUser.uid
+        );
+        notify('You now have access — check your email for the details.', 'success');
+      } catch (err) {
+        notify(err.message || 'Failed to complete your free purchase. Please try again.', 'error');
+      } finally {
+        setCheckoutLoading(null);
+      }
+      return;
+    }
     const amount = parsePriceCents(product.price);
-    if (!amount) { notify('Invalid product price.', 'error'); return; }
     setCheckoutLoading(`prod-${product.title}`);
     try {
       await initiateProductPayment(
