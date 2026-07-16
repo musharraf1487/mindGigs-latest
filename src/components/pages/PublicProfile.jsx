@@ -741,9 +741,11 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   <div style={{ fontSize: '.8rem', color: 'var(--mu)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                     <Clock size={13} /> {s.duration}
                   </div>
-                  <div style={{ fontSize: '.9rem', color: 'var(--sl)', marginTop: 10, lineHeight: 1.55, maxWidth: 480 }}>
-                    {s.desc}
-                  </div>
+                  {s.desc && (
+                    <div style={{ marginTop: 10, maxWidth: 480 }}>
+                      {renderFormattedText(s.desc, { fontSize: '.9rem', color: 'var(--sl)', lineHeight: 1.55 })}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, minWidth: 120 }}>
                   <div style={{ fontFamily: 'var(--fu)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--gd)', fontVariantNumeric: 'tabular-nums' }}>

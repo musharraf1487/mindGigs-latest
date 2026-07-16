@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Clock, Calendar } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../config/firebase';
 import { ReorderArrows } from '../../../common/ReorderArrows';
+import { FormattingToolbar } from '../../../common/FormattingToolbar';
 import { formatOfferPrice } from '../../../../utils/price';
+import { renderFormattedText } from '../../../../utils/richText';
 
 const EMPTY_SESSION = {
   title: '',
@@ -17,6 +19,7 @@ const EMPTY_SESSION = {
 function SessionModal({ session, onSave, onClose, onDelete }) {
   const isNew = !session;
   const [form, setForm] = useState(session || EMPTY_SESSION);
+  const descRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -61,7 +64,22 @@ function SessionModal({ session, onSave, onClose, onDelete }) {
 
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>Description</label>
-            <textarea className="input" rows={3} value={form.desc} onChange={(e) => set('desc', e.target.value)} placeholder="What will clients get out of this session?" style={{ width: '100%', resize: 'vertical', minHeight: 80 }} />
+            <FormattingToolbar textareaRef={descRef} value={form.desc} onChange={(v) => set('desc', v)} />
+            <textarea
+              ref={descRef}
+              className="input"
+              rows={3}
+              value={form.desc}
+              onChange={(e) => set('desc', e.target.value)}
+              placeholder="What will clients get out of this session?"
+              style={{ width: '100%', resize: 'vertical', minHeight: 80 }}
+            />
+            {form.desc && (
+              <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, fontSize: '0.82rem', color: 'var(--sl)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', marginBottom: 6 }}>Preview</div>
+                {renderFormattedText(form.desc)}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, padding: '14px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 10 }}>
@@ -191,7 +209,11 @@ export function Sessions({ user, expertData, notify }) {
                     <Clock size={13} /> {s.duration}
                   </div>
                 )}
-                <p style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>{s.desc || 'No description provided.'}</p>
+                {s.desc ? (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>{renderFormattedText(s.desc)}</div>
+                ) : (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--sl)', lineHeight: 1.5 }}>No description provided.</p>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, minWidth: 120 }}>
                 <ReorderArrows
