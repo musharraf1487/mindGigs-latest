@@ -598,13 +598,21 @@ export function ClientDashboard({ user, nav, logout, notify }) {
                 return;
             }
             try {
-                const bookings = await getClientBookings(currentUser.uid);
+                const [bookings, purchases] = await Promise.all([
+                    getClientBookings(currentUser.uid),
+                    getClientPurchases(currentUser.uid),
+                ]);
                 setRealBookings(bookings);
-                // Calculate total spent from paid bookings
-                const spent = bookings
+                // Total spent = paid bookings + product purchases. Both are only
+                // ever marked paid / created by stripeWebhook after Stripe
+                // confirms payment — never by the "Book Now"/"Buy" click itself,
+                // so an abandoned checkout never counts here.
+                const bookingsSpent = bookings
                     .filter(b => b.paymentStatus === 'paid')
                     .reduce((sum, b) => sum + ((b.price || 0) / 100), 0);
-                setTotalSpent(spent);
+                const purchasesSpent = purchases
+                    .reduce((sum, p) => sum + ((p.price || 0) / 100), 0);
+                setTotalSpent(bookingsSpent + purchasesSpent);
             } catch (err) {
                 console.error('Failed to fetch bookings:', err);
             } finally {
