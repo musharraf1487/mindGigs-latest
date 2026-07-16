@@ -16,7 +16,7 @@ import { ClientDashboard } from './components/dashboards/client/ClientDashboard'
 import { Users, ShoppingCart, Link as LinkIcon, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { RESERVED_HANDLES, normalizeHandle } from './services/handleService';
 import { getBooking } from './services/bookingService';
 import { slugify } from './utils/slug';
@@ -149,60 +149,61 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [experts]);
 
-  // Fetch live experts from Firestore
+  // Live-subscribe to published experts from Firestore. This was previously a
+  // one-time getDocs() fetch tied to [userData] — a session left open (or any
+  // visitor who isn't the expert who just onboarded) would never see a newly
+  // published expert without a full page reload, since nothing re-triggered
+  // the fetch. onSnapshot keeps every open session in sync automatically.
   useEffect(() => {
-    async function fetchExperts() {
-      try {
-        const q = query(collection(db, 'users'), where('role', '==', 'expert'), where('onboardingComplete', '==', true));
-        const snap = await getDocs(q);
-        const live = snap.docs.map(d => {
-          const e = { ...d.data(), id: d.id, isLive: true };
-          const hasRealImage = e.image && !e.image.includes('placeholder') && !e.image.includes('ui-avatars.com');
-          if (hasRealImage) return e;
-          return { ...e, image: null };
-        });
-        // Admin can toggle a profile off (defaults to on) to pull it from
-        // public listings without deleting or otherwise disabling the account
-        // — direct vanity-URL links below still resolve against the full list.
-        setExperts(live.filter(e => e.profileActive !== false));
+    const q = query(collection(db, 'users'), where('role', '==', 'expert'), where('onboardingComplete', '==', true));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const live = snap.docs.map(d => {
+        const e = { ...d.data(), id: d.id, isLive: true };
+        const hasRealImage = e.image && !e.image.includes('placeholder') && !e.image.includes('ui-avatars.com');
+        if (hasRealImage) return e;
+        return { ...e, image: null };
+      });
+      // Admin can toggle a profile off (defaults to on) to pull it from
+      // public listings without deleting or otherwise disabling the account
+      // — direct vanity-URL links below still resolve against the full list.
+      setExperts(live.filter(e => e.profileActive !== false));
 
-        // Resolve a pending vanity-URL path against the freshly-loaded expert
-        // list. Only runs once — cleared below regardless of outcome, so a
-        // later re-fetch (e.g. after login) can't re-trigger vanity routing
-        // after the user has already navigated elsewhere.
-        if (pendingPath) {
-          const match = live.find(e => e.handle === pendingPath.handle);
-          if (match) {
-            const book = pendingPath.bookSlug
-              ? (match.booksList || []).find(b => slugify(b.title) === pendingPath.bookSlug)
-              : null;
-            setActiveExpert(match);
-            setActiveExpertId(match.id);
-            if (book) {
-              setActiveBook(book);
-              setPage('book-detail');
-              window.history.replaceState(
-                { page: 'book-detail', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: book },
-                '',
-                `/${pendingPath.handle}/${pendingPath.bookSlug}`
-              );
-            } else {
-              setPage('public-profile');
-              window.history.replaceState(
-                { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null },
-                '',
-                '/' + pendingPath.handle
-              );
-            }
+      // Resolve a pending vanity-URL path against the freshly-loaded expert
+      // list. Only runs once — cleared below regardless of outcome, so a
+      // later snapshot update (e.g. after login, or another expert publishing)
+      // can't re-trigger vanity routing after the user has already navigated elsewhere.
+      if (pendingPath) {
+        const match = live.find(e => e.handle === pendingPath.handle);
+        if (match) {
+          const book = pendingPath.bookSlug
+            ? (match.booksList || []).find(b => slugify(b.title) === pendingPath.bookSlug)
+            : null;
+          setActiveExpert(match);
+          setActiveExpertId(match.id);
+          if (book) {
+            setActiveBook(book);
+            setPage('book-detail');
+            window.history.replaceState(
+              { page: 'book-detail', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: book },
+              '',
+              `/${pendingPath.handle}/${pendingPath.bookSlug}`
+            );
+          } else {
+            setPage('public-profile');
+            window.history.replaceState(
+              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null },
+              '',
+              '/' + pendingPath.handle
+            );
           }
-          setPendingPath(null);
         }
-      } catch (err) {
-        console.error('Error fetching experts:', err);
-        setExperts([]);
+        setPendingPath(null);
       }
-    }
-    fetchExperts();
+    }, (err) => {
+      console.error('Error fetching experts:', err);
+      setExperts([]);
+    });
+    return () => unsubscribe();
   }, [userData]);
 
   // Redirect after login

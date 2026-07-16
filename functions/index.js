@@ -55,9 +55,12 @@ async function resolveCouponCode(code) {
     return { ownerId: d.ownerId, ownerRole: 'affiliate' };
   }
 
+  // onboardingComplete filter kept in sync with the client-side version — a
+  // coupon should never resolve to an expert whose profile isn't public yet.
   const expSnap = await db.collection('users')
     .where('handle', '==', normalized.toLowerCase())
     .where('role', '==', 'expert')
+    .where('onboardingComplete', '==', true)
     .limit(1).get();
   if (!expSnap.empty) {
     return { ownerId: expSnap.docs[0].id, ownerRole: 'expert' };
@@ -450,9 +453,20 @@ async function sendPurchaseConfirmationEmail({ buyerEmail, itemTitle, deliveryLi
 }
 
 // ─── Helper: CORS headers ─────────────────────────────────────────────────────
-function setCors(res) {
-  const clientUrl = process.env.CLIENT_URL || 'https://mindgigs.com';
-  res.set('Access-Control-Allow-Origin', clientUrl);
+// The apex domain and `www.` are both served live (no canonical redirect
+// between them at the host), so hardcoding a single Access-Control-Allow-Origin
+// silently CORS-blocks every fetch from whichever one isn't configured —
+// showing up client-side as a bare "Failed to fetch" with no useful detail.
+// Reflect the request's actual origin when it's a recognized mindgigs.com
+// variant, otherwise fall back to the configured CLIENT_URL.
+function setCors(res, req) {
+  const configured = process.env.CLIENT_URL || 'https://mindgigs.com';
+  const apex = configured.replace(/^https:\/\/www\./, 'https://');
+  const allowedOrigins = new Set([apex, apex.replace('https://', 'https://www.')]);
+  const requestOrigin = req?.headers?.origin;
+  const allowOrigin = requestOrigin && allowedOrigins.has(requestOrigin) ? requestOrigin : configured;
+  res.set('Access-Control-Allow-Origin', allowOrigin);
+  res.set('Vary', 'Origin');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
@@ -604,7 +618,7 @@ async function processCommissionSplit(bookingId, sellerId, saleAmount, buyerUid,
  * Response: { url } — Stripe Checkout URL
  */
 exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIENT_URL'] }, async (req, res) => {
-  setCors(res);
+  setCors(res, req);
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -958,7 +972,7 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
  * Request body: { bookingId }
  */
 exports.confirmFreeBooking = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY', 'DAILY_API_KEY'] }, async (req, res) => {
-  setCors(res);
+  setCors(res, req);
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -1028,7 +1042,7 @@ exports.confirmFreeBooking = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY
  * Request body: { expertId, title, email, deliveryLink, buyerId }
  */
 exports.confirmFreeSale = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY'] }, async (req, res) => {
-  setCors(res);
+  setCors(res, req);
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -1076,7 +1090,7 @@ exports.confirmFreeSale = onRequest({ secrets: ['CLIENT_URL', 'RESEND_API_KEY'] 
  * Response: { success, deletedUid, name }
  */
 exports.adminDeleteUser = onRequest({ secrets: ['CLIENT_URL'] }, async (req, res) => {
-  setCors(res);
+  setCors(res, req);
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 

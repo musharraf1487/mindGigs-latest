@@ -102,10 +102,18 @@ export async function resolveCouponCode(code) {
     return { ownerId: d.ownerId, ownerRole: 'affiliate' };
   }
 
+  // onboardingComplete must be filtered here, not just checked after the
+  // fact — Firestore Security Rules validate a *query* is provably safe from
+  // its own where() clauses alone (it won't run the query and then discard
+  // results the rules would deny). The public-read rule for users/{uid} only
+  // allows role=='expert' && onboardingComplete==true, so without this exact
+  // filter Firestore rejects the whole query with permission-denied, even
+  // for documents that would otherwise match.
   const q = query(
     collection(db, 'users'),
     where('handle', '==', normalized.toLowerCase()),
     where('role', '==', 'expert'),
+    where('onboardingComplete', '==', true),
     limit(1)
   );
   const snap = await getDocs(q);
