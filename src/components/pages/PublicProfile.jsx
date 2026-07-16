@@ -125,6 +125,70 @@ function CouponField({ code, status, onChange, onValidate }) {
   );
 }
 
+// Confirmation step shown before any non-free purchase redirects to Stripe —
+// mirrors the "Order Summary" step BookingFlow.jsx already shows for paid
+// sessions. Zero-priced items skip this entirely (see isExplicitlyFree call
+// sites) and grant access immediately, same as before.
+export function OrderSummaryModal({ pendingPurchase, expert, appliedCouponCode, onConfirm, onClose, loading }) {
+  if (!pendingPurchase) return null;
+  const { type, item } = pendingPurchase;
+  const priceLabel = type === 'subscription'
+    ? (item.price ? `${formatOfferPrice(String(item.price).split('/')[0])}/mo` : '$—')
+    : formatOfferPrice(item.price);
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
+    >
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: 32, boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}>
+        <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1.15rem', color: 'var(--gd)', marginBottom: 4 }}>Order Summary</div>
+        <div style={{ fontSize: '.85rem', color: 'var(--mu)', marginBottom: 24 }}>Review before you continue to checkout</div>
+
+        <div style={{ background: 'var(--gmt)', borderRadius: 12, padding: 18, marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div>
+              <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '.95rem' }}>{item.title}</div>
+              <div style={{ fontSize: '.8rem', color: 'var(--sl)', marginTop: 2 }}>with {expert?.name || 'this expert'}</div>
+              {type === 'subscription' && <div style={{ fontSize: '.75rem', color: 'var(--mu)', marginTop: 4 }}>Billed monthly</div>}
+            </div>
+            <div style={{ fontFamily: 'var(--fu)', fontSize: '1.2rem', fontWeight: 800, color: 'var(--gd)', whiteSpace: 'nowrap' }}>{priceLabel}</div>
+          </div>
+        </div>
+
+        {appliedCouponCode && (
+          <div style={{ fontSize: '.8rem', color: 'var(--teal)', marginBottom: 16 }}>
+            ✓ Coupon applied: <strong style={{ fontFamily: 'monospace' }}>{appliedCouponCode}</strong>
+          </div>
+        )}
+
+        <div
+          style={{
+            borderTop: '1px solid rgba(0,0,0,0.06)',
+            paddingTop: 16,
+            marginBottom: 24,
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1rem', color: 'var(--gd)' }}>Total</span>
+          <span style={{ fontFamily: 'var(--fu)', fontWeight: 800, fontSize: '1.2rem', color: 'var(--gd)' }}>{priceLabel}</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn btn-gh" style={{ flex: 1 }} onClick={onClose} disabled={loading}>Cancel</button>
+          <button className="btn btn-gr" style={{ flex: 2 }} onClick={onConfirm} disabled={loading}>
+            {loading ? 'Redirecting…' : 'Continue to Payment'}
+          </button>
+        </div>
+        <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--mu)', marginTop: 14 }}>
+          Secured by Stripe · 256-bit encryption
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const ROLE_DASHBOARD_ROUTE = {
   expert: 'expert-dashboard',
   client: 'client-dashboard',
@@ -190,6 +254,9 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
   // Optional per-item coupon state, keyed the same way checkoutLoading is
   // (`prod-${title}` / `sub-${title}`) — { code, status: null|'checking'|'valid'|'invalid' }
   const [coupons, setCoupons] = useState({});
+  // The purchase awaiting confirmation in the Order Summary modal — every
+  // non-free product/subscription/book pauses here before actually charging.
+  const [pendingPurchase, setPendingPurchase] = useState(null); // { type: 'product'|'subscription', item, couponKey }
 
   const setItemCoupon = (key, code) => setCoupons((prev) => ({ ...prev, [key]: { code, status: null } }));
   const validateItemCoupon = async (key) => {
@@ -246,29 +313,12 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     if (!String(sub.price ?? '').trim()) { notify('Invalid subscription price.', 'error'); return; }
-    const couponKey = `sub-${sub.title}`;
-    const couponEntry = coupons[couponKey];
-    if (couponEntry?.status === 'invalid') { notify('That coupon code is invalid — fix it or clear it.', 'error'); return; }
-    const appliedCoupon = couponEntry?.status === 'valid' ? couponEntry.code.trim() : null;
     if (isExplicitlyFree(sub.price)) {
       notify("You're subscribed — no payment required!", 'success');
       return;
     }
-    const amount = parsePriceCents(sub.price);
-    setCheckoutLoading(couponKey);
-    try {
-      await initiateSubscriptionPayment(
-        expert?.id || expert?.uid || '',
-        sub.title,
-        amount,
-        currentUser.email,
-        currentUser.uid,
-        appliedCoupon
-      );
-    } catch (err) {
-      notify(err.message || 'Failed to start checkout. Please try again.', 'error');
-      setCheckoutLoading(null);
-    }
+    // Non-free — pause on the Order Summary modal rather than charging immediately.
+    setPendingPurchase({ type: 'subscription', item: sub, couponKey: `sub-${sub.title}` });
   };
 
   const handleBuyNow = async (product) => {
@@ -277,11 +327,8 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     if (!String(product.price ?? '').trim()) { notify('Invalid product price.', 'error'); return; }
-    const couponKey = `prod-${product.title}`;
-    const couponEntry = coupons[couponKey];
-    if (couponEntry?.status === 'invalid') { notify('That coupon code is invalid — fix it or clear it.', 'error'); return; }
-    const appliedCoupon = couponEntry?.status === 'valid' ? couponEntry.code.trim() : null;
     if (isExplicitlyFree(product.price)) {
+      const couponKey = `prod-${product.title}`;
       setCheckoutLoading(couponKey);
       try {
         await confirmFreeProduct(
@@ -299,18 +346,44 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       }
       return;
     }
-    const amount = parsePriceCents(product.price);
+    // Non-free — pause on the Order Summary modal rather than charging immediately.
+    // Covers products, custom offerings, and books' internal "Buy Now" alike
+    // (they all funnel through this same handler).
+    setPendingPurchase({ type: 'product', item: product, couponKey: `prod-${product.title}` });
+  };
+
+  // Fires from the Order Summary modal's "Continue to Payment" — the actual
+  // Stripe redirect only happens after this explicit confirmation.
+  const confirmPendingPurchase = async () => {
+    if (!pendingPurchase) return;
+    const { type, item, couponKey } = pendingPurchase;
+    const couponEntry = coupons[couponKey];
+    if (couponEntry?.status === 'invalid') { notify('That coupon code is invalid — fix it or clear it.', 'error'); return; }
+    const appliedCoupon = couponEntry?.status === 'valid' ? couponEntry.code.trim() : null;
+    const amount = parsePriceCents(item.price);
     setCheckoutLoading(couponKey);
     try {
-      await initiateProductPayment(
-        expert?.id || expert?.uid || '',
-        product.title,
-        amount,
-        currentUser.email,
-        product.deliveryLink || product.fileUrl || null,
-        currentUser.uid,
-        appliedCoupon
-      );
+      if (type === 'subscription') {
+        await initiateSubscriptionPayment(
+          expert?.id || expert?.uid || '',
+          item.title,
+          amount,
+          currentUser.email,
+          currentUser.uid,
+          appliedCoupon
+        );
+      } else {
+        await initiateProductPayment(
+          expert?.id || expert?.uid || '',
+          item.title,
+          amount,
+          currentUser.email,
+          item.deliveryLink || item.fileUrl || null,
+          currentUser.uid,
+          appliedCoupon
+        );
+      }
+      // On success, initiate*Payment redirects the browser away — nothing left to do here.
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
       setCheckoutLoading(null);
@@ -361,6 +434,18 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
 
   return (
     <div style={{ background: 'var(--cr)', minHeight: '100vh' }}>
+      <OrderSummaryModal
+        pendingPurchase={pendingPurchase}
+        expert={expert}
+        appliedCouponCode={
+          pendingPurchase && coupons[pendingPurchase.couponKey]?.status === 'valid'
+            ? coupons[pendingPurchase.couponKey].code
+            : null
+        }
+        onConfirm={confirmPendingPurchase}
+        onClose={() => setPendingPurchase(null)}
+        loading={!!pendingPurchase && checkoutLoading === pendingPurchase.couponKey}
+      />
       {/* Nav */}
       <div
         style={{

@@ -6,6 +6,7 @@ import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
 import { slugify } from '../../utils/slug';
 import { getBookPurchaseFlags } from '../../utils/book';
+import { OrderSummaryModal } from './PublicProfile';
 
 function CoverPanel({ url, label }) {
   return (
@@ -39,6 +40,7 @@ function CoverPanel({ url, label }) {
 export function BookDetailPage({ nav, notify, expert, book }) {
   const { currentUser } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [pendingBuy, setPendingBuy] = useState(false);
 
   if (!book) return null;
 
@@ -80,6 +82,12 @@ export function BookDetailPage({ nav, notify, expert, book }) {
       }
       return;
     }
+    // Non-free — pause on the Order Summary modal rather than charging immediately.
+    setPendingBuy(true);
+  };
+
+  const confirmBuyBook = async () => {
+    const amount = parsePriceCents(book.price);
     setCheckoutLoading(true);
     try {
       await initiateProductPayment(
@@ -90,6 +98,7 @@ export function BookDetailPage({ nav, notify, expert, book }) {
         book.deliveryLink || book.fileUrl || null,
         currentUser.uid
       );
+      // On success, initiateProductPayment redirects the browser away — nothing left to do here.
     } catch (err) {
       notify(err.message || 'Failed to start checkout. Please try again.', 'error');
       setCheckoutLoading(false);
@@ -105,6 +114,14 @@ export function BookDetailPage({ nav, notify, expert, book }) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gmt)', padding: '80px 24px 64px' }}>
+      <OrderSummaryModal
+        pendingPurchase={pendingBuy ? { type: 'product', item: book } : null}
+        expert={expert}
+        appliedCouponCode={null}
+        onConfirm={confirmBuyBook}
+        onClose={() => setPendingBuy(false)}
+        loading={checkoutLoading}
+      />
       <div style={{ maxWidth: 880, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
           <div
