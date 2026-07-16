@@ -117,7 +117,7 @@ export function BookDetailPage({ nav, notify, expert, book }) {
       <OrderSummaryModal
         pendingPurchase={pendingBuy ? { type: 'product', item: book } : null}
         expert={expert}
-        appliedCouponCode={null}
+        showCoupon={false}
         onConfirm={confirmBuyBook}
         onClose={() => setPendingBuy(false)}
         loading={checkoutLoading}

@@ -13,6 +13,8 @@ import {
   Check,
   Sparkles,
   Award,
+  User,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -92,44 +94,14 @@ function ExpandableOfferingDesc({ desc }) {
 }
 
 // Optional coupon-code affordance for products/subscriptions/custom offerings
-// (not books — see handleBuyBook). Collapsed behind a link by default so it
-// doesn't clutter every card; validated on blur via resolveCouponCode.
-function CouponField({ code, status, onChange, onValidate }) {
-  const [isOpen, setIsOpen] = useState(!!code);
-
-  if (!isOpen) {
-    return (
-      <span
-        onClick={() => setIsOpen(true)}
-        style={{ fontSize: '.72rem', color: 'var(--teal)', cursor: 'pointer', textDecoration: 'underline' }}
-      >
-        Have a coupon?
-      </span>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }}>
-      <input
-        className="input"
-        style={{ fontSize: '.78rem', padding: '6px 10px', width: 140 }}
-        placeholder="Coupon code"
-        value={code}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onValidate}
-      />
-      {status === 'checking' && <span style={{ fontSize: '.68rem', color: 'var(--mu)' }}>Checking…</span>}
-      {status === 'valid' && <span style={{ fontSize: '.68rem', color: 'var(--teal)' }}>✓ Applied</span>}
-      {status === 'invalid' && <span style={{ fontSize: '.68rem', color: '#e84444' }}>Invalid code</span>}
-    </div>
-  );
-}
-
 // Confirmation step shown before any non-free purchase redirects to Stripe —
-// mirrors the "Order Summary" step BookingFlow.jsx already shows for paid
-// sessions. Zero-priced items skip this entirely (see isExplicitlyFree call
-// sites) and grant access immediately, same as before.
-export function OrderSummaryModal({ pendingPurchase, expert, appliedCouponCode, onConfirm, onClose, loading }) {
+// styled to match the "Order Summary" step BookingFlow.jsx already shows for
+// paid sessions, coupon field included. Zero-priced items skip this entirely
+// (see isExplicitlyFree call sites) and grant access immediately, same as before.
+export function OrderSummaryModal({
+  pendingPurchase, expert, onConfirm, onClose, loading,
+  couponCode, couponStatus, onCouponChange, onCouponBlur, showCoupon = true,
+}) {
   if (!pendingPurchase) return null;
   const { type, item } = pendingPurchase;
   const priceLabel = type === 'subscription'
@@ -141,49 +113,127 @@ export function OrderSummaryModal({ pendingPurchase, expert, appliedCouponCode, 
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: 32, boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}>
-        <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1.15rem', color: 'var(--gd)', marginBottom: 4 }}>Order Summary</div>
-        <div style={{ fontSize: '.85rem', color: 'var(--mu)', marginBottom: 24 }}>Review before you continue to checkout</div>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 32, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', marginBottom: 20 }}>
+          Order Summary
+        </div>
 
-        <div style={{ background: 'var(--gmt)', borderRadius: 12, padding: 18, marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-            <div>
-              <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '.95rem' }}>{item.title}</div>
-              <div style={{ fontSize: '.8rem', color: 'var(--sl)', marginTop: 2 }}>with {expert?.name || 'this expert'}</div>
-              {type === 'subscription' && <div style={{ fontSize: '.75rem', color: 'var(--mu)', marginTop: 4 }}>Billed monthly</div>}
+        <div
+          style={{
+            background: 'var(--gmt)',
+            borderRadius: 'var(--rsm)',
+            padding: 20,
+            marginBottom: 24,
+            border: '1px solid rgba(255,155,81,.12)',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'rgba(26, 184, 160, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                border: '2px solid rgba(26, 184, 160, 0.2)',
+              }}
+            >
+              <User size={24} color="var(--teal)" />
             </div>
-            <div style={{ fontFamily: 'var(--fu)', fontSize: '1.2rem', fontWeight: 800, color: 'var(--gd)', whiteSpace: 'nowrap' }}>{priceLabel}</div>
+            <div>
+              <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)' }}>
+                {expert?.name || 'this expert'}
+              </div>
+              <div style={{ fontSize: '.82rem', color: 'var(--sl)', marginTop: 2 }}>
+                {item.title}
+              </div>
+              {type === 'subscription' && (
+                <div style={{ fontSize: '.78rem', color: 'var(--gb)', marginTop: 4, fontWeight: 600 }}>
+                  Billed monthly
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                marginLeft: 'auto',
+                fontFamily: 'var(--fu)',
+                fontSize: '1.3rem',
+                fontWeight: 800,
+                color: 'var(--gd)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {priceLabel}
+            </div>
           </div>
         </div>
 
-        {appliedCouponCode && (
-          <div style={{ fontSize: '.8rem', color: 'var(--teal)', marginBottom: 16 }}>
-            ✓ Coupon applied: <strong style={{ fontFamily: 'monospace' }}>{appliedCouponCode}</strong>
+        {showCoupon && (
+          <div className="field">
+            <label className="label">Coupon Code (optional)</label>
+            <input
+              className="input"
+              placeholder="Have a coupon code?"
+              value={couponCode}
+              onChange={(e) => onCouponChange(e.target.value)}
+              onBlur={onCouponBlur}
+            />
+            {couponStatus === 'checking' && <div style={{ fontSize: '.75rem', color: 'var(--mu)', marginTop: 6 }}>Checking code…</div>}
+            {couponStatus === 'valid' && <div style={{ fontSize: '.75rem', color: 'var(--teal)', marginTop: 6 }}>✓ Code applied</div>}
+            {couponStatus === 'invalid' && <div style={{ fontSize: '.75rem', color: '#e84444', marginTop: 6 }}>Invalid code</div>}
           </div>
         )}
 
         <div
           style={{
-            borderTop: '1px solid rgba(0,0,0,0.06)',
+            borderTop: '1px solid rgba(255,155,81,.08)',
             paddingTop: 16,
-            marginBottom: 24,
+            marginTop: showCoupon ? 4 : 0,
+            marginBottom: 20,
             display: 'flex',
             justifyContent: 'space-between',
           }}
         >
-          <span style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1rem', color: 'var(--gd)' }}>Total</span>
-          <span style={{ fontFamily: 'var(--fu)', fontWeight: 800, fontSize: '1.2rem', color: 'var(--gd)' }}>{priceLabel}</span>
+          <span style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1rem', color: 'var(--gd)' }}>
+            Total
+          </span>
+          <span style={{ fontFamily: 'var(--fu)', fontWeight: 800, fontSize: '1.3rem', color: 'var(--gd)' }}>
+            {priceLabel}
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn btn-gh" style={{ flex: 1 }} onClick={onClose} disabled={loading}>Cancel</button>
-          <button className="btn btn-gr" style={{ flex: 2 }} onClick={onConfirm} disabled={loading}>
-            {loading ? 'Redirecting…' : 'Continue to Payment'}
-          </button>
-        </div>
-        <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--mu)', marginTop: 14 }}>
+        <button
+          className="btn w-full btn-lg"
+          style={{
+            background: loading ? '#8b85ff' : '#635bff',
+            color: '#fff',
+            fontFamily: 'var(--fu)',
+            fontWeight: 700,
+            fontSize: '1rem',
+            opacity: loading ? 0.8 : 1,
+            cursor: loading ? 'wait' : 'pointer',
+          }}
+          onClick={onConfirm}
+          disabled={loading}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            {loading ? 'Processing...' : (<><Lock size={16} /> Continue to Payment</>)}
+          </div>
+        </button>
+        <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--mu)', marginTop: 12 }}>
           Secured by Stripe · 256-bit encryption
         </p>
+        <button
+          className="btn btn-gh w-full"
+          style={{ marginTop: 10 }}
+          onClick={onClose}
+          disabled={loading}
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
@@ -251,23 +301,24 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
   const isLoggedIn = !!currentUser && !!userData?.role;
   const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
   const [checkoutLoading, setCheckoutLoading] = useState(null);
-  // Optional per-item coupon state, keyed the same way checkoutLoading is
-  // (`prod-${title}` / `sub-${title}`) — { code, status: null|'checking'|'valid'|'invalid' }
-  const [coupons, setCoupons] = useState({});
   // The purchase awaiting confirmation in the Order Summary modal — every
   // non-free product/subscription/book pauses here before actually charging.
   const [pendingPurchase, setPendingPurchase] = useState(null); // { type: 'product'|'subscription', item, couponKey }
+  // Coupon entry lives on the modal itself (like BookingFlow's checkout step),
+  // not on the card — one active field at a time, reset whenever a new
+  // purchase is opened.
+  const [couponCode, setCouponCode] = useState('');
+  const [couponStatus, setCouponStatus] = useState(null); // null | 'checking' | 'valid' | 'invalid'
 
-  const setItemCoupon = (key, code) => setCoupons((prev) => ({ ...prev, [key]: { code, status: null } }));
-  const validateItemCoupon = async (key) => {
-    const code = (coupons[key]?.code || '').trim();
-    if (!code) return;
-    setCoupons((prev) => ({ ...prev, [key]: { code, status: 'checking' } }));
+  const handleCouponBlur = async () => {
+    const trimmed = couponCode.trim();
+    if (!trimmed) { setCouponStatus(null); return; }
+    setCouponStatus('checking');
     try {
-      const resolved = await resolveCouponCode(code);
-      setCoupons((prev) => ({ ...prev, [key]: { code, status: resolved ? 'valid' : 'invalid' } }));
+      const resolved = await resolveCouponCode(trimmed);
+      setCouponStatus(resolved ? 'valid' : 'invalid');
     } catch {
-      setCoupons((prev) => ({ ...prev, [key]: { code, status: null } }));
+      setCouponStatus(null);
     }
   };
 
@@ -318,7 +369,9 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     // Non-free — pause on the Order Summary modal rather than charging immediately.
-    setPendingPurchase({ type: 'subscription', item: sub, couponKey: `sub-${sub.title}` });
+    setCouponCode('');
+    setCouponStatus(null);
+    setPendingPurchase({ type: 'subscription', item: sub });
   };
 
   const handleBuyNow = async (product) => {
@@ -349,19 +402,26 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
     // Non-free — pause on the Order Summary modal rather than charging immediately.
     // Covers products, custom offerings, and books' internal "Buy Now" alike
     // (they all funnel through this same handler).
-    setPendingPurchase({ type: 'product', item: product, couponKey: `prod-${product.title}` });
+    setCouponCode('');
+    setCouponStatus(null);
+    setPendingPurchase({ type: 'product', item: product });
   };
 
   // Fires from the Order Summary modal's "Continue to Payment" — the actual
-  // Stripe redirect only happens after this explicit confirmation.
+  // Stripe redirect only happens after this explicit confirmation. Mirrors
+  // BookingFlow.jsx's handlePayment: blocks only on a confirmed-invalid
+  // coupon, otherwise sends whatever's typed (the webhook re-validates).
   const confirmPendingPurchase = async () => {
     if (!pendingPurchase) return;
-    const { type, item, couponKey } = pendingPurchase;
-    const couponEntry = coupons[couponKey];
-    if (couponEntry?.status === 'invalid') { notify('That coupon code is invalid — fix it or clear it.', 'error'); return; }
-    const appliedCoupon = couponEntry?.status === 'valid' ? couponEntry.code.trim() : null;
+    if (couponStatus === 'invalid') {
+      notify('That coupon code is invalid — fix it or clear it before continuing.', 'warn');
+      return;
+    }
+    const { type, item } = pendingPurchase;
+    const appliedCoupon = couponCode.trim() || null;
     const amount = parsePriceCents(item.price);
-    setCheckoutLoading(couponKey);
+    const loadingKey = `${type === 'subscription' ? 'sub' : 'prod'}-${item.title}`;
+    setCheckoutLoading(loadingKey);
     try {
       if (type === 'subscription') {
         await initiateSubscriptionPayment(
@@ -437,14 +497,16 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       <OrderSummaryModal
         pendingPurchase={pendingPurchase}
         expert={expert}
-        appliedCouponCode={
-          pendingPurchase && coupons[pendingPurchase.couponKey]?.status === 'valid'
-            ? coupons[pendingPurchase.couponKey].code
-            : null
-        }
+        couponCode={couponCode}
+        couponStatus={couponStatus}
+        onCouponChange={(v) => { setCouponCode(v); setCouponStatus(null); }}
+        onCouponBlur={handleCouponBlur}
         onConfirm={confirmPendingPurchase}
         onClose={() => setPendingPurchase(null)}
-        loading={!!pendingPurchase && checkoutLoading === pendingPurchase.couponKey}
+        loading={
+          !!pendingPurchase &&
+          checkoutLoading === `${pendingPurchase.type === 'subscription' ? 'sub' : 'prod'}-${pendingPurchase.item.title}`
+        }
       />
       {/* Nav */}
       <div
@@ -908,12 +970,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   >
                     {checkoutLoading === `sub-${sub.title}` ? 'Redirecting...' : 'Subscribe →'}
                   </button>
-                  <CouponField
-                    code={coupons[`sub-${sub.title}`]?.code || ''}
-                    status={coupons[`sub-${sub.title}`]?.status || null}
-                    onChange={(v) => setItemCoupon(`sub-${sub.title}`, v)}
-                    onValidate={() => validateItemCoupon(`sub-${sub.title}`)}
-                  />
                   <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
                     Do you want to become an Affiliate?
                   </a>
@@ -985,14 +1041,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                       {checkoutLoading === `prod-${p.title}` ? '...' : 'Buy Now'}
                     </button>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <CouponField
-                      code={coupons[`prod-${p.title}`]?.code || ''}
-                      status={coupons[`prod-${p.title}`]?.status || null}
-                      onChange={(v) => setItemCoupon(`prod-${p.title}`, v)}
-                      onValidate={() => validateItemCoupon(`prod-${p.title}`)}
-                    />
-                  </div>
                 </div>
               </div>
             ))}
@@ -1036,12 +1084,6 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                         {checkoutLoading === `prod-${c.title}` ? '...' : 'Buy Now'}
                       </button>
                     </div>
-                    <CouponField
-                      code={coupons[`prod-${c.title}`]?.code || ''}
-                      status={coupons[`prod-${c.title}`]?.status || null}
-                      onChange={(v) => setItemCoupon(`prod-${c.title}`, v)}
-                      onValidate={() => validateItemCoupon(`prod-${c.title}`)}
-                    />
                   </div>
                 </div>
               ))}
