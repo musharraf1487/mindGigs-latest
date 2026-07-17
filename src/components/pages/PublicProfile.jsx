@@ -5,9 +5,6 @@ import {
   Package,
   Share2,
   BookOpen,
-  X as XLogo,
-  Linkedin,
-  Youtube,
   FileText,
   Clock,
   Check,
@@ -606,7 +603,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
             )}
           </div>
 
-          {(expert.tags?.length > 0 || expert.twitter || expert.linkedin || expert.youtube) && (
+          {(expert.tags?.length > 0 || expert.twitter || expert.linkedin || expert.youtube || expert.whatsapp) && (
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 16 }}>
               {expert.tags?.map((t) => (
                 <span key={t} className="tag tag-gr">{t}</span>
@@ -620,7 +617,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <XLogo size={16} />
+                  X
                 </a>
               )}
               {expert.linkedin && (
@@ -632,7 +629,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <Linkedin size={16} color="#0A66C2" /> LinkedIn
+                  LinkedIn
                 </a>
               )}
               {expert.youtube && (
@@ -644,7 +641,19 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <Youtube size={16} color="#FF0000" /> YouTube
+                  YouTube
+                </a>
+              )}
+              {expert.whatsapp && (
+                <a
+                  href={`https://wa.me/${expert.whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '.85rem', color: '#25D366', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 600 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  WhatsApp
                 </a>
               )}
             </div>
@@ -729,7 +738,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   padding: '28px 32px',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
+                  alignItems: 'flex-end',
                   gap: 20,
                   flexWrap: 'wrap',
                 }}
@@ -743,7 +752,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   </div>
                   {s.desc && (
                     <div style={{ marginTop: 10, maxWidth: 480 }}>
-                      {renderFormattedText(s.desc, { fontSize: '.9rem', color: 'var(--sl)', lineHeight: 1.55 })}
+                      <ExpandableOfferingDesc desc={s.desc} />
                     </div>
                   )}
                 </div>

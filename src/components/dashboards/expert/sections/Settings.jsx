@@ -23,6 +23,7 @@ export function Settings({ user, notify, logout, nav }) {
   const [linkedin, setLinkedin] = useState(user?.linkedin || '');
   const [twitter, setTwitter] = useState(user?.twitter || '');
   const [youtube, setYoutube] = useState(user?.youtube || '');
+  const [whatsapp, setWhatsapp] = useState(user?.whatsapp || '');
   const [loading, setLoading] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -60,6 +61,7 @@ export function Settings({ user, notify, logout, nav }) {
     setLinkedin(user?.linkedin || '');
     setTwitter(user?.twitter || '');
     setYoutube(user?.youtube || '');
+    setWhatsapp(user?.whatsapp || '');
     setHandle(user?.handle || '');
   }, [user]);
 
@@ -123,6 +125,7 @@ export function Settings({ user, notify, logout, nav }) {
         linkedin: linkedin || null,
         twitter: twitter || null,
         youtube: youtube || null,
+        whatsapp: whatsapp.replace(/\D/g, '') || null,
         image: photoUrl,
       });
       setAvatarFile(null);
@@ -317,6 +320,17 @@ export function Settings({ user, notify, logout, nav }) {
                 onChange={(e) => setYoutube(e.target.value)}
                 style={{ width: '100%' }}
                 placeholder="https://youtube.com/@yourchannel"
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--gd)', marginBottom: '8px' }}>WhatsApp (optional)</label>
+              <input
+                type="text"
+                className="input"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                style={{ width: '100%' }}
+                placeholder="e.g. 15551234567 (with country code, no + or spaces)"
               />
             </div>
           </div>

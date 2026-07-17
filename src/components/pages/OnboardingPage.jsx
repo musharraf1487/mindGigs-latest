@@ -52,6 +52,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
   const [linkedin, setLinkedin] = useState('');
   const [twitter, setTwitter] = useState('');
   const [youtube, setYoutube] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
 
   // 1:1 Session
   const [sessionTitle, setSessionTitle] = useState('');
@@ -246,6 +247,10 @@ export function OnboardingPage({ nav, notify, addExpert }) {
               <div className="field">
                 <label className="label">YouTube (optional)</label>
                 <input className="input" placeholder="https://youtube.com/@yourchannel" value={youtube} onChange={(e) => setYoutube(e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">WhatsApp (optional)</label>
+                <input className="input" placeholder="e.g. 15551234567 (with country code, no + or spaces)" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
               </div>
             </>
           )}
@@ -488,6 +493,7 @@ export function OnboardingPage({ nav, notify, addExpert }) {
                       linkedin: linkedin || null,
                       twitter: twitter || null,
                       youtube: youtube || null,
+                      whatsapp: whatsapp.replace(/\D/g, '') || null,
                       rating: userData?.rating ?? 0,
                       sessions: userData?.sessions ?? 0,
                       startingPrice,
