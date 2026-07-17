@@ -239,6 +239,9 @@ const CTA_SERVICES = [
     { title: "Workshops", icon: Presentation, desc: "Interactive group sessions." },
 ];
 
+// Temporarily hidden on the landing page — re-enable by flipping this back to true.
+const SHOW_SUBSCRIPTIONS = false;
+
 const SUBSCRIPTIONS = [
     {
         title: "AI Insiders Community",
@@ -396,7 +399,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         <a href="#lb-how" className="lb-nav-link">How it Works</a>
                         <a href="#lb-affiliate" className="lb-nav-link">Affiliate</a>
                         <a href="#lb-experts" className="lb-nav-link">Experts</a>
-                        <a href="#lb-subscriptions" className="lb-nav-link">Pricing</a>
+                        {SHOW_SUBSCRIPTIONS && <a href="#lb-subscriptions" className="lb-nav-link">Pricing</a>}
                     </div>
 
                     <div className="lb-nav-actions">
@@ -448,7 +451,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                 <a href="#lb-how" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">How it Works</a>
                                 <a href="#lb-affiliate" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Affiliate</a>
                                 <a href="#lb-experts" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Experts</a>
-                                <a href="#lb-subscriptions" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Pricing</a>
+                                {SHOW_SUBSCRIPTIONS && <a href="#lb-subscriptions" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Pricing</a>}
                                 <hr className="lb-divider" />
                                 {isLoggedIn ? (
                                     <button className="lb-btn-join-full" onClick={() => { setIsMenuOpen(false); nav(dashboardRoute); }}>
@@ -621,6 +624,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
            
 
             {/* Subscriptions */}
+            {SHOW_SUBSCRIPTIONS && (
             < section id="lb-subscriptions" className="lb-section lb-section-white" >
                 <div className="lb-container">
                     <motion.div
@@ -682,6 +686,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </div>
                 </div>
             </section >
+            )}
 
             {/* Affiliate Advantage */}
             < section id="lb-affiliate" className="lb-section lb-section-white" >
@@ -967,7 +972,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                 <li><a href="#lb-how">How it Works</a></li>
                                 <li><a href="#lb-experts">Browse Experts</a></li>
                                 <li><a href="#lb-services">Services</a></li>
-                                <li><a href="#lb-subscriptions">Pricing</a></li>
+                                {SHOW_SUBSCRIPTIONS && <li><a href="#lb-subscriptions">Pricing</a></li>}
                             </ul>
                         </div>
                         <div>
