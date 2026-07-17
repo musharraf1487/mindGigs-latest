@@ -635,8 +635,6 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
   // valid for mode: 'payment' — Checkout doesn't support delayed payment
   // methods like this in mode: 'subscription' (bank transfer can't
   // auto-renew), so subscriptions stay card-only regardless of amount.
-  // customer_creation: 'always' is required so the funding instructions
-  // have a Customer to attach to.
   const BANK_TRANSFER_MIN_CENTS = 100000; // $1000 — below this, card only
   const bankTransferOptions = {
     payment_method_types: ['card', 'customer_balance'],
@@ -646,7 +644,6 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
         bank_transfer: { type: 'us_bank_transfer' },
       },
     },
-    customer_creation: 'always',
   };
 
   try {
@@ -656,9 +653,17 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       return res.status(400).json({ error: 'amount and email are required' });
     }
 
-    const paymentMethodConfig = (saleType !== 'subscription' && amount >= BANK_TRANSFER_MIN_CENTS)
-      ? bankTransferOptions
-      : { payment_method_types: ['card'] };
+    const isBankTransferEligible = saleType !== 'subscription' && amount >= BANK_TRANSFER_MIN_CENTS;
+    const paymentMethodConfig = isBankTransferEligible ? bankTransferOptions : { payment_method_types: ['card'] };
+
+    // customer_balance (bank transfer) needs funding instructions attached to
+    // a real Customer at session-creation time — customer_creation: 'always'
+    // only creates the Customer after checkout completes, which is too late.
+    // So for bank-transfer-eligible sessions, create the Customer up front and
+    // reference it by ID instead of customer_email.
+    const customerParam = isBankTransferEligible
+      ? { customer: (await stripe.customers.create({ email })).id }
+      : { customer_email: email };
 
     let sessionConfig;
 
@@ -672,7 +677,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       sessionConfig = {
         ...paymentMethodConfig,
         mode: 'payment',
-        customer_email: email,
+        ...customerParam,
         line_items: [{
           price_data: {
             currency: 'usd',
@@ -703,7 +708,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       sessionConfig = {
         ...paymentMethodConfig,
         mode: 'subscription',
-        customer_email: email,
+        ...customerParam,
         line_items: [{
           price_data: {
             currency: 'usd',
@@ -729,7 +734,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
       sessionConfig = {
         ...paymentMethodConfig,
         mode: 'payment',
-        customer_email: email,
+        ...customerParam,
         line_items: [{
           price_data: {
             currency: 'usd',
