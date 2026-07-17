@@ -644,6 +644,11 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
         bank_transfer: { type: 'us_bank_transfer' },
       },
     },
+    // Adaptive Pricing (auto-converts the displayed price to the buyer's local
+    // currency) is incompatible with bank transfer, which needs a fixed USD
+    // amount for the virtual account — Stripe silently drops customer_balance
+    // from payment_method_types on any session where adaptive pricing is on.
+    adaptive_pricing: { enabled: false },
   };
 
   try {
