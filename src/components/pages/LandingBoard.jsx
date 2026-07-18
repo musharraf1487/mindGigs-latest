@@ -694,16 +694,16 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     <div className="lb-affiliate-left">
                         <h2 className="lb-section-title">Affiliate-Driven Growth Model</h2>
                         <p className="lb-affiliate-sub">
-                            Unlike traditional platforms that rely primarily on paid advertising, mindGigs operates on a revenue-sharing model designed for alignment.
+                            We grow through people, not ads. Refer experts or clients and earn real commissions on every sale.
                         </p>
                         <div className="lb-affiliate-stats">
                             <div className="lb-affiliate-stat">
-                                <div className="lb-aff-pct">20%</div>
-                                <p>Lifetime commission on direct referrals</p>
+                                <div className="lb-aff-pct">7.5%</div>
+                                <p>Lifetime commission on every sale by experts you onboard</p>
                             </div>
                             <div className="lb-affiliate-stat">
-                                <div className="lb-aff-pct">5%</div>
-                                <p>Commission on second-tier referrals</p>
+                                <div className="lb-aff-pct">7.5%</div>
+                                <p>Commission on every sale you personally refer</p>
                             </div>
                         </div>
                         <button className="lb-btn-primary-sm" onClick={handleBecomePartner}>Become a Partner</button>
@@ -712,9 +712,9 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         <div className="lb-rel" style={{ zIndex: 10 }}>
                             <h3 className="lb-affiliate-card-title">Growth is driven by alignment, not ad spend.</h3>
                             <ul className="lb-affiliate-list">
-                                <li><CheckCircle2 className="lb-aff-check" /> Experts grow through trusted networks.</li>
-                                <li><CheckCircle2 className="lb-aff-check" /> Affiliates are incentivized through performance.</li>
-                                <li><CheckCircle2 className="lb-aff-check" /> Clients discover high-quality expertise.</li>
+                                <li><CheckCircle2 className="lb-aff-check" /> Onboard an expert, earn for as long as they sell.</li>
+                                <li><CheckCircle2 className="lb-aff-check" /> Refer a sale directly, earn on that sale.</li>
+                                <li><CheckCircle2 className="lb-aff-check" /> Do both, and your commissions stack.</li>
                             </ul>
                         </div>
                         <div className="lb-affiliate-blob" />
