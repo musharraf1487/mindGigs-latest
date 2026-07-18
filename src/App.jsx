@@ -27,6 +27,19 @@ import './styles/layout.css';
 import './styles/components.css';
 import './styles/pages.css';
 
+// A bare path like mindgigs.com/username is an expert's vanity URL, and
+// mindgigs.com/username/book-slug is a shareable link to one of their books.
+// Shared by the `page` and `pendingPath` initializers below so the initial
+// render can go straight to a loading state instead of flashing the landing
+// page while the expert list loads.
+function getPendingPathFromLocation() {
+  const parts = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+  const handle = normalizeHandle(parts[0]);
+  if (!handle || RESERVED_HANDLES.has(handle)) return null;
+  return { handle, bookSlug: parts[1] ? parts[1].toLowerCase() : null };
+}
+
 function LoginSelectorModal({ onClose, onSelect }) {
   const roles = [
     { role: 'expert', icon: Users, title: 'Expert / Creator', sub: 'Access your profile, bookings & earnings' },
@@ -63,7 +76,7 @@ function LoginSelectorModal({ onClose, onSelect }) {
 
 export default function App() {
   const { currentUser, userData, logout: firebaseLogout } = useAuth();
-  const [page, setPage] = useState(() => window.history.state?.page || 'landingboard');
+  const [page, setPage] = useState(() => window.history.state?.page || (getPendingPathFromLocation() ? 'resolving-handle' : 'landingboard'));
   const [showLoginSelector, setShowLoginSelector] = useState(false);
   const [loginRole, setLoginRole] = useState(null);
   const [notifs, setNotifs] = useState([]);
@@ -84,13 +97,7 @@ export default function App() {
   // A bare path like mindgigs.com/username is an expert's vanity URL, and
   // mindgigs.com/username/book-slug is a shareable link to one of their
   // books — held here until the experts list loads and we can resolve it.
-  const [pendingPath, setPendingPath] = useState(() => {
-    const parts = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
-    if (parts.length === 0) return null;
-    const handle = normalizeHandle(parts[0]);
-    if (!handle || RESERVED_HANDLES.has(handle)) return null;
-    return { handle, bookSlug: parts[1] ? parts[1].toLowerCase() : null };
-  });
+  const [pendingPath, setPendingPath] = useState(getPendingPathFromLocation);
 
   // Handle Stripe redirect return (?payment=success or ?payment=cancelled)
   useEffect(() => {
@@ -196,6 +203,10 @@ export default function App() {
               '/' + pendingPath.handle
             );
           }
+        } else {
+          // No expert has this handle — drop back to the landing page instead
+          // of leaving 'resolving-handle' stuck on its loading screen.
+          setPage('landingboard');
         }
         setPendingPath(null);
       }
@@ -313,6 +324,24 @@ export default function App() {
           onClose={() => { setShowLoginSelector(false); window.history.back(); }}
           onSelect={role => { setShowLoginSelector(false); setLoginRole(role); nav('login', { role }); }}
         />
+      )}
+      {page === 'resolving-handle' && (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--cr)',
+        }}>
+          <span style={{
+            fontFamily: 'var(--fb)',
+            fontWeight: 700,
+            fontSize: '1.1rem',
+            color: '#0F172A',
+          }}>
+            mind<span style={{ color: 'var(--teal)' }}>G</span>igs
+          </span>
+        </div>
       )}
       {page === 'home' && <LandingPage nav={nav} onLogin={openLoginSelector} />}
       {page === 'landingboard' && <LandingBoard nav={nav} onLogin={openLoginSelector} experts={experts} />}
