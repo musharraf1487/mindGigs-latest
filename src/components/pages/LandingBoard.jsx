@@ -649,8 +649,8 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         transition={{ duration: 0.8 }}
                         className="lb-services-header"
                     >
-                        <h2 className="lb-section-title">Our Specialized Services</h2>
-                        <p className="lb-section-sub">Direct access to elite practitioners across every critical business function.</p>
+                        <h2 className="lb-section-title">Who is it for</h2>
+                        <p className="lb-section-sub">If you are elite practitioners:</p>
                     </motion.div>
 
                     <Swiper
