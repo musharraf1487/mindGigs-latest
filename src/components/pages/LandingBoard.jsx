@@ -36,11 +36,12 @@ import {
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination, Navigation, Autoplay, EffectCoverflow } from 'swiper/modules';
+import { Pagination, Navigation, Autoplay, EffectCoverflow, FreeMode } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 import 'swiper/css/effect-coverflow';
+import 'swiper/css/free-mode';
 
 /* ── Animated Network Canvas Background ── */
 function NetworkCanvas() {
@@ -831,18 +832,19 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </div>
 
                     <Swiper
-                        modules={[Pagination, Navigation, Autoplay]}
+                        modules={[FreeMode, Autoplay]}
                         spaceBetween={30}
-                        slidesPerView={1}
-                        centeredSlides={liveCarouselExperts.length < 2}
-                        pagination={{ clickable: true }}
-                        autoplay={{ delay: 4500, disableOnInteraction: false, pauseOnMouseEnter: true }}
+                        slidesPerView={1.2}
+                        freeMode={true}
                         loop={liveCarouselExperts.length >= 4}
+                        speed={5000}
+                        autoplay={{ delay: 0, disableOnInteraction: false, pauseOnMouseEnter: true }}
+                        allowTouchMove={true}
                         breakpoints={{
-                            640: { slidesPerView: 2, centeredSlides: liveCarouselExperts.length < 2 },
-                            1024: { slidesPerView: 3, centeredSlides: liveCarouselExperts.length < 3 },
+                            640: { slidesPerView: 2.2 },
+                            1024: { slidesPerView: 3.2 },
                         }}
-                        className="lb-experts-swiper"
+                        className="lb-experts-swiper lb-experts-marquee"
                     >
                         {liveCarouselExperts.map((expert) => {
                             const isHovered = hoveredExpertId === expert.id;

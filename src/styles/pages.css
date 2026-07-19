@@ -2119,6 +2119,11 @@
   padding-bottom: 48px !important;
 }
 
+/* Continuous marquee flow — linear timing so cards scroll smoothly, no dots */
+.lb-experts-marquee .swiper-wrapper {
+  transition-timing-function: linear !important;
+}
+
 .lb-expert-card {
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);
