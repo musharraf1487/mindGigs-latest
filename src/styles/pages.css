@@ -2124,6 +2124,29 @@
   transition-timing-function: linear !important;
 }
 
+/* Draggable horizontal scrollbar for manual control */
+.lb-experts-marquee .swiper-scrollbar {
+  position: relative;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 6px;
+  margin-top: 28px;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 99px;
+  cursor: grab;
+}
+
+.lb-experts-marquee .swiper-scrollbar-drag {
+  background: var(--teal);
+  border-radius: 99px;
+  cursor: grab;
+}
+
+.lb-experts-marquee .swiper-scrollbar-drag:active {
+  cursor: grabbing;
+}
+
 .lb-expert-card {
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);

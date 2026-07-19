@@ -36,12 +36,13 @@ import {
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination, Navigation, Autoplay, EffectCoverflow, FreeMode } from 'swiper/modules';
+import { Pagination, Navigation, Autoplay, EffectCoverflow, FreeMode, Scrollbar } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 import 'swiper/css/effect-coverflow';
 import 'swiper/css/free-mode';
+import 'swiper/css/scrollbar';
 
 /* ── Animated Network Canvas Background ── */
 function NetworkCanvas() {
@@ -832,7 +833,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </div>
 
                     <Swiper
-                        modules={[FreeMode, Autoplay]}
+                        modules={[FreeMode, Autoplay, Scrollbar]}
                         spaceBetween={30}
                         slidesPerView={1.2}
                         freeMode={true}
@@ -840,6 +841,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         speed={5000}
                         autoplay={{ delay: 0, disableOnInteraction: false, pauseOnMouseEnter: true }}
                         allowTouchMove={true}
+                        scrollbar={{ draggable: true, hide: false }}
                         breakpoints={{
                             640: { slidesPerView: 2.2 },
                             1024: { slidesPerView: 3.2 },
