@@ -287,6 +287,90 @@ const SUBSCRIPTIONS = [
     }
 ];
 
+const FAQ_GROUPS = [
+    {
+        category: "General",
+        items: [
+            { q: "What is mindGigs?", a: "mindGigs is an online platform where experts sell their knowledge directly to clients through one-on-one video sessions, monthly subscriptions, digital products, and books. Experts keep 70% of every sale." },
+            { q: "Who can use mindGigs?", a: "Anyone. Experts join to sell their knowledge. Clients join to book sessions and buy products. Affiliates join to earn commissions by bringing experts to the platform." },
+            { q: "Does it cost anything to create an account?", a: "No. Signing up is completely free for all roles — experts, clients, and affiliates. There are no monthly fees, no listing fees, and no hidden charges. mindGigs only earns when a sale happens." },
+            { q: "Is my payment information safe?", a: "Yes. All payments are processed through Stripe, the same payment processor used by Amazon, Google, and thousands of major companies. Your card details never touch mindGigs' servers." },
+            { q: "What countries are supported?", a: "mindGigs is available worldwide. Any expert or client with an internet connection and a supported payment method can use the platform." },
+        ],
+    },
+    {
+        category: "For Experts",
+        items: [
+            { q: "How much do I keep from each sale?", a: "You keep 70% of every sale — sessions, subscriptions, digital products, and books. If a buyer came through your own referral link, you earn an additional 7.5%, totaling 77.5%." },
+            { q: "How do I set up my profile?", a: "Sign up as an expert, complete the two-step onboarding (profile setup and first offer), and your public profile goes live immediately with your own shareable URL." },
+            { q: "What can I sell on mindGigs?", a: "One-on-one video sessions, monthly subscriptions, digital products (templates, guides, courses), books, and custom offerings like workshops or group programs." },
+            { q: "Do clients get my personal contact details?", a: "No. All communication and sessions happen on the platform. Your email, phone number, and personal meeting links are never shared with clients." },
+            { q: "How does my referral link work?", a: "Your profile URL (mindgigs.com/experts/yourhandle) doubles as your referral link. When someone signs up after visiting your profile, they are tagged to you permanently. You earn 7.5% on every purchase they ever make on mindGigs — even if they buy from other experts." },
+            { q: "Can I use my handle as a coupon code?", a: "Yes. Clients can enter your handle at checkout as a coupon code. You earn 7.5% on that purchase. If it's your own product, you get 70% plus 7.5% — totaling 77.5%." },
+            { q: "Can I sell my book on mindGigs?", a: "Yes. Each book gets its own dedicated page with a front cover, back cover, full description, and a buy button. The page has its own shareable link you can post anywhere." },
+            { q: "When do I get paid?", a: "Your earnings update the moment a payment clears. You can request a payout from your dashboard once you reach the minimum threshold. Payouts are processed within two business days." },
+            { q: "Can I also be an affiliate?", a: "You already are one. Every expert earns referral commissions through their profile link. You do not need a separate affiliate account." },
+        ],
+    },
+    {
+        category: "For Clients",
+        items: [
+            { q: "How do I book a session with an expert?", a: "Browse the experts directory, open a profile, pick a session, choose an available time slot on their calendar, and pay. You'll receive a confirmation email with your video session link and a calendar invite within a minute." },
+            { q: "Do I need to install any software for the video call?", a: "No. The session opens directly in your browser on any device — desktop, tablet, or phone. Just click the link, allow your camera and microphone, and you're in." },
+            { q: "What if I need to reschedule?", a: "Contact support or reach out to the expert through the platform. We understand that plans change." },
+            { q: "Can I subscribe to an expert for ongoing access?", a: "Yes. Many experts offer monthly subscriptions that give you recurring access — weekly calls, group access, or ongoing mentorship. You can cancel anytime from your dashboard." },
+            { q: "What is a referral code and should I use one?", a: "If an expert or a friend gave you a referral code, enter it at checkout. It costs you nothing extra — the price stays exactly the same. It simply supports the person who recommended the expert or platform to you." },
+            { q: "Is there a refund policy?", a: "Refund policies may vary. If you have an issue with a booking or purchase, contact support and we will work to resolve it fairly." },
+        ],
+    },
+    {
+        category: "For Affiliates",
+        items: [
+            { q: "What is the mindGigs affiliate program?", a: "You receive a unique coupon code when you sign up as an affiliate. You earn 7.5% commission by onboarding experts and by sharing your code with buyers. The expert onboarding commission is lifetime — you earn on every sale they ever make." },
+            { q: "How is the affiliate role different from the expert role?", a: "Experts sell their own knowledge, sessions, products, books. Affiliates do not sell anything. Affiliates earn by bringing experts and buyers to the platform using their coupon code." },
+            { q: "How do I earn lifetime commissions?", a: "When a new expert signs up using your coupon code, they are permanently linked to you. Every time that expert makes a sale to anyone, any product type, any amount, you earn 7.5%. This never expires." },
+            { q: "How do one-time coupon commissions work?", a: "When a buyer enters your coupon code at checkout, you earn 7.5% of that specific purchase. This is a one-time commission per purchase, separate from the lifetime onboarding commission." },
+            { q: "Can I earn both lifetime and one-time commissions on the same sale?", a: "Yes. If you onboarded the expert AND your coupon code is used at checkout on their product, you earn 7.5% for onboarding plus 7.5% for promotion — totaling 15% on that sale." },
+            { q: "How much can I realistically earn?", a: "It depends on how many experts you onboard and how much they sell. One expert doing $3,000 per month in sales earns you $225 monthly — that is $2,700 per year from a single expert. Onboard ten active experts and you could earn over $27,000 per year." },
+            { q: "How do I get my coupon code?", a: "Your code is generated automatically when you create your affiliate account. It appears on your dashboard immediately — a six-character code you can share anywhere." },
+            { q: "How do I track my earnings?", a: "Your affiliate dashboard shows everything in real time: experts you have onboarded, coupon redemptions, lifetime earnings, one-time earnings, and pending payouts — all separated clearly." },
+            { q: "When and how do I get paid?", a: "Request a payout from your dashboard once you reach the minimum threshold. Payouts are processed within two business days via bank transfer." },
+            { q: "Is my data private?", a: "Yes. mindGigs uses secure authentication through Firebase and encrypted payment processing through Stripe. Your personal data is never sold or shared with third parties." },
+            { q: "I found a bug or have a feature request. How do I reach support?", a: "Email support@mindgigs.com with a description of the issue. We respond within 24 hours." },
+        ],
+    },
+];
+
+function FaqItem({ q, a }) {
+    const [open, setOpen] = React.useState(false);
+    return (
+        <div className={`lb-faq-item${open ? ' lb-faq-item-open' : ''}`}>
+            <button
+                type="button"
+                className="lb-faq-question"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+            >
+                <span>{q}</span>
+                <Plus className="lb-faq-icon" style={{ width: 20, height: 20 }} />
+            </button>
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.28, ease: 'easeInOut' }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <p className="lb-faq-answer">{a}</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 // function FloatingSideElements() {
 //     return (
 //         <>
@@ -952,6 +1036,33 @@ export function LandingBoard({ nav, onLogin, experts }) {
                             </motion.div>
                         </div>
                     </div>
+                </div>
+            </section >
+
+            {/* FAQs */}
+            < section id="lb-faqs" className="lb-section lb-faqs" >
+                <div className="lb-container">
+                    <motion.div
+                        initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
+                        whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
+                        className="lb-section-header"
+                    >
+                        <h2 className="lb-section-title">Frequently Asked Questions</h2>
+                        <p className="lb-section-sub">Everything you need to know about mindGigs.</p>
+                    </motion.div>
+
+                    {FAQ_GROUPS.map((group) => (
+                        <div key={group.category} className="lb-faq-group">
+                            <h3 className="lb-faq-group-title">{group.category}</h3>
+                            <div className="lb-faq-grid">
+                                {group.items.map((item, i) => (
+                                    <FaqItem key={i} q={item.q} a={item.a} />
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </section >
 
