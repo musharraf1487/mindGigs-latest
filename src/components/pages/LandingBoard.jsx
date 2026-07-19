@@ -159,15 +159,15 @@ function NetworkCanvas() {
 
 const SERVICES = [
     {
-        category: "Consultants",
-        icon: Briefcase,
-        description: "Strategic guidance to navigate complex business challenges and drive sustainable growth.",
+        category: "Authors",
+        icon: BookOpen,
+        description: "Published voices selling their books directly, each with a dedicated page and shareable link.",
         items: [
-            "Business Strategy Development",
-            "Growth & Scaling Plans",
-            "Market Research & Analysis",
-            "Operations Optimization",
-            "Financial Planning & Forecasting"
+            "Dedicated Book Sales Pages",
+            "Front & Back Cover Showcase",
+            "Digital & Signed Editions",
+            "Companion Guides & Workbooks",
+            "Reader Q&A Sessions"
         ]
     },
     {
@@ -195,15 +195,15 @@ const SERVICES = [
         ]
     },
     {
-        category: "Designers",
-        icon: Palette,
-        description: "Creative vision to define your brand identity and craft exceptional user experiences.",
+        category: "Experts",
+        icon: Sparkles,
+        description: "Verified specialists sharing their knowledge through sessions, subscriptions, and digital products.",
         items: [
-            "Brand Identity & Logo Design",
-            "UI/UX Design",
-            "Website & App Design",
-            "Marketing Creatives",
-            "Design Systems"
+            "1:1 Video Sessions",
+            "Monthly Subscriptions",
+            "Digital Products & Templates",
+            "Group Workshops & Programs",
+            "Custom Advisory Offerings"
         ]
     },
     {

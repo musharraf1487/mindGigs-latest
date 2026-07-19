@@ -1410,13 +1410,22 @@
 
 .lb-services-swiper .swiper-button-next,
 .lb-services-swiper .swiper-button-prev {
-  color: #0F172A;
+  color: var(--teal);
   background: white;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 20px rgba(25, 181, 166, 0.22);
+  border: 2px solid var(--teal);
+  transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.lb-services-swiper .swiper-button-next:hover,
+.lb-services-swiper .swiper-button-prev:hover {
+  color: #ffffff;
+  background: var(--teal);
+  box-shadow: 0 12px 28px rgba(25, 181, 166, 0.4);
+  transform: scale(1.08);
 }
 
 .lb-services-swiper .swiper-button-next:after,
