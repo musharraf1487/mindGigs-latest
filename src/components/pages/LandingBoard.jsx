@@ -846,7 +846,6 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     >
                         {liveCarouselExperts.map((expert) => {
                             const isHovered = hoveredExpertId === expert.id;
-                            const isOthersHovered = hoveredExpertId !== null && !isHovered;
 
                             return (
                                 <SwiperSlide key={expert.id}>
@@ -864,11 +863,8 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                             cursor: 'pointer',
                                             border: expert.isVerified ? '1.5px solid rgba(26,184,160,0.25)' : '1px solid rgba(15, 23, 42, 0.03)',
                                             transition: 'all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1)',
-                                            filter: isOthersHovered ? 'blur(8px) brightness(0.9)' : 'none',
-                                            opacity: isOthersHovered ? 0.7 : 1,
-                                            transform: isHovered ? 'translateY(-12px) scale(1.02)' : 'translateY(0) scale(1)',
-                                            boxShadow: isHovered ? '0 30px 60px rgba(15, 23, 42, 0.12)' : 'none',
-                                            zIndex: isHovered ? 10 : 1,
+                                            transform: isHovered ? 'translateY(-8px)' : 'translateY(0)',
+                                            boxShadow: isHovered ? '0 24px 48px rgba(15, 23, 42, 0.1)' : 'none',
                                             position: 'relative',
                                         }}
                                     >
