@@ -585,46 +585,6 @@ export function LandingBoard({ nav, onLogin, experts }) {
             </section >
 
 
-            {/* How It Works */}
-            < section id="lb-how" className="lb-section lb-section-white lb-how" >
-                <div className="lb-blob lb-blob-tl" />
-                <div className="lb-blob lb-blob-br" />
-
-                <div className="lb-container lb-rel">
-                    <motion.div
-                        initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
-                        whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8 }}
-                        className="lb-section-header"
-                    >
-                        <h2 className="lb-section-title">How It Works</h2>
-                    </motion.div>
-                    <div className="lb-how-grid">
-                        {[
-                            { step: "01", title: "Pick your expert", desc: "Browse verified experts with real reviews and trusted specialties." },
-                            { step: "02", title: "Book a time that works", desc: "Choose a slot, pay securely, and get an instant calendar invite." },
-                            { step: "03", title: "Meet face to face", desc: "Join a private video call, share your screen, and leave with clear answers." },
-                        ].map((item, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 30 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.2 }}
-                                whileHover={{ y: -20, scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="lb-how-card"
-                            >
-                                <div className="lb-how-step">{item.step}</div>
-                                <h3 className="lb-how-card-title">{item.title}</h3>
-                                <p className="lb-how-card-desc">{item.desc}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section >
-
             {/* Services Slider */}
             < section id="lb-services" className="lb-section lb-section-white lb-services" >
                 <div className="lb-blob lb-blob-tr" />
@@ -683,6 +643,46 @@ export function LandingBoard({ nav, onLogin, experts }) {
                             </SwiperSlide>
                         ))}
                     </Swiper>
+                </div>
+            </section >
+
+            {/* How It Works */}
+            < section id="lb-how" className="lb-section lb-section-white lb-how" >
+                <div className="lb-blob lb-blob-tl" />
+                <div className="lb-blob lb-blob-br" />
+
+                <div className="lb-container lb-rel">
+                    <motion.div
+                        initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
+                        whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
+                        className="lb-section-header"
+                    >
+                        <h2 className="lb-section-title">How It Works</h2>
+                    </motion.div>
+                    <div className="lb-how-grid">
+                        {[
+                            { step: "01", title: "Pick your expert", desc: "Browse verified experts with real reviews and trusted specialties." },
+                            { step: "02", title: "Book a time that works", desc: "Choose a slot, pay securely, and get an instant calendar invite." },
+                            { step: "03", title: "Meet face to face", desc: "Join a private video call, share your screen, and leave with clear answers." },
+                        ].map((item, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.2 }}
+                                whileHover={{ y: -20, scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="lb-how-card"
+                            >
+                                <div className="lb-how-step">{item.step}</div>
+                                <h3 className="lb-how-card-title">{item.title}</h3>
+                                <p className="lb-how-card-desc">{item.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </section >
 
