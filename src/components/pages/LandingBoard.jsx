@@ -467,9 +467,11 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </button>
 
                     <div className="lb-nav-links">
-                        <a href="#lb-how" className="lb-nav-link">How it Works</a>
-                        <a href="#lb-affiliate" className="lb-nav-link">Affiliate</a>
+                        <a href="#lb-services" className="lb-nav-link">Who</a>
+                        <a href="#lb-how" className="lb-nav-link">How</a>
+                        <a href="#lb-affiliate" className="lb-nav-link">Affiliates</a>
                         <a href="#lb-experts" className="lb-nav-link">Experts</a>
+                        <a href="#lb-faqs" className="lb-nav-link">FAQs</a>
                         {SHOW_SUBSCRIPTIONS && <a href="#lb-subscriptions" className="lb-nav-link">Pricing</a>}
                     </div>
 
@@ -519,9 +521,11 @@ export function LandingBoard({ nav, onLogin, experts }) {
                             className="lb-mobile-menu"
                         >
                             <div className="lb-mobile-menu-inner">
-                                <a href="#lb-how" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">How it Works</a>
-                                <a href="#lb-affiliate" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Affiliate</a>
+                                <a href="#lb-services" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Who</a>
+                                <a href="#lb-how" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">How</a>
+                                <a href="#lb-affiliate" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Affiliates</a>
                                 <a href="#lb-experts" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Experts</a>
+                                <a href="#lb-faqs" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">FAQs</a>
                                 {SHOW_SUBSCRIPTIONS && <a href="#lb-subscriptions" onClick={() => setIsMenuOpen(false)} className="lb-mobile-link">Pricing</a>}
                                 <hr className="lb-divider" />
                                 {isLoggedIn ? (
