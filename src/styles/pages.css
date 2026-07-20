@@ -2424,16 +2424,16 @@
 /* Collapsible FAQ groups (For Experts / Clients / Affiliates) */
 .lb-faq-group-collapsible {
   margin-top: 20px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #0F172A;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   overflow: hidden;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .lb-faq-group-collapsible.lb-faq-group-open {
-  border-color: rgba(0, 0, 0, 0.28);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+  border-color: rgba(25, 181, 166, 0.35);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.22);
 }
 
 .lb-faq-group-toggle {
@@ -2452,6 +2452,7 @@
 .lb-faq-group-collapsible .lb-faq-group-title {
   margin: 0;
   font-size: 1.2rem;
+  color: #ffffff;
 }
 
 .lb-faq-group-meta {
@@ -2464,14 +2465,15 @@
 .lb-faq-group-count {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #333333;
-  background: rgba(0, 0, 0, 0.06);
+  color: rgba(245, 245, 244, 0.85);
+  background: rgba(245, 245, 244, 0.1);
+  border: 1px solid rgba(245, 245, 244, 0.12);
   border-radius: 999px;
   padding: 3px 10px;
 }
 
 .lb-faq-group-icon {
-  color: #000000;
+  color: var(--teal);
   transition: transform 0.3s ease;
 }
 

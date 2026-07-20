@@ -157,6 +157,7 @@ function NetworkCanvas() {
 const SERVICES = [
     {
         category: "Experts",
+        signupRole: "expert",
         icon: Sparkles,
         description: "Turn your knowledge into income.",
         cta: "Join as an Expert",
@@ -169,6 +170,7 @@ const SERVICES = [
     },
     {
         category: "Learners",
+        signupRole: "client",
         icon: GraduationCap,
         description: "Learn directly from the world's experts.",
         cta: "Find an Expert",
@@ -181,6 +183,7 @@ const SERVICES = [
     },
     {
         category: "Publishers",
+        signupRole: "affiliate",
         icon: BookOpen,
         description: "Turn every author into a recurring revenue stream.",
         cta: "Partner with us",
@@ -193,6 +196,7 @@ const SERVICES = [
     },
     {
         category: "Authors",
+        signupRole: "expert",
         icon: PenTool,
         description: "Your book is just the beginning.",
         cta: "Join as an Author",
@@ -205,6 +209,7 @@ const SERVICES = [
     },
     {
         category: "Influencers & Affiliates",
+        signupRole: "affiliate",
         icon: Megaphone,
         description: "Earn passive income by connecting experts with the world.",
         cta: "Become an Affiliate",
@@ -690,7 +695,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                     </div>
                                     <button
                                         className="lb-service-cta"
-                                        onClick={() => nav('experts')}
+                                        onClick={() => nav('signup', { role: service.signupRole })}
                                     >
                                         {service.cta} <ArrowRight style={{ width: 20, height: 20 }} />
                                     </button>
