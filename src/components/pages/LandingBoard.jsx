@@ -22,12 +22,10 @@ import {
     Calendar,
     Plus,
     Briefcase,
-    Code2,
-    Scale,
-    Palette,
     Megaphone,
-    UserCheck,
     BookOpen,
+    GraduationCap,
+    PenTool,
     Presentation,
     Video,
     Menu,
@@ -159,75 +157,63 @@ function NetworkCanvas() {
 
 const SERVICES = [
     {
-        category: "Authors",
-        icon: BookOpen,
-        description: "Published voices selling their books directly, each with a dedicated page and shareable link.",
-        items: [
-            "Dedicated Book Sales Pages",
-            "Front & Back Cover Showcase",
-            "Digital & Signed Editions",
-            "Companion Guides & Workbooks",
-            "Reader Q&A Sessions"
-        ]
-    },
-    {
-        category: "Developers",
-        icon: Code2,
-        description: "Technical expertise to build robust, scalable digital products and automate your systems.",
-        items: [
-            "Website Development",
-            "Mobile App Development",
-            "SaaS/Product Development",
-            "E-commerce Setup",
-            "API Integration & System Automation"
-        ]
-    },
-    {
-        category: "Lawyers",
-        icon: Scale,
-        description: "Professional legal support to protect your interests and ensure full business compliance.",
-        items: [
-            "Legal Consultation",
-            "Contract Drafting & Review",
-            "Business Registration & Compliance",
-            "Intellectual Property Protection",
-            "Dispute Resolution"
-        ]
-    },
-    {
         category: "Experts",
         icon: Sparkles,
-        description: "Verified specialists sharing their knowledge through sessions, subscriptions, and digital products.",
+        description: "Turn your knowledge into income.",
+        cta: "Join as an Expert",
         items: [
-            "1:1 Video Sessions",
-            "Monthly Subscriptions",
-            "Digital Products & Templates",
-            "Group Workshops & Programs",
-            "Custom Advisory Offerings"
+            "List your expertise for free",
+            "Sell consultations, coaching, courses and workshops",
+            "Let affiliates and influencers promote you",
+            "Focus on what you do best"
         ]
     },
     {
-        category: "Marketers",
+        category: "Learners",
+        icon: GraduationCap,
+        description: "Learn directly from the world's experts.",
+        cta: "Find an Expert",
+        items: [
+            "Skip the guesswork with personalized advice",
+            "Speak one-on-one with authors and founders",
+            "Get time with executives and specialists",
+            "Compress years of learning into one conversation"
+        ]
+    },
+    {
+        category: "Publishers",
+        icon: BookOpen,
+        description: "Turn every author into a recurring revenue stream.",
+        cta: "Partner with us",
+        items: [
+            "Go beyond book sales",
+            "Help authors monetize through coaching and consulting",
+            "Add speaking and courses to their catalogue",
+            "Earn ongoing revenue as your authors grow"
+        ]
+    },
+    {
+        category: "Authors",
+        icon: PenTool,
+        description: "Your book is just the beginning.",
+        cta: "Join as an Author",
+        items: [
+            "Turn readers into clients",
+            "Offer coaching, mentoring and consulting",
+            "Sell courses, speaking and exclusive experiences",
+            "Build a business beyond book royalties"
+        ]
+    },
+    {
+        category: "Influencers & Affiliates",
         icon: Megaphone,
-        description: "Data-driven strategies to amplify your brand voice and capture market share.",
+        description: "Earn passive income by connecting experts with the world.",
+        cta: "Become an Affiliate",
         items: [
-            "Digital Marketing Strategy",
-            "SEO Optimization",
-            "Social Media Marketing",
-            "Paid Advertising Campaigns",
-            "Content Marketing"
-        ]
-    },
-    {
-        category: "Coaches",
-        icon: UserCheck,
-        description: "Personalized mentorship to unlock your potential and lead with absolute clarity.",
-        items: [
-            "Career Coaching",
-            "Business Coaching",
-            "Leadership Coaching",
-            "Executive Mentoring",
-            "Productivity & Mindset Coaching"
+            "Introduce authors and experts to mindGigs",
+            "Earn lifetime commissions on everything they sell",
+            "Build an income stream that keeps growing",
+            "Get paid long after the introduction"
         ]
     }
 ];
@@ -652,7 +638,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         className="lb-services-header"
                     >
                         <h2 className="lb-section-title">Who is it for</h2>
-                        <p className="lb-section-sub">If you are elite practitioners:</p>
+                        <p className="lb-section-sub">Whoever you are, there's a way to grow with mindGigs.</p>
                     </motion.div>
 
                     <Swiper
@@ -694,11 +680,11 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                             </button>
                                         ))}
                                     </div>
-                                    <button 
+                                    <button
                                         className="lb-service-cta"
-                                        onClick={() => nav('experts', { category: service.category })}
+                                        onClick={() => nav('experts')}
                                     >
-                                        Find {service.category} <ArrowRight style={{ width: 20, height: 20 }} />
+                                        {service.cta} <ArrowRight style={{ width: 20, height: 20 }} />
                                     </button>
                                 </div>
                             </SwiperSlide>
