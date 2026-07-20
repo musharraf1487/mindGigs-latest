@@ -34,11 +34,10 @@ import {
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination, Navigation, Autoplay, EffectCoverflow, FreeMode, Scrollbar } from 'swiper/modules';
+import { Pagination, Navigation, Autoplay, FreeMode, Scrollbar } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
-import 'swiper/css/effect-coverflow';
 import 'swiper/css/free-mode';
 import 'swiper/css/scrollbar';
 
@@ -642,25 +641,19 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </motion.div>
 
                     <Swiper
-                        modules={[Pagination, Autoplay, Navigation, EffectCoverflow]}
-                        effect={'coverflow'}
+                        modules={[Pagination, Autoplay, Navigation]}
                         grabCursor={true}
                         centeredSlides={true}
                         loop={true}
                         slidesPerView={1}
-                        coverflowEffect={{
-                            rotate: 0,
-                            stretch: 0,
-                            depth: 100,
-                            modifier: 2.5,
-                            slideShadows: false,
-                        }}
+                        spaceBetween={24}
+                        watchSlidesProgress={true}
                         pagination={{ clickable: true }}
                         navigation={true}
                         autoplay={{ delay: 6000, disableOnInteraction: false }}
                         breakpoints={{
-                            768: { slidesPerView: 2 },
-                            1024: { slidesPerView: 3 },
+                            768: { slidesPerView: 2, spaceBetween: 28 },
+                            1024: { slidesPerView: 3, spaceBetween: 32 },
                         }}
                         className="lb-services-swiper"
                     >

@@ -1435,16 +1435,23 @@
 }
 
 .lb-services-swiper .swiper-slide {
-  transition: all 0.5s ease;
-  filter: blur(4px);
-  opacity: 0.5;
-  transform: scale(0.85) translateZ(-100px);
+  height: auto;
+  display: flex;
+  transition: transform 0.5s ease, opacity 0.5s ease, filter 0.5s ease;
+  transform: scale(0.88);
+  transform-origin: center center;
+  filter: blur(2px);
+  opacity: 0.45;
+}
+
+.lb-services-swiper .swiper-slide > * {
+  width: 100%;
 }
 
 .lb-services-swiper .swiper-slide-active {
+  transform: scale(1);
   filter: blur(0);
   opacity: 1;
-  transform: scale(1) translateZ(0);
   z-index: 10;
 }
 
