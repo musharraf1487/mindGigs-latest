@@ -358,6 +358,57 @@ function FaqItem({ q, a }) {
     );
 }
 
+function FaqGroup({ group, collapsible }) {
+    const [open, setOpen] = React.useState(!collapsible);
+
+    const grid = (
+        <div className="lb-faq-grid">
+            {group.items.map((item, i) => (
+                <FaqItem key={i} q={item.q} a={item.a} />
+            ))}
+        </div>
+    );
+
+    if (!collapsible) {
+        return (
+            <div className="lb-faq-group">
+                <h3 className="lb-faq-group-title">{group.category}</h3>
+                {grid}
+            </div>
+        );
+    }
+
+    return (
+        <div className={`lb-faq-group lb-faq-group-collapsible${open ? ' lb-faq-group-open' : ''}`}>
+            <button
+                type="button"
+                className="lb-faq-group-toggle"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+            >
+                <h3 className="lb-faq-group-title">{group.category}</h3>
+                <span className="lb-faq-group-meta">
+                    <span className="lb-faq-group-count">{group.items.length}</span>
+                    <Plus className="lb-faq-group-icon" style={{ width: 22, height: 22 }} />
+                </span>
+            </button>
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.32, ease: 'easeInOut' }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <div className="lb-faq-group-body">{grid}</div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 // function FloatingSideElements() {
 //     return (
 //         <>
@@ -1037,14 +1088,11 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     </motion.div>
 
                     {FAQ_GROUPS.map((group) => (
-                        <div key={group.category} className="lb-faq-group">
-                            <h3 className="lb-faq-group-title">{group.category}</h3>
-                            <div className="lb-faq-grid">
-                                {group.items.map((item, i) => (
-                                    <FaqItem key={i} q={item.q} a={item.a} />
-                                ))}
-                            </div>
-                        </div>
+                        <FaqGroup
+                            key={group.category}
+                            group={group}
+                            collapsible={group.category !== 'General'}
+                        />
                     ))}
                 </div>
             </section >

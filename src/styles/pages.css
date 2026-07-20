@@ -773,7 +773,13 @@
   transform: scale(1.05);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  .lb-nav-links {
+    gap: 22px;
+  }
+}
+
+@media (max-width: 900px) {
   .lb-nav-links {
     display: none;
   }
@@ -851,7 +857,7 @@
   color: var(--gb);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 901px) {
   .lb-menu-toggle {
     display: none;
   }
@@ -881,7 +887,46 @@
 }
 
 .lb-mobile-link:hover {
-  color: #0F172A;
+  color: var(--teal);
+}
+
+/* Responsive navbar */
+@media (max-width: 900px) {
+  .lb-nav {
+    top: 10px;
+    width: calc(100% - 24px);
+  }
+
+  .lb-nav-inner {
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .lb-brand {
+    font-size: 1.25rem;
+  }
+
+  .lb-mobile-menu-inner {
+    padding: 18px 20px 22px;
+    gap: 14px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+
+  .lb-mobile-link {
+    font-size: 1rem;
+    padding: 6px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .lb-nav-actions {
+    gap: 4px;
+  }
+
+  .lb-btn-login {
+    padding: 8px 14px;
+  }
 }
 
 .lb-divider {
@@ -2376,9 +2421,83 @@
   color: #333333;
 }
 
+/* Collapsible FAQ groups (For Experts / Clients / Affiliates) */
+.lb-faq-group-collapsible {
+  margin-top: 20px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.lb-faq-group-collapsible.lb-faq-group-open {
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+}
+
+.lb-faq-group-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lb-faq-group-collapsible .lb-faq-group-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.lb-faq-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.lb-faq-group-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #333333;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.lb-faq-group-icon {
+  color: #000000;
+  transition: transform 0.3s ease;
+}
+
+.lb-faq-group-open .lb-faq-group-icon {
+  transform: rotate(45deg);
+}
+
+.lb-faq-group-body {
+  padding: 0 24px 24px;
+}
+
 @media (max-width: 768px) {
   .lb-faq-grid {
     grid-template-columns: 1fr;
+  }
+
+  .lb-faq-group-toggle {
+    padding: 18px 18px;
+  }
+
+  .lb-faq-group-collapsible .lb-faq-group-title {
+    font-size: 1.05rem;
+  }
+
+  .lb-faq-group-body {
+    padding: 0 18px 18px;
   }
 }
 
