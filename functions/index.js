@@ -726,6 +726,7 @@ exports.createCheckoutSession = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'CLIE
         metadata: {
           saleType: 'subscription',
           expertId,
+          itemTitle: title,
           buyerId: buyerId || '',
           couponCode: couponCode || '',
         },
@@ -952,6 +953,39 @@ exports.stripeWebhook = onRequest({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHO
         await sendPurchaseConfirmationEmail({ buyerEmail, itemTitle, deliveryLink, expertId, price: saleAmount });
       } catch (err) {
         console.error('[Resend] Failed to send purchase confirmation email:', err);
+      }
+    }
+
+    // ── 1f. Record subscription sign-up (subscription type only) ──
+    if (saleType === 'subscription') {
+      const buyerEmail = session.customer_details?.email || session.customer_email || null;
+
+      let expertName = null;
+      try {
+        if (expertId) {
+          const expertSnap = await db.collection('users').doc(expertId).get();
+          expertName = expertSnap.exists ? (expertSnap.data().name || null) : null;
+        }
+      } catch (err) {
+        console.error('[Subscriptions] Failed to look up expert name:', err);
+      }
+
+      try {
+        await db.collection('subscriptions').add({
+          buyerId: buyerId || null,
+          buyerEmail,
+          expertId: expertId || null,
+          expertName,
+          itemTitle: itemTitle || 'Subscription',
+          price: saleAmount,
+          status: 'active',
+          stripeSessionId: session.id,
+          stripeSubscriptionId: typeof session.subscription === 'string' ? session.subscription : null,
+          createdAt: new Date().toISOString(),
+        });
+        console.log(`[Subscriptions] Recorded subscription "${itemTitle || 'Subscription'}" (session ${session.id})`);
+      } catch (err) {
+        console.error('[Subscriptions] Failed to record subscription:', err);
       }
     }
 

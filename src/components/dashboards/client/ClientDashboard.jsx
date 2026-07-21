@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-import { Home, Calendar, RefreshCw, Package, Settings as SettingsIcon, LogOut, User, Search, Star, AlertTriangle, CheckCircle, Check } from 'lucide-react';
+import { Home, Calendar, Package, Settings as SettingsIcon, LogOut, User, Search, Star, AlertTriangle, CheckCircle, Check } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getClientBookings, cancelBooking } from '../../../services/bookingService';
 import { getClientPurchases } from '../../../services/purchaseService';
+import { getClientSubscriptions } from '../../../services/subscriptionService';
 import { isSessionJoinable } from '../../../services/availabilityService';
 import { submitReview, hasReviewedBooking } from '../../../services/reviewService';
 import { formatOfferPrice } from '../../../utils/price';
@@ -316,15 +317,59 @@ function MyBookings({ nav, notify, realBookings, onCancelBooking, currentUser })
     );
 }
 
-function Subscriptions({ notify, nav }) {
+/* Maps a stored subscription doc (price in cents) to the shape the card renders. */
+function mapSubscription(sub) {
+    const created = sub.createdAt ? new Date(sub.createdAt) : null;
+    const renewal = created ? new Date(created) : null;
+    if (renewal) renewal.setMonth(renewal.getMonth() + 1);
+    const monthly = (sub.price || 0) / 100;
+    return {
+        ...sub,
+        plan: sub.itemTitle || 'Subscription',
+        expert: sub.expertName || 'Expert',
+        since: created ? created.toLocaleDateString() : '—',
+        renewal: renewal ? renewal.toLocaleDateString() : '—',
+        price: `${monthly % 1 === 0 ? monthly : monthly.toFixed(2)}/mo`,
+        status: sub.status || 'active',
+    };
+}
+
+function Purchases({ notify, nav }) {
+    const { currentUser } = useAuth();
+    const [purchases, setPurchases] = useState([]);
     const [subs, setSubs] = React.useState([]);
+    const [loading, setLoading] = useState(true);
     const [cancelTarget, setCancelTarget] = React.useState(null);
+
+    useEffect(() => {
+        async function fetchOwned() {
+            if (!currentUser?.uid) {
+                setLoading(false);
+                return;
+            }
+            try {
+                const [purchaseData, subData] = await Promise.all([
+                    getClientPurchases(currentUser.uid),
+                    getClientSubscriptions(currentUser.uid),
+                ]);
+                setPurchases(purchaseData);
+                setSubs(subData.map(mapSubscription));
+            } catch (err) {
+                console.error('Failed to fetch purchases/subscriptions:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchOwned();
+    }, [currentUser]);
 
     const handleConfirmCancel = () => {
         setSubs(prev => prev.filter(s => s !== cancelTarget));
         notify('Subscription cancelled.');
         setCancelTarget(null);
     };
+
+    const isEmpty = purchases.length === 0 && subs.length === 0;
 
     return (
         <div>
@@ -352,14 +397,15 @@ function Subscriptions({ notify, nav }) {
             )}
 
             <div style={{ marginBottom: 20 }}>
-                <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.05rem' }}>Active Subscriptions</div>
-                <div style={{ fontSize: '.8rem', color: 'var(--mu)', marginTop: 3 }}>Manage your recurring memberships</div>
+                <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.05rem' }}>My Purchases</div>
+                <div style={{ fontSize: '.8rem', color: 'var(--mu)', marginTop: 3 }}>Digital products and subscriptions you own</div>
             </div>
 
-            {subs.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
+            {!isEmpty ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* Subscriptions */}
                     {subs.map((s, i) => (
-                        <div key={i} className="card" style={{ padding: 24, borderLeft: '3px solid var(--gb)' }}>
+                        <div key={`sub-${i}`} className="card" style={{ padding: 24, borderLeft: '3px solid var(--gb)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
                                 <div>
                                     <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '1rem', color: 'var(--gd)', marginBottom: 4 }}>{s.plan}</div>
@@ -384,57 +430,8 @@ function Subscriptions({ notify, nav }) {
                             </div>
                         </div>
                     ))}
-                </div>
-            ) : (
-                <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--mu)', marginBottom: 32 }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🔄</div>
-                    <div style={{ fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>No active subscriptions</div>
-                    <p style={{ fontSize: '.85rem', marginBottom: 20 }}>Browse expert memberships to get started.</p>
-                    <button className="btn btn-gr btn-sm" onClick={() => nav('experts')}>Explore Experts →</button>
-                </div>
-            )}
 
-            <div style={{ background: 'var(--gmt)', border: '1.5px dashed rgba(255,155,81,0.25)', borderRadius: 'var(--rmd)', padding: 28, textAlign: 'center' }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 10 }}>🔍</div>
-                <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', marginBottom: 6, fontSize: '.9rem' }}>Discover More Communities</div>
-                <p style={{ fontSize: '.8rem', color: 'var(--mu)', marginBottom: 16 }}>Browse expert memberships and WhatsApp groups to join.</p>
-                <button className="btn btn-gr btn-sm" onClick={() => nav('experts')}>Explore Subscriptions →</button>
-            </div>
-        </div>
-    );
-}
-
-function Purchases({ notify }) {
-    const { currentUser } = useAuth();
-    const [purchases, setPurchases] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        async function fetchPurchases() {
-            if (!currentUser?.uid) {
-                setLoading(false);
-                return;
-            }
-            try {
-                const data = await getClientPurchases(currentUser.uid);
-                setPurchases(data);
-            } catch (err) {
-                console.error('Failed to fetch purchases:', err);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchPurchases();
-    }, [currentUser]);
-
-    return (
-        <div>
-            <div style={{ marginBottom: 20 }}>
-                <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', fontSize: '1.05rem' }}>My Purchases</div>
-                <div style={{ fontSize: '.8rem', color: 'var(--mu)', marginTop: 3 }}>Digital products you own</div>
-            </div>
-            {purchases.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* Purchases */}
                     {purchases.map((p) => (
                         <div key={p.id} className="card" style={{ padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                             <div>
@@ -457,8 +454,8 @@ function Purchases({ notify }) {
                 <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--mu)' }}>
                     <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📦</div>
                     <div style={{ fontWeight: 600, color: 'var(--gd)', marginBottom: 6 }}>No purchases yet</div>
-                    <p style={{ fontSize: '.85rem', marginBottom: 20 }}>Digital products purchased from experts will appear here.</p>
-                    <button className="btn btn-gr btn-sm" onClick={() => notify('Browse expert profiles to find digital products.', 'info')}>Explore Products →</button>
+                    <p style={{ fontSize: '.85rem', marginBottom: 20 }}>Digital products and subscriptions from experts will appear here.</p>
+                    <button className="btn btn-gr btn-sm" onClick={() => nav('experts')}>Explore Experts →</button>
                 </div>
             ) : null}
         </div>
@@ -578,7 +575,6 @@ function Settings({ notify, user }) {
 const NAV_ITEMS = [
     { key: 'overview', icon: <Home size={18} color="var(--teal)" />, label: 'Overview' },
     { key: 'bookings', icon: <Calendar size={18} color="var(--teal)" />, label: 'My Bookings' },
-    { key: 'subscriptions', icon: <RefreshCw size={18} color="var(--teal)" />, label: 'Subscriptions' },
     { key: 'purchases', icon: <Package size={18} color="var(--teal)" />, label: 'Purchases' },
     { key: 'settings', icon: <SettingsIcon size={18} color="var(--teal)" />, label: 'Settings' },
 ];
@@ -854,8 +850,7 @@ export function ClientDashboard({ user, nav, logout, notify }) {
                 {/* Section content */}
                 {section === 'overview' && <Overview nav={nav} realBookings={realBookings} totalSpent={totalSpent} />}
                 {section === 'bookings' && <MyBookings nav={nav} notify={notify} realBookings={realBookings} onCancelBooking={handleCancelBooking} currentUser={currentUser} />}
-                {section === 'subscriptions' && <Subscriptions notify={notify} nav={nav} />}
-                {section === 'purchases' && <Purchases notify={notify} />}
+                {section === 'purchases' && <Purchases notify={notify} nav={nav} />}
                 {section === 'settings' && <Settings notify={notify} user={user} />}
             </main>
         </div>
