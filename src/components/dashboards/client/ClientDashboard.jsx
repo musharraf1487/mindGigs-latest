@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import { Home, Calendar, Package, Settings as SettingsIcon, LogOut, User, Search, Star, AlertTriangle, CheckCircle, Check } from 'lucide-react';
+import { Home, Package, Settings as SettingsIcon, LogOut, User, Search, Star, AlertTriangle, CheckCircle, Check } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getClientBookings, cancelBooking } from '../../../services/bookingService';
 import { getClientPurchases } from '../../../services/purchaseService';
@@ -574,7 +574,6 @@ function Settings({ notify, user }) {
 /* ── MAIN DASHBOARD ── */
 const NAV_ITEMS = [
     { key: 'overview', icon: <Home size={18} color="var(--teal)" />, label: 'Overview' },
-    { key: 'bookings', icon: <Calendar size={18} color="var(--teal)" />, label: 'My Bookings' },
     { key: 'purchases', icon: <Package size={18} color="var(--teal)" />, label: 'Purchases' },
     { key: 'settings', icon: <SettingsIcon size={18} color="var(--teal)" />, label: 'Settings' },
 ];
@@ -848,8 +847,15 @@ export function ClientDashboard({ user, nav, logout, notify }) {
                 </div>
 
                 {/* Section content */}
-                {section === 'overview' && <Overview nav={nav} realBookings={realBookings} totalSpent={totalSpent} />}
-                {section === 'bookings' && <MyBookings nav={nav} notify={notify} realBookings={realBookings} onCancelBooking={handleCancelBooking} currentUser={currentUser} />}
+                {section === 'overview' && (
+                    <>
+                        <Overview nav={nav} realBookings={realBookings} totalSpent={totalSpent} />
+                        <div style={{ marginTop: 28 }}>
+                            <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, color: 'var(--gd)', marginBottom: 16, fontSize: '1.05rem' }}>My Bookings</div>
+                            <MyBookings nav={nav} notify={notify} realBookings={realBookings} onCancelBooking={handleCancelBooking} currentUser={currentUser} />
+                        </div>
+                    </>
+                )}
                 {section === 'purchases' && <Purchases notify={notify} nav={nav} />}
                 {section === 'settings' && <Settings notify={notify} user={user} />}
             </main>
