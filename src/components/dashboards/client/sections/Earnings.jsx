@@ -4,11 +4,14 @@ import { db } from '../../../../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { getPersonACommissions, getPersonBCommissions, SCENARIO_LABELS } from '../../../../services/affiliateService';
+import { usePlatformConfig } from '../../../../context/PlatformConfigContext';
+import { AffiliateProgramDisabled } from './AffiliateProgramGate';
 
 const MIN_PAYOUT = 50;
 
 export function Earnings({ user, notify }) {
   const { currentUser } = useAuth();
+  const { features } = usePlatformConfig();
   const [payoutRequested, setPayoutRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [lifetimeCommissions, setLifetimeCommissions] = useState([]);
@@ -58,6 +61,7 @@ export function Earnings({ user, notify }) {
     } finally { setRequesting(false); }
   };
 
+  if (features['Affiliate Program'] === false) return <AffiliateProgramDisabled />;
   if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--mu)' }}>Loading earnings...</div>;
 
   return (

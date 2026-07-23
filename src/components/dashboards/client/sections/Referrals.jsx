@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Users, DollarSign, Copy, Mail, Plus, Lightbulb, User } from 'lucide-react';
+import { usePlatformConfig } from '../../../../context/PlatformConfigContext';
+import { AffiliateProgramDisabled } from './AffiliateProgramGate';
 
 function InviteModal({ onClose, notify, couponCode }) {
   const [email, setEmail] = useState('');
@@ -58,11 +60,13 @@ function InviteModal({ onClose, notify, couponCode }) {
 
 export function Referrals({ user, affiliateData, notify }) {
   const [showInvite, setShowInvite] = useState(false);
+  const { features } = usePlatformConfig();
   const couponCode = user?.couponCode || null;
 
-  // Experts onboarded via this affiliate's coupon at signup (onboardedByAffiliateId) —
-  // the lifetime commission source. Buyers are no longer persistently attached
-  // to an affiliate; one-time coupon sales show up in the Earnings tab instead.
+  // Experts onboarded via this client's referral code at signup
+  // (onboardedByAffiliateId) — the lifetime commission source, earning on every
+  // sale they ever make. Buyers who merely redeem the code are one-time and
+  // listed separately below.
   const onboardedExperts = affiliateData?.referrals || [];
   const total = onboardedExperts.length;
 
@@ -79,9 +83,79 @@ export function Referrals({ user, affiliateData, notify }) {
     .filter((c) => c.personAId === user?.uid)
     .reduce((s, c) => s + (c.personAAmount || 0), 0) / 100;
 
+  // Buyers who redeemed this code at checkout. Each redemption is a one-time
+  // commission (the buyer isn't attached to the referrer the way an onboarded
+  // expert is), so the same person shows up once per purchase — collapsed here
+  // into one row each, with their redemption count and running total.
+  //
+  // buyerId/buyerName are denormalized onto the commission doc by
+  // processCommissionSplit: a referrer can read the commission but not the
+  // buyer's users/ doc, so there's nothing else to resolve a name from.
+  // Commissions written before that field existed have no buyerId — they still
+  // count toward the total but group under a single "Unattributed" row rather
+  // than silently disappearing.
+  const redemptions = commissions.filter((c) => c.personBId === user?.uid);
+  const redemptionTotal = redemptions.reduce((s, c) => s + (c.personBAmount || 0), 0) / 100;
+  const buyers = Object.values(
+    redemptions.reduce((acc, c) => {
+      const key = c.buyerId || '__unattributed__';
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          name: c.buyerId ? (c.buyerName || 'mindGigs buyer') : 'Unattributed (pre-tracking)',
+          known: !!c.buyerId,
+          count: 0,
+          earned: 0,
+          lastAt: null,
+        };
+      }
+      acc[key].count += 1;
+      acc[key].earned += c.personBAmount || 0;
+      if (c.createdAt && (!acc[key].lastAt || new Date(c.createdAt) > new Date(acc[key].lastAt))) {
+        acc[key].lastAt = c.createdAt;
+      }
+      return acc;
+    }, {})
+  ).sort((a, b) => b.earned - a.earned);
+
+  const handleCopyCode = () => {
+    if (!couponCode) { notify?.('Your referral code has not been assigned yet.', 'warn'); return; }
+    navigator.clipboard.writeText(couponCode);
+    notify?.('Referral code copied!', 'success');
+  };
+
+  if (features['Affiliate Program'] === false) return <AffiliateProgramDisabled />;
+
   return (
     <div>
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} notify={notify} couponCode={couponCode} />}
+
+      {/* Referral code — the one thing every visit to this tab is really for */}
+      <div style={{
+        marginBottom: 24, padding: '20px 24px', borderRadius: 12,
+        background: 'linear-gradient(135deg, rgba(26,184,160,0.06), rgba(84,119,146,0.04))',
+        border: '1.5px solid rgba(26,184,160,0.14)',
+      }}>
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+          Your Referral Code
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{
+            flex: 1, minWidth: 180, fontFamily: 'monospace', fontWeight: 700, fontSize: '1.05rem',
+            letterSpacing: '0.08em', color: 'var(--gd)', background: '#fff',
+            padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)',
+          }}>
+            {couponCode || 'Not assigned yet'}
+          </div>
+          <button className="btn btn-gr" style={{ padding: '12px 20px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={handleCopyCode} disabled={!couponCode}>
+            <Copy size={15} /> Copy
+          </button>
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--mu)', marginTop: 10 }}>
+          Share it with experts to onboard them (7.5% lifetime), or with buyers at checkout (7.5% one-time).
+        </div>
+      </div>
 
       {/* Header */}
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -96,10 +170,11 @@ export function Referrals({ user, affiliateData, notify }) {
       </div>
 
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {[
           { label: 'Experts Onboarded', val: total, color: 'var(--teal)', icon: <Users size={18} color="var(--teal)" /> },
           { label: 'Lifetime Commission Earned', val: `$${totalEarned.toFixed(2)}`, color: 'var(--gd)', icon: <DollarSign size={18} color="var(--gd)" /> },
+          { label: 'Referred Buyers', val: `${buyers.length} · $${redemptionTotal.toFixed(2)}`, color: 'var(--gl)', icon: <Copy size={18} color="var(--gl)" /> },
         ].map((s, i) => (
           <div key={i} className="stat-card" style={{ position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
@@ -152,6 +227,55 @@ export function Referrals({ user, affiliateData, notify }) {
             </div>
             <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, marginBottom: 4 }}>No experts onboarded yet</div>
             <div style={{ fontSize: '0.82rem', marginBottom: 16 }}>Share your coupon code with an expert signing up to start earning.</div>
+          </div>
+        )}
+      </div>
+
+      {/* Buyers who redeemed the code at checkout — one-time commissions */}
+      <div className="table-wrap" style={{ marginTop: 20 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--gd)' }}>
+            Referred Buyers <span style={{ fontWeight: 400, color: 'var(--mu)', fontSize: '0.82rem' }}>({buyers.length})</span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 2 }}>
+            Buyers who entered your code at checkout — 7.5% one-time on each purchase
+          </div>
+        </div>
+        {buyers.length > 0 ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Buyer</th>
+                <th>Purchases</th>
+                <th>Last Purchase</th>
+                <th>You Earned</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buyers.map((b) => (
+                <tr key={b.key}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: b.known ? 'rgba(255,155,81,0.1)' : 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <User size={14} color={b.known ? 'var(--gl)' : 'var(--mu)'} />
+                      </div>
+                      <span style={{ fontWeight: 600, color: b.known ? 'var(--ch)' : 'var(--mu)', fontStyle: b.known ? 'normal' : 'italic' }}>{b.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ color: 'var(--mu)' }}>{b.count}</td>
+                  <td style={{ color: 'var(--mu)' }}>{b.lastAt ? new Date(b.lastAt).toLocaleDateString() : '—'}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--gl)' }}>${(b.earned / 100).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--mu)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,155,81,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <Copy size={22} color="var(--gl)" />
+            </div>
+            <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, marginBottom: 4 }}>No coupon redemptions yet</div>
+            <div style={{ fontSize: '0.82rem' }}>Buyers who use your code at checkout will appear here.</div>
           </div>
         )}
       </div>

@@ -25,9 +25,16 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function signup(email, password, role = 'expert', additionalData = {}, signupContext = {}) {
+  async function signup(email, password, requestedRole = 'expert', additionalData = {}, signupContext = {}) {
+    // The standalone `affiliate` role was merged into `client` — every client
+    // account carries referral capability now. Anything still asking for an
+    // affiliate signup (stale history state, an old bookmark) becomes a client
+    // rather than minting an account for a portal that no longer exists.
+    const role = requestedRole === 'affiliate' ? 'client' : requestedRole;
+
     // Only experts claim a handle — it doubles as their public profile URL
-    // and their coupon code. Affiliates have no public profile.
+    // and their coupon code. Clients have no public profile; their referral
+    // code is the generated one minted below.
     const claimsHandle = role === 'expert';
     const requestedHandle = additionalData.handle ? normalizeHandle(additionalData.handle) : '';
 
@@ -51,7 +58,9 @@ export function AuthProvider({ children }) {
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
 
     // Person A — set once, for life, only for a new EXPERT onboarded via a
-    // valid affiliate coupon at signup.
+    // valid affiliate coupon at signup. `ownerRole === 'affiliate'` is a CODE
+    // TYPE ("generated non-expert coupon"), not the owner's user role — since
+    // the merge those codes belong to client accounts.
     const onboardedByAffiliateId = (role === 'expert' && resolvedCoupon?.ownerRole === 'affiliate')
       ? resolvedCoupon.ownerId
       : null;
@@ -65,11 +74,11 @@ export function AuthProvider({ children }) {
     const candidateExpertId = resolvedExpertId || linkExpertId;
     const referredByExpertId = (candidateExpertId && candidateExpertId !== user.uid) ? candidateExpertId : null;
 
-    // Dedicated affiliates get their own coupon code minted before the user
-    // doc is written, so users.couponCode always points at an existing
-    // affiliateCodes doc.
+    // Every client gets a referral code minted before the user doc is written,
+    // so users.couponCode always points at an existing affiliateCodes doc.
+    // (Experts don't need one — their handle is already their coupon.)
     let ownCouponCode = null;
-    if (role === 'affiliate') {
+    if (role === 'client') {
       ownCouponCode = await createAffiliateCoupon(user.uid);
     }
 
@@ -82,8 +91,8 @@ export function AuthProvider({ children }) {
       createdAt: new Date().toISOString(),
       referredByExpertId,
       ...(role === 'expert' ? { onboardedByAffiliateId, sellingEarnings: 0 } : {}),
-      ...(role === 'affiliate' ? { couponCode: ownCouponCode } : {}),
-      ...(role === 'expert' || role === 'affiliate' ? { affiliateEarnings: 0, pendingPayout: 0 } : {}),
+      ...(role === 'client' ? { couponCode: ownCouponCode } : {}),
+      ...(role === 'expert' || role === 'client' ? { affiliateEarnings: 0, pendingPayout: 0 } : {}),
       ...additionalData,
       // Never persist the raw, unclaimed handle here — claimHandle() below is
       // the only code path allowed to write `handle`, so users.handle can
@@ -105,7 +114,15 @@ export function AuthProvider({ children }) {
     setUserData(userDoc);
     setUserRole(role);
     saveAccountToStorage(user.uid, userDoc.name, user.email, role);
-    return user;
+    return { user, userDoc };
+  }
+
+  // An account left on the retired `affiliate` role (missed by
+  // scripts/mergeAffiliatesIntoClients.js, or created before it ran) is treated
+  // as a client rather than bounced — the affiliate portal it points at no
+  // longer exists, so rejecting the login would lock the user out entirely.
+  function effectiveRole(role) {
+    return role === 'affiliate' ? 'client' : role;
   }
 
   async function login(email, password, expectedRole) {
@@ -114,17 +131,18 @@ export function AuthProvider({ children }) {
       const snap = await getDoc(doc(db, 'users', cred.user.uid));
       if (snap.exists()) {
         const data = snap.data();
-        if (data.role !== expectedRole) {
+        if (effectiveRole(data.role) !== effectiveRole(expectedRole)) {
           await signOut(auth);
           throw new Error(`Access denied. This account belongs to the ${data.role} portal.`);
         }
-        saveAccountToStorage(cred.user.uid, data.name, cred.user.email, data.role);
+        saveAccountToStorage(cred.user.uid, data.name, cred.user.email, effectiveRole(data.role));
       }
     }
     return cred;
   }
 
-  async function loginWithGoogle(expectedRole, signupContext = {}) {
+  async function loginWithGoogle(requestedRole, signupContext = {}) {
+    const expectedRole = effectiveRole(requestedRole);
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(auth, provider);
     const { user } = cred;
@@ -133,14 +151,16 @@ export function AuthProvider({ children }) {
 
     if (snap.exists()) {
       const data = snap.data();
-      if (data.role !== expectedRole) {
+      if (effectiveRole(data.role) !== expectedRole) {
         await signOut(auth);
         throw new Error(`This Google account is registered as a ${data.role}. Use the correct portal.`);
       }
-      setUserRole(data.role);
-      setUserData(data);
+      const normalized = { ...data, role: effectiveRole(data.role) };
+      setUserRole(normalized.role);
+      setUserData(normalized);
+      return { cred, userDoc: normalized, isNewAccount: false };
     } else {
-      // Only experts claim a handle — affiliates have no public profile.
+      // Only experts claim a handle — clients have no public profile.
       const claimsHandle = expectedRole === 'expert';
       const fallbackHandle = user.displayName
         ? normalizeHandle(user.displayName) + Math.floor(Math.random() * 1000)
@@ -168,7 +188,7 @@ export function AuthProvider({ children }) {
       const referredByExpertId = (candidateExpertId && candidateExpertId !== user.uid) ? candidateExpertId : null;
 
       let ownCouponCode = null;
-      if (expectedRole === 'affiliate') {
+      if (expectedRole === 'client') {
         ownCouponCode = await createAffiliateCoupon(user.uid);
       }
 
@@ -185,8 +205,8 @@ export function AuthProvider({ children }) {
         image: user.photoURL || '',
         referredByExpertId,
         ...(expectedRole === 'expert' ? { onboardedByAffiliateId, sellingEarnings: 0 } : {}),
-        ...(expectedRole === 'affiliate' ? { couponCode: ownCouponCode } : {}),
-        ...(expectedRole === 'expert' || expectedRole === 'affiliate' ? { affiliateEarnings: 0, pendingPayout: 0 } : {}),
+        ...(expectedRole === 'client' ? { couponCode: ownCouponCode } : {}),
+        ...(expectedRole === 'expert' || expectedRole === 'client' ? { affiliateEarnings: 0, pendingPayout: 0 } : {}),
       };
       await setDoc(docRef, userDoc);
 
@@ -202,8 +222,8 @@ export function AuthProvider({ children }) {
       setUserRole(expectedRole);
       setUserData(userDoc);
       saveAccountToStorage(user.uid, userDoc.name, user.email, expectedRole);
+      return { cred, userDoc, isNewAccount: true };
     }
-    return cred;
   }
 
   function logout() {
@@ -217,7 +237,10 @@ export function AuthProvider({ children }) {
     try {
       const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) {
-        const data = snap.data();
+        // Normalize a legacy `affiliate` doc to `client` for the whole app —
+        // routing, dashboards and AccountSwitcher all switch on userData.role,
+        // and there is no affiliate portal left for it to point at.
+        const data = { ...snap.data(), role: effectiveRole(snap.data().role) };
         setUserRole(data.role);
         setUserData(data);
         saveAccountToStorage(uid, data.name, auth.currentUser?.email || data.email, data.role);

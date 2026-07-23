@@ -502,6 +502,16 @@ async function processCommissionSplit(bookingId, sellerId, saleAmount, buyerUid,
     personBRole = 'expert';
   }
 
+  // Prevent self-deal: buyer can't earn commission on their own purchase.
+  // Before the affiliate/client merge this was unreachable — clients had no
+  // coupon code of their own. Now every client account ships with one, so a
+  // buyer entering their own code at checkout would otherwise resolve to
+  // Person B and kick 7.5% of their own purchase back to themselves.
+  if (personBId === buyerUid) {
+    personBId = null;
+    personBRole = null;
+  }
+
   // Determine scenario
   let scenario;
   if (personAId && personBId) scenario = 8;
@@ -534,12 +544,22 @@ async function processCommissionSplit(bookingId, sellerId, saleAmount, buyerUid,
   // the independent Math.round() calls above can never lose or gain a cent.
   const platformAmount = saleAmount - sellerAmount - sellerAffiliateBonus - personAAmount - personBAmount;
 
-  // Write commission record
+  // Write commission record.
+  //
+  // buyerName is denormalized alongside buyerId on purpose. A referrer can read
+  // this commission doc (personBId == them) but NOT the buyer's users/ doc —
+  // firestore.rules only opens a user doc to its owner, to onboarded experts,
+  // and to whoever that user was referred/onboarded by. A coupon-using buyer is
+  // attached to none of those, so a bare uid would be unresolvable in the UI.
+  // Email is deliberately left off: the referrer has no prior relationship with
+  // this buyer, and a display name is all the Referrals list needs.
   await db.collection('commissions').add({
     bookingId: bookingId || null,
     saleType,
     saleAmount,
     scenario,
+    buyerId: buyerUid || null,
+    buyerName: buyer.name || null,
     sellerId,
     sellerAmount: sellerAmount + sellerAffiliateBonus,
     personAId,

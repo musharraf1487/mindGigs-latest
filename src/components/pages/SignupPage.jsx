@@ -59,29 +59,26 @@ const ROLE_CONFIG = {
     successMsg: "Account created! Let's set up your profile.",
     redirect: 'onboarding',
   },
+  // Buyer + affiliate in one. Every client account ships with its own referral
+  // code, so there is no separate affiliate signup (or login) any more.
   client: {
     badge: 'Join as a Buyer',
     title: 'Create Your Buyer Account',
-    sub: 'Book sessions, buy digital products, and subscribe to top experts.',
+    sub: 'Book sessions, buy digital products, and subscribe to top experts — and earn a 7.5% lifetime commission on every expert you bring to mindGigs with your own referral code.',
     showHandle: false,
     btnLabel: 'Create Buyer Account →',
     successMsg: 'Welcome! Your buyer account is ready.',
     redirect: 'client-dashboard',
   },
-  affiliate: {
-    badge: 'Affiliate Program',
-    title: 'Join as an Affiliate',
-    sub: 'Get your own coupon code and earn a 7.5% lifetime commission on every seller you onboard, plus 7.5% one-time on every coupon sale.',
-    showHandle: false,
-    btnLabel: 'Join Affiliate Program →',
-    successMsg: 'Affiliate account created! Welcome to the program.',
-    redirect: 'affiliate-dashboard',
-  },
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
+export function SignupPage({ nav, notify, role: requestedRole = 'expert', expertId = null }) {
   const { signup, loginWithGoogle } = useAuth();
+  // The affiliate portal was merged into the client one — an old link or stale
+  // history entry asking for an affiliate signup lands on the buyer form,
+  // which now grants the same referral code it used to.
+  const role = requestedRole === 'affiliate' ? 'client' : requestedRole;
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -122,6 +119,14 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
     return () => clearTimeout(t);
   }, [couponCode]);
 
+  // Clients are handed a referral code at account creation. Surface it right
+  // away so the earning side of the account isn't something they only discover
+  // by wandering into the Referrals tab.
+  const announceReferralCode = (userDoc) => {
+    if (!userDoc?.couponCode) return;
+    notify(`Your referral code: ${userDoc.couponCode} — share it to earn 7.5% commission on every expert you bring to mindGigs.`, 'success');
+  };
+
   const handleSignup = async () => {
     if (!agreed) return notify('Please agree to terms first.', 'warn');
     if (!name || !email || !pass) return notify('Please fill all fields', 'warn');
@@ -131,13 +136,14 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
 
     setLoading(true);
     try {
-      await signup(email, pass, role, {
+      const { userDoc } = await signup(email, pass, role, {
         name,
         phone: phone.trim() || null,
         handle: username || normalizeHandle(name),
         onboardingComplete: role !== 'expert',
       }, { expertId, couponCode: couponCode.trim() || null });
       notify(cfg.successMsg);
+      announceReferralCode(userDoc);
       nav(cfg.redirect);
     } catch (err) {
       console.error('Signup Error:', err);
@@ -196,8 +202,11 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
           if (!agreed) return notify('Please agree to terms first.', 'warn');
           setLoading(true);
           try {
-            await loginWithGoogle(role || 'expert', { expertId, couponCode: couponCode.trim() || null });
+            const { userDoc, isNewAccount } = await loginWithGoogle(role || 'expert', { expertId, couponCode: couponCode.trim() || null });
             notify(cfg.successMsg);
+            // Existing users reaching this button are really just logging in —
+            // don't re-announce a code they've had all along.
+            if (isNewAccount) announceReferralCode(userDoc);
             nav(cfg.redirect);
           } catch (err) {
             console.error('Google Signup Error:', err);
@@ -291,7 +300,7 @@ export function SignupPage({ nav, notify, role = 'expert', expertId = null }) {
         <label className="label">Have a Referral Code? (Optional)</label>
         <input
           className="input"
-          placeholder="e.g. an expert's username or an affiliate code"
+          placeholder="e.g. an expert's username or a referral code"
           value={couponCode}
           onChange={(e) => setCouponCode(e.target.value)}
         />

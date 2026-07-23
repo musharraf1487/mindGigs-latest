@@ -250,10 +250,11 @@ function FloatingSideElements() {
   );
 }
 
+// `affiliate` is a legacy role — the portal was merged into the client one.
 const ROLE_DASHBOARD_ROUTE = {
   expert: 'expert-dashboard',
   client: 'client-dashboard',
-  affiliate: 'affiliate-dashboard',
+  affiliate: 'client-dashboard',
   admin: 'admin-dashboard',
 };
 
@@ -482,7 +483,7 @@ export function LandingPage({ nav, onLogin }) {
                 Earn Even When<br />Others Earn
               </h2>
               <p className="lp-aff-sub">
-                Get your own coupon code and earn a lifetime commission on every sale it brings in. No caps, no expiry.
+                Every free buyer account comes with its own coupon code — earn a lifetime commission on every sale it brings in. No caps, no expiry, no second login.
               </p>
               <ul className="lp-aff-list">
                 {[
@@ -497,7 +498,7 @@ export function LandingPage({ nav, onLogin }) {
                   </li>
                 ))}
               </ul>
-              <button className="lp-btn-primary" onClick={() => nav('signup', { role: 'affiliate' })}>
+              <button className="lp-btn-primary" onClick={() => nav('signup', { role: 'client' })}>
                 Start Earning <ArrowRight style={{ width: 20, height: 20 }} />
               </button>
             </div>

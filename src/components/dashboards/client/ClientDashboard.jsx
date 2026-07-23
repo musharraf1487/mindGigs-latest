@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-import { Home, Package, Settings as SettingsIcon, LogOut, User, Search, Star, AlertTriangle, CheckCircle, Check } from 'lucide-react';
+import { Home, Package, Settings as SettingsIcon, LogOut, User, Users, Search, Star, AlertTriangle, CheckCircle, Check, DollarSign, Copy } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { Referrals } from './sections/Referrals';
+import { Earnings } from './sections/Earnings';
+import { getAffiliateRoleCommissions, getOnboardedExperts } from '../../../services/affiliateService';
 import { getClientBookings, cancelBooking } from '../../../services/bookingService';
 import { getClientPurchases } from '../../../services/purchaseService';
 import { getClientSubscriptions } from '../../../services/subscriptionService';
@@ -547,6 +550,38 @@ function Settings({ notify, user }) {
                 </button>
             </div>
 
+            {/* Referral code — minted at signup, immutable. Surfaced here as
+                well as in the Referrals tab so it's findable from Settings the
+                way the old affiliate portal's account page had it. */}
+            <div className="card" style={{ padding: 28, marginBottom: 20 }}>
+                <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', marginBottom: 20, fontSize: '.9rem' }}>
+                    Your Referral Code
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{
+                        flex: 1, minWidth: 160, fontFamily: 'monospace', fontWeight: 700, fontSize: '0.95rem',
+                        letterSpacing: '0.08em', color: 'var(--gd)', background: 'rgba(0,0,0,0.02)',
+                        padding: '11px 14px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)',
+                    }}>
+                        {user?.couponCode || 'Not assigned yet'}
+                    </div>
+                    <button
+                        className="btn btn-gh"
+                        style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                        disabled={!user?.couponCode}
+                        onClick={() => {
+                            navigator.clipboard.writeText(user.couponCode);
+                            notify('Referral code copied!', 'success');
+                        }}
+                    >
+                        <Copy size={14} /> Copy
+                    </button>
+                </div>
+                <div style={{ fontSize: '.78rem', color: 'var(--mu)', marginTop: 10 }}>
+                    Share this code with experts to onboard them, or with buyers at checkout.
+                </div>
+            </div>
+
             <div className="card" style={{ padding: 28 }}>
                 <div style={{ fontFamily: 'var(--fu)', fontWeight: 600, color: 'var(--gd)', marginBottom: 20, fontSize: '.9rem' }}>
                     Change Password
@@ -572,10 +607,16 @@ function Settings({ notify, user }) {
 }
 
 /* ── MAIN DASHBOARD ── */
+// EARNINGS sits between the buying side (MAIN) and ACCOUNT — the affiliate
+// portal was merged in here, so a client no longer switches logins to see
+// their referrals and commissions.
+const NAV_GROUPS = ['MAIN', 'EARNINGS', 'ACCOUNT'];
 const NAV_ITEMS = [
-    { key: 'overview', icon: <Home size={18} color="var(--teal)" />, label: 'Overview' },
-    { key: 'purchases', icon: <Package size={18} color="var(--teal)" />, label: 'Purchases' },
-    { key: 'settings', icon: <SettingsIcon size={18} color="var(--teal)" />, label: 'Settings' },
+    { key: 'overview', icon: <Home size={18} color="var(--teal)" />, label: 'Overview', group: 'MAIN' },
+    { key: 'purchases', icon: <Package size={18} color="var(--teal)" />, label: 'Purchases', group: 'MAIN' },
+    { key: 'referrals', icon: <Users size={18} color="var(--teal)" />, label: 'Referrals', group: 'EARNINGS' },
+    { key: 'earnings', icon: <DollarSign size={18} color="var(--teal)" />, label: 'Affiliate Earnings', group: 'EARNINGS' },
+    { key: 'settings', icon: <SettingsIcon size={18} color="var(--teal)" />, label: 'Settings', group: 'ACCOUNT' },
 ];
 
 export function ClientDashboard({ user, nav, logout, notify }) {
@@ -584,6 +625,8 @@ export function ClientDashboard({ user, nav, logout, notify }) {
     const [totalSpent, setTotalSpent] = useState(0);
     const [realBookings, setRealBookings] = useState([]);
     const [bookingsLoading, setBookingsLoading] = useState(true);
+    const [affiliateData, setAffiliateData] = useState(null);
+    const [affiliateLoading, setAffiliateLoading] = useState(true);
 
     // Fetch real bookings from Firestore
     useEffect(() => {
@@ -615,6 +658,32 @@ export function ClientDashboard({ user, nav, logout, notify }) {
             }
         }
         fetchBookings();
+    }, [currentUser]);
+
+    // Referral side of the account — same two reads the standalone affiliate
+    // dashboard used to do. affiliateEarnings/pendingPayout are authoritative on
+    // the user doc (kept in sync server-side by processCommissionSplit); these
+    // commissions are only for the history/breakdown views, never the totals.
+    useEffect(() => {
+        async function fetchAffiliate() {
+            if (!currentUser?.uid) {
+                setAffiliateLoading(false);
+                return;
+            }
+            try {
+                const [commissions, referrals] = await Promise.all([
+                    getAffiliateRoleCommissions(currentUser.uid),
+                    getOnboardedExperts(currentUser.uid),
+                ]);
+                setAffiliateData({ commissions, referrals });
+            } catch (err) {
+                console.error('Failed to fetch referral data:', err);
+                setAffiliateData({ commissions: [], referrals: [] });
+            } finally {
+                setAffiliateLoading(false);
+            }
+        }
+        fetchAffiliate();
     }, [currentUser]);
 
     const handleCancelBooking = async (booking) => {
@@ -731,7 +800,22 @@ export function ClientDashboard({ user, nav, logout, notify }) {
 
                 {/* Nav items */}
                 <nav style={{ flex: 1, padding: '12px 0' }}>
-                    {NAV_ITEMS.map((item) => (
+                    {NAV_GROUPS.map((group) => (
+                      <div key={group}>
+                        <div
+                            style={{
+                                padding: '12px 24px 6px',
+                                fontSize: '.62rem',
+                                fontFamily: 'var(--fu)',
+                                fontWeight: 700,
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                color: 'rgba(255,255,255,0.28)',
+                            }}
+                        >
+                            {group}
+                        </div>
+                        {NAV_ITEMS.filter((i) => i.group === group).map((item) => (
                         <div
                             key={item.key}
                             onClick={() => setSection(item.key)}
@@ -767,6 +851,8 @@ export function ClientDashboard({ user, nav, logout, notify }) {
                             <span>{item.icon}</span>
                             {item.label}
                         </div>
+                        ))}
+                      </div>
                     ))}
                 </nav>
 
@@ -857,6 +943,12 @@ export function ClientDashboard({ user, nav, logout, notify }) {
                     </>
                 )}
                 {section === 'purchases' && <Purchases notify={notify} nav={nav} />}
+                {section === 'referrals' && (
+                    affiliateLoading
+                        ? <div style={{ padding: 60, textAlign: 'center', color: 'var(--mu)' }}>Loading referrals...</div>
+                        : <Referrals user={user} affiliateData={affiliateData} notify={notify} />
+                )}
+                {section === 'earnings' && <Earnings user={user} notify={notify} />}
                 {section === 'settings' && <Settings notify={notify} user={user} />}
             </main>
         </div>

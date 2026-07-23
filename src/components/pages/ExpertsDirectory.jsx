@@ -226,7 +226,8 @@ function ExpertGridCard({ expert, nav }) {
 const ROLE_DASHBOARD_ROUTE = {
     expert: 'expert-dashboard',
     client: 'client-dashboard',
-    affiliate: 'affiliate-dashboard',
+    // Legacy role — the affiliate portal was merged into the client dashboard.
+    affiliate: 'client-dashboard',
     admin: 'admin-dashboard',
 };
 

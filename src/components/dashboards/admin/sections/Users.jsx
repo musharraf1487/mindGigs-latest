@@ -46,7 +46,6 @@ function InviteModal({ onClose, notify }) {
               style={{ width: '100%', padding: '10px 14px', border: '1.5px solid rgba(26,184,160,0.18)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--ch)', background: '#fff' }}>
               <option value="expert">Expert / Creator</option>
               <option value="client">Client / Buyer</option>
-              <option value="affiliate">Affiliate Partner</option>
             </select>
           </div>
           <div style={{ padding: '10px 14px', background: 'rgba(26,184,160,0.05)', borderRadius: 8, border: '1px solid rgba(26,184,160,0.12)', fontSize: '0.78rem', color: 'var(--teal)', marginBottom: 20 }}>
@@ -194,7 +193,9 @@ export function Users({ user, adminData, notify }) {
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {[
           { role: 'expert', label: 'Experts', count: roleCounts.expert || 0, color: 'var(--gb)', icon: <User size={12} color="var(--gb)" /> },
-          { role: 'affiliate', label: 'Affiliates', count: roleCounts.affiliate || 0, color: 'var(--teal)', icon: <Link size={12} color="var(--teal)" /> },
+          // Kept post-merge purely to surface stragglers the migration missed —
+          // this should read 0. Anything here still needs role flipping to client.
+          { role: 'affiliate', label: 'Affiliates (legacy)', count: roleCounts.affiliate || 0, color: 'var(--teal)', icon: <Link size={12} color="var(--teal)" /> },
           { role: 'client', label: 'Clients', count: roleCounts.client || 0, color: 'var(--mu)', icon: <UsersIcon size={12} color="var(--mu)" /> },
         ].map(({ role, label, count, color, icon }) => (
           <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#fff', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -223,8 +224,8 @@ export function Users({ user, adminData, notify }) {
           style={{ padding: '10px 14px', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: '8px', background: '#fff', fontSize: '0.875rem', cursor: 'pointer', color: 'var(--ch)' }}>
           <option value="all">All Roles</option>
           <option value="expert">Experts</option>
-          <option value="affiliate">Affiliates</option>
           <option value="client">Clients</option>
+          <option value="affiliate">Affiliates (legacy)</option>
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           style={{ padding: '10px 14px', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: '8px', background: '#fff', fontSize: '0.875rem', cursor: 'pointer', color: 'var(--ch)' }}>

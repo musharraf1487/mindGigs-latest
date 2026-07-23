@@ -11,9 +11,8 @@ import { ExpertsDirectory } from './components/pages/ExpertsDirectory';
 import { LandingBoard } from './components/pages/LandingBoard';
 import { ExpertDashboard } from './components/dashboards/expert/ExpertDashboard';
 import { AdminDashboard } from './components/dashboards/admin/AdminDashboard';
-import { AffiliateDashboard } from './components/dashboards/affiliate/AffiliateDashboard';
 import { ClientDashboard } from './components/dashboards/client/ClientDashboard';
-import { Users, ShoppingCart, Link as LinkIcon, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Users, ShoppingCart, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -41,10 +40,11 @@ function getPendingPathFromLocation() {
 }
 
 function LoginSelectorModal({ onClose, onSelect }) {
+  // No affiliate entry — that portal was merged into the client one, which now
+  // carries referrals, commissions and payouts alongside bookings.
   const roles = [
     { role: 'expert', icon: Users, title: 'Expert / Creator', sub: 'Access your profile, bookings & earnings' },
-    { role: 'client', icon: ShoppingCart, title: 'Client / Buyer', sub: 'View bookings, subscriptions & purchases' },
-    { role: 'affiliate', icon: LinkIcon, title: 'Affiliate Partner', sub: 'View referrals, commissions & payouts' },
+    { role: 'client', icon: ShoppingCart, title: 'Client / Buyer', sub: 'Bookings, purchases, referrals & commissions' },
     { role: 'admin', icon: ShieldCheck, title: 'Administrator', sub: 'Platform management & oversight' },
   ];
   return (
@@ -53,7 +53,7 @@ function LoginSelectorModal({ onClose, onSelect }) {
         <button className="modal-close" onClick={onClose}>✕</button>
         <div className="slabel">Access Your Account</div>
         <h2 className="stitle" style={{ fontSize: '1.6rem' }}>Who are you logging in as?</h2>
-        <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginTop: 8 }}>mindGigs has separate portals for experts, affiliates, and administrators.</p>
+        <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginTop: 8 }}>mindGigs has separate portals for experts, buyers, and administrators.</p>
         <div className="login-selector">
           {roles.map(o => (
             <div key={o.role} className="login-option" onClick={() => onSelect(o.role)} style={{ padding: '12px 16px', gap: 12 }}>
@@ -230,10 +230,20 @@ export default function App() {
       notify('Welcome back!');
       return;
     }
-    const routes = { admin: 'admin-dashboard', affiliate: 'affiliate-dashboard', client: 'client-dashboard' };
+    // `affiliate` still maps here for any user doc the merge migration missed —
+    // AuthContext normalizes those to `client`, but the extra entry is cheap
+    // insurance against a stale doc landing on a blank screen.
+    const routes = { admin: 'admin-dashboard', affiliate: 'client-dashboard', client: 'client-dashboard' };
     const dest = routes[userData.role];
     if (dest) { setPage(dest); notify('Welcome back!'); }
   }, [userData, page, loginRole, preLoginPage]);
+
+  // The affiliate dashboard was merged into the client one. A bookmark or
+  // history entry still pointing at the retired route lands on the client
+  // dashboard instead of rendering nothing at all.
+  useEffect(() => {
+    if (page === 'affiliate-dashboard') setPage('client-dashboard');
+  }, [page]);
 
   const notify = (msg, type = 'success') => {
     const id = Date.now();
@@ -354,7 +364,6 @@ export default function App() {
       {page === 'book-detail' && <BookDetailPage nav={nav} notify={notify} expert={resolvedExpert} book={activeBook} />}
       {page === 'expert-dashboard' && userData?.role === 'expert' && <ExpertDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
       {page === 'admin-dashboard' && userData?.role === 'admin' && <AdminDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
-      {page === 'affiliate-dashboard' && userData?.role === 'affiliate' && <AffiliateDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
       {page === 'client-dashboard' && userData?.role === 'client' && <ClientDashboard user={userData} nav={nav} logout={logout} notify={notify} />}
     </>
   );

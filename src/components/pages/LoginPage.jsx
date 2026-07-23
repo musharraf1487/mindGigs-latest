@@ -5,7 +5,6 @@ import { auth } from '../../config/firebase';
 import {
   Users,
   ShoppingCart,
-  Link as LinkIcon,
   ShieldCheck,
   ChevronRight,
   ArrowRight
@@ -58,8 +57,13 @@ function AuthShell({ children, nav }) {
   );
 }
 
-export function LoginPage({ role, nav, onSwitchRole, notify, emailHint }) {
+export function LoginPage({ role: requestedRole, nav, onSwitchRole, notify, emailHint }) {
   const { login, loginWithGoogle } = useAuth();
+  // The affiliate portal was folded into the client one. An old bookmark or a
+  // saved-account entry still tagged `affiliate` opens the Client portal, and
+  // AuthContext accepts a legacy affiliate user doc there rather than
+  // bouncing them to a portal that no longer exists.
+  const role = requestedRole === 'affiliate' ? 'client' : requestedRole;
   const [email, setEmail] = React.useState(emailHint || '');
   const [pass, setPass] = useState('');
   const [forgot, setForgot] = useState(false);
@@ -74,12 +78,6 @@ export function LoginPage({ role, nav, onSwitchRole, notify, emailHint }) {
   const roleConfig = {
     expert: { label: 'Expert Portal', color: 'var(--gb)', icon: Users, badge: 'role-expert' },
     admin: { label: 'Admin Portal', color: 'var(--gold)', icon: ShieldCheck, badge: 'role-admin' },
-    affiliate: {
-      label: 'Affiliate Portal',
-      color: 'var(--teal)',
-      icon: LinkIcon,
-      badge: 'role-aff',
-    },
     client: {
       label: 'Client / Buyer Portal',
       color: 'var(--gl)',

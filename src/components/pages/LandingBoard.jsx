@@ -183,7 +183,7 @@ const SERVICES = [
     },
     {
         category: "Publishers",
-        signupRole: "affiliate",
+        signupRole: "client",
         icon: BookOpen,
         description: "Turn every author into a recurring revenue stream.",
         cta: "Partner with us",
@@ -209,10 +209,10 @@ const SERVICES = [
     },
     {
         category: "Influencers & Affiliates",
-        signupRole: "affiliate",
+        signupRole: "client",
         icon: Megaphone,
         description: "Earn passive income by connecting experts with the world.",
-        cta: "Become an Affiliate",
+        cta: "Start Earning Referrals",
         items: [
             "Introduce authors and experts to mindGigs",
             "Earn lifetime commissions on everything they sell",
@@ -285,7 +285,7 @@ const FAQ_GROUPS = [
         items: [
             { q: "What is mindGigs?", a: "mindGigs is an online platform where experts sell their knowledge directly to clients through one-on-one video sessions, monthly subscriptions, digital products, and books. Experts keep 70% of every sale." },
             { q: "Who can use mindGigs?", a: "Anyone. Experts join to sell their knowledge. Clients join to book sessions and buy products. Affiliates join to earn commissions by bringing experts to the platform." },
-            { q: "Does it cost anything to create an account?", a: "No. Signing up is completely free for all roles — experts, clients, and affiliates. There are no monthly fees, no listing fees, and no hidden charges. mindGigs only earns when a sale happens." },
+            { q: "Does it cost anything to create an account?", a: "No. Signing up is completely free for experts and clients alike. There are no monthly fees, no listing fees, and no hidden charges. mindGigs only earns when a sale happens." },
             { q: "Is my payment information safe?", a: "Yes. All payments are processed through Stripe, the same payment processor used by Amazon, Google, and thousands of major companies. Your card details never touch mindGigs' servers." },
             { q: "What countries are supported?", a: "mindGigs is available worldwide. Any expert or client with an internet connection and a supported payment method can use the platform." },
         ],
@@ -301,7 +301,7 @@ const FAQ_GROUPS = [
             { q: "Can I use my handle as a coupon code?", a: "Yes. Clients can enter your handle at checkout as a coupon code. You earn 7.5% on that purchase. If it's your own product, you get 70% plus 7.5% — totaling 77.5%." },
             { q: "Can I sell my book on mindGigs?", a: "Yes. Each book gets its own dedicated page with a front cover, back cover, full description, and a buy button. The page has its own shareable link you can post anywhere." },
             { q: "When do I get paid?", a: "Your earnings update the moment a payment clears. You can request a payout from your dashboard once you reach the minimum threshold. Payouts are processed within two business days." },
-            { q: "Can I also be an affiliate?", a: "You already are one. Every expert earns referral commissions through their profile link. You do not need a separate affiliate account." },
+            { q: "Can I also be an affiliate?", a: "You already are one. Every expert earns referral commissions through their profile link, and every client account includes referral capabilities with its own code. There is no separate affiliate account to create or log into." },
         ],
     },
     {
@@ -318,14 +318,14 @@ const FAQ_GROUPS = [
     {
         category: "For Affiliates",
         items: [
-            { q: "What is the mindGigs affiliate program?", a: "You receive a unique coupon code when you sign up as an affiliate. You earn 7.5% commission by onboarding experts and by sharing your code with buyers. The expert onboarding commission is lifetime — you earn on every sale they ever make." },
-            { q: "How is the affiliate role different from the expert role?", a: "Experts sell their own knowledge, sessions, products, books. Affiliates do not sell anything. Affiliates earn by bringing experts and buyers to the platform using their coupon code." },
+            { q: "What is the mindGigs affiliate program?", a: "Every client account includes referral capabilities — you receive a unique coupon code the moment you sign up. You earn 7.5% commission by onboarding experts and by sharing your code with buyers. The expert onboarding commission is lifetime — you earn on every sale they ever make." },
+            { q: "Do I need a separate affiliate account?", a: "No. Referrals are built into the client account, so there is nothing extra to create and no second login to switch between. Experts earn referral commissions too, through their profile link and username." },
             { q: "How do I earn lifetime commissions?", a: "When a new expert signs up using your coupon code, they are permanently linked to you. Every time that expert makes a sale to anyone, any product type, any amount, you earn 7.5%. This never expires." },
             { q: "How do one-time coupon commissions work?", a: "When a buyer enters your coupon code at checkout, you earn 7.5% of that specific purchase. This is a one-time commission per purchase, separate from the lifetime onboarding commission." },
             { q: "Can I earn both lifetime and one-time commissions on the same sale?", a: "Yes. If you onboarded the expert AND your coupon code is used at checkout on their product, you earn 7.5% for onboarding plus 7.5% for promotion — totaling 15% on that sale." },
             { q: "How much can I realistically earn?", a: "It depends on how many experts you onboard and how much they sell. One expert doing $3,000 per month in sales earns you $225 monthly — that is $2,700 per year from a single expert. Onboard ten active experts and you could earn over $27,000 per year." },
-            { q: "How do I get my coupon code?", a: "Your code is generated automatically when you create your affiliate account. It appears on your dashboard immediately — a six-character code you can share anywhere." },
-            { q: "How do I track my earnings?", a: "Your affiliate dashboard shows everything in real time: experts you have onboarded, coupon redemptions, lifetime earnings, one-time earnings, and pending payouts — all separated clearly." },
+            { q: "How do I get my coupon code?", a: "Your code is generated automatically when you create your client account. It appears in your dashboard immediately, under Referrals and in Settings — a six-character code you can share anywhere." },
+            { q: "How do I track my earnings?", a: "The Referrals and Affiliate Earnings tabs in your client dashboard show everything in real time: experts you have onboarded, coupon redemptions, lifetime earnings, one-time earnings, and pending payouts — all separated clearly, alongside your bookings and purchases." },
             { q: "When and how do I get paid?", a: "Request a payout from your dashboard once you reach the minimum threshold. Payouts are processed within two business days via bank transfer." },
             { q: "Is my data private?", a: "Yes. mindGigs uses secure authentication through Firebase and encrypted payment processing through Stripe. Your personal data is never sold or shared with third parties." },
             { q: "I found a bug or have a feature request. How do I reach support?", a: "Email support@mindgigs.com with a description of the issue. We respond within 24 hours." },
@@ -445,7 +445,8 @@ function FaqGroup({ group, collapsible }) {
 const ROLE_DASHBOARD_ROUTE = {
     expert: 'expert-dashboard',
     client: 'client-dashboard',
-    affiliate: 'affiliate-dashboard',
+    // Legacy role — the affiliate portal was merged into the client dashboard.
+    affiliate: 'client-dashboard',
     admin: 'admin-dashboard',
 };
 
@@ -506,7 +507,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
     const handleBecomePartner = () => {
         setIsMenuOpen(false);
-        nav('login', { role: 'affiliate' });
+        nav('login', { role: 'client' });
     };
 
     return (

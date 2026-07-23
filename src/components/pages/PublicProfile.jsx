@@ -239,7 +239,8 @@ export function OrderSummaryModal({
 const ROLE_DASHBOARD_ROUTE = {
   expert: 'expert-dashboard',
   client: 'client-dashboard',
-  affiliate: 'affiliate-dashboard',
+  // Legacy role — the affiliate portal was merged into the client dashboard.
+  affiliate: 'client-dashboard',
   admin: 'admin-dashboard',
 };
 
@@ -763,8 +764,8 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   <button className="btn btn-gr btn-sm" onClick={() => { if (!currentUser) { goToSignup(); return; } nav('booking', { session: s }); }}>
                     Book Now
                   </button>
-                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
-                    Do you want to become an Affiliate?
+                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.68rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'client' }); }}>
+                    Start earning referral commissions
                   </a>
                 </div>
               </div>
@@ -981,8 +982,8 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
                   >
                     {checkoutLoading === `sub-${sub.title}` ? 'Redirecting...' : 'Subscribe →'}
                   </button>
-                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'affiliate' }); }}>
-                    Do you want to become an Affiliate?
+                  <a href="#" className="affiliate-link" style={{ display: 'block', fontSize: '0.72rem' }} onClick={(e) => { e.preventDefault(); nav('signup', { role: 'client' }); }}>
+                    Start earning referral commissions
                   </a>
                 </div>
               </div>

@@ -30,12 +30,14 @@ export function Analytics({ user, adminData }) {
     return () => unsubscribe();
   }, []);
 
-  // Top 10 affiliate performers (experts + affiliates), by affiliate-role earnings.
+  // Top 10 referral performers (experts + clients), by affiliate-role earnings.
+  // Reads `client`, not `affiliate` — the affiliate role was merged into client,
+  // so every referral earner outside the expert side now lives under `client`.
   const [topAffiliates, setTopAffiliates] = useState([]);
   useEffect(() => {
     const q = query(
       collection(db, 'users'),
-      where('role', 'in', ['expert', 'affiliate']),
+      where('role', 'in', ['expert', 'client']),
       orderBy('affiliateEarnings', 'desc'),
       limit(10)
     );
@@ -186,7 +188,7 @@ export function Analytics({ user, adminData }) {
       <div className="table-wrap" style={{ marginBottom: '24px' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           <div style={{ fontFamily: 'var(--fu)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--gd)' }}>Top Affiliate Performers</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: '2px' }}>Experts and affiliates ranked by affiliate-role earnings (referrals + coupons)</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: '2px' }}>Experts and clients ranked by referral earnings (referrals + coupons)</div>
         </div>
         {topAffiliates.length > 0 ? (
           <table className="table">
