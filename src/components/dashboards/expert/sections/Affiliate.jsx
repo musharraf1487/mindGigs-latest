@@ -3,6 +3,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { db } from '../../../../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { getExpertReferrals, getAffiliateRoleCommissions, SCENARIO_LABELS } from '../../../../services/affiliateService';
+import { buildProfileReferralLink } from '../../../../services/referralService';
 
 const MIN_PAYOUT = 50;
 
@@ -17,7 +18,10 @@ export function Affiliate({ user, notify }) {
   const [loading, setLoading] = useState(true);
   const [payoutRequested, setPayoutRequested] = useState(false);
 
-  const referralLink = user?.handle ? `https://mindgigs.com/${user.handle}` : null;
+  // Vanity URL with ?ref= appended, so one link both opens the profile and
+  // pre-fills this expert's coupon on the signup form. App.jsx strips the param
+  // after capturing it, so the address bar still settles on the clean /handle.
+  const referralLink = buildProfileReferralLink(user?.handle);
   const pendingPayout = (user?.pendingPayout || 0) / 100;
   const totalEarned = (user?.affiliateEarnings || 0) / 100;
 
@@ -35,7 +39,7 @@ export function Affiliate({ user, notify }) {
   const handleCopy = () => {
     if (!referralLink) return;
     navigator.clipboard.writeText(referralLink);
-    notify?.('Profile link copied!', 'success');
+    notify?.('Referral link copied!', 'success');
   };
 
   const handleCopyCode = () => {
@@ -78,13 +82,14 @@ export function Affiliate({ user, notify }) {
       <div className="card" style={{ marginBottom: 28, padding: 24, background: 'linear-gradient(135deg, rgba(84,119,146,0.05), rgba(26,184,160,0.05))', border: '1px solid rgba(84,119,146,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 16 }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Your Profile Link</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Your Referral Link</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ flex: 1, fontSize: '0.875rem', color: 'var(--sl)', fontFamily: 'monospace', background: '#fff', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', wordBreak: 'break-all' }}>
-                {referralLink || 'Set a username to get your profile link'}
+                {referralLink || 'Set a username to get your referral link'}
               </div>
               <button className="btn btn-gr" style={{ padding: '10px 18px', flexShrink: 0 }} onClick={handleCopy} disabled={!referralLink}>Copy</button>
             </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--mu)', marginTop: 8 }}>Opens your profile and fills your code into their signup form automatically — nothing for them to type.</div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>

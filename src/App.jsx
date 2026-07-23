@@ -16,6 +16,7 @@ import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { RESERVED_HANDLES, normalizeHandle } from './services/handleService';
+import { captureReferralFromUrl } from './services/referralService';
 import { getBooking } from './services/bookingService';
 import { slugify } from './utils/slug';
 
@@ -62,6 +63,26 @@ export default function App() {
   // mindgigs.com/username/book-slug is a shareable link to one of their
   // books — held here until the experts list loads and we can resolve it.
   const [pendingPath, setPendingPath] = useState(getPendingPathFromLocation);
+
+  // Capture an affiliate's referral link (?ref=CODE) before anything else
+  // touches the URL. Stored for 30 days and pre-filled into the signup form, so
+  // a referred visitor never has to type the code by hand. Runs on every load,
+  // including a vanity URL like /their-handle?ref=their-handle.
+  useEffect(() => {
+    const captured = captureReferralFromUrl();
+    if (!captured) return;
+    // Strip ?ref= so the address bar (and anything the visitor copies out of
+    // it) stops carrying someone else's referral around. The code lives in
+    // localStorage from here on.
+    const params = new URLSearchParams(window.location.search);
+    params.delete('ref');
+    const qs = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      window.location.pathname + (qs ? `?${qs}` : '')
+    );
+  }, []);
 
   // Handle Stripe redirect return (?payment=success or ?payment=cancelled)
   useEffect(() => {

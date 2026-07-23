@@ -69,9 +69,15 @@ export function AuthProvider({ children }) {
     // an expert's handle, or from the profile-link signup context if no
     // coupon was entered. The coupon wins if both are present. Never set if
     // the new user is that expert.
+    //
+    // EXPERT SIGNUPS ONLY. Lifetime attribution is the reward for onboarding a
+    // seller, never for bringing in a buyer — a buyer is not tied to whoever
+    // referred them for the rest of their life. Whoever brings in a buyer
+    // (client or expert alike) earns only when their coupon is used at
+    // checkout, one sale at a time.
     const resolvedExpertId = resolvedCoupon?.ownerRole === 'expert' ? resolvedCoupon.ownerId : null;
     const linkExpertId = signupContext.expertId || null;
-    const candidateExpertId = resolvedExpertId || linkExpertId;
+    const candidateExpertId = role === 'expert' ? (resolvedExpertId || linkExpertId) : null;
     const referredByExpertId = (candidateExpertId && candidateExpertId !== user.uid) ? candidateExpertId : null;
 
     // Every client gets a referral code minted before the user doc is written,
@@ -193,9 +199,11 @@ export function AuthProvider({ children }) {
       const onboardedByAffiliateId = (expectedRole === 'expert' && resolvedCoupon?.ownerRole === 'affiliate')
         ? resolvedCoupon.ownerId
         : null;
+      // Expert signups only — see the matching note in signup(). A buyer is
+      // never tied to a referrer for life; that channel is checkout coupons.
       const resolvedExpertId = resolvedCoupon?.ownerRole === 'expert' ? resolvedCoupon.ownerId : null;
       const linkExpertId = signupContext.expertId || null;
-      const candidateExpertId = resolvedExpertId || linkExpertId;
+      const candidateExpertId = expectedRole === 'expert' ? (resolvedExpertId || linkExpertId) : null;
       const referredByExpertId = (candidateExpertId && candidateExpertId !== user.uid) ? candidateExpertId : null;
 
       let ownCouponCode = null;

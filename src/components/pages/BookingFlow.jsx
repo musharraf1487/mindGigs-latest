@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { createBooking, getExpertBookings, confirmFreeBooking } from '../../services/bookingService';
 import { initiatePayment } from '../../services/stripeService';
 import { resolveCouponCode } from '../../services/affiliateService';
+import { getStoredReferralCode } from '../../services/referralService';
 import { getAvailableTimesForDay, getAvailableDaysInMonth, buildTakenSlotsMap } from '../../services/availabilityService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -27,7 +28,11 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const [selectedTime, setSelectedTime] = useState(null);
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.phone || '');
-  const [couponCode, setCouponCode] = useState('');
+  // Pre-filled from a referral link (?ref=CODE, captured in App.jsx). For a
+  // buyer this is the only place a referral pays out — they're not attributed
+  // for life at signup — so it needs to land here without them typing it.
+  // Still editable and clearable like any hand-entered code.
+  const [couponCode, setCouponCode] = useState(() => getStoredReferralCode() || '');
   const [couponStatus, setCouponStatus] = useState(null); // null | 'checking' | 'valid' | 'invalid'
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);

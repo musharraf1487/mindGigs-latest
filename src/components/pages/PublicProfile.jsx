@@ -18,6 +18,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { initiateSubscriptionPayment, initiateProductPayment, confirmFreeProduct } from '../../services/stripeService';
 import { resolveCouponCode } from '../../services/affiliateService';
+import { getStoredReferralCode } from '../../services/referralService';
 import { formatOfferPrice } from '../../utils/price';
 import { renderFormattedText } from '../../utils/richText';
 import { getBookPurchaseFlags } from '../../utils/book';
@@ -305,7 +306,11 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
   // Coupon entry lives on the modal itself (like BookingFlow's checkout step),
   // not on the card — one active field at a time, reset whenever a new
   // purchase is opened.
-  const [couponCode, setCouponCode] = useState('');
+  // Opens pre-filled with a referral code if the buyer arrived via someone's
+  // link (?ref=CODE). Buyers aren't attributed for life at signup, so checkout
+  // is the only place their referrer gets paid — it can't depend on them
+  // having memorised a 6-char code. Editable and clearable as always.
+  const [couponCode, setCouponCode] = useState(() => getStoredReferralCode() || '');
   const [couponStatus, setCouponStatus] = useState(null); // null | 'checking' | 'valid' | 'invalid'
 
   const handleCouponBlur = async () => {
@@ -367,7 +372,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
       return;
     }
     // Non-free — pause on the Order Summary modal rather than charging immediately.
-    setCouponCode('');
+    setCouponCode(getStoredReferralCode() || '');
     setCouponStatus(null);
     setPendingPurchase({ type: 'subscription', item: sub });
   };
@@ -400,7 +405,7 @@ export function PublicProfile({ nav, notify, expert: expertProp }) {
     // Non-free — pause on the Order Summary modal rather than charging immediately.
     // Covers products, custom offerings, and books' internal "Buy Now" alike
     // (they all funnel through this same handler).
-    setCouponCode('');
+    setCouponCode(getStoredReferralCode() || '');
     setCouponStatus(null);
     setPendingPurchase({ type: 'product', item: product });
   };

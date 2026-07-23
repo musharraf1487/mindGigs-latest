@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Users, DollarSign, Copy, Mail, Plus, Lightbulb, User } from 'lucide-react';
+import { Users, DollarSign, Copy, Mail, Plus, Lightbulb, User, Link as LinkIcon } from 'lucide-react';
 import { usePlatformConfig } from '../../../../context/PlatformConfigContext';
+import { buildReferralLink } from '../../../../services/referralService';
 import { AffiliateProgramDisabled } from './AffiliateProgramGate';
 
 function InviteModal({ onClose, notify, couponCode }) {
@@ -10,8 +11,10 @@ function InviteModal({ onClose, notify, couponCode }) {
     e.preventDefault();
     if (!email) return;
     if (!couponCode) { notify?.('Your coupon code has not been assigned yet.', 'warn'); return; }
-    const subject = encodeURIComponent("Join mindGigs with my coupon!");
-    const body = encodeURIComponent(`Hi there,\n\nUse my coupon code ${couponCode} when you sign up as an expert on mindGigs — I'll earn a lifetime referral commission, at no cost to you.\n\nBest,`);
+    const subject = encodeURIComponent("Join mindGigs with my referral link!");
+    // Leads with the link (code fills itself in) and keeps the raw code as a
+    // fallback for anyone who retypes the address by hand.
+    const body = encodeURIComponent(`Hi there,\n\nSign up as an expert on mindGigs using my referral link — the code fills in automatically:\n\n${buildReferralLink(couponCode)}\n\nOr enter the code ${couponCode} manually at signup. I'll earn a lifetime referral commission, at no cost to you.\n\nBest,`);
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     notify?.(`Invite email draft opened for ${email}`, 'success');
     onClose();
@@ -124,6 +127,15 @@ export function Referrals({ user, affiliateData, notify }) {
     notify?.('Referral code copied!', 'success');
   };
 
+  // Anyone who follows this gets the code filled into their signup form
+  // automatically — no typing, no remembering a 6-char string.
+  const referralLink = buildReferralLink(couponCode);
+  const handleCopyLink = () => {
+    if (!referralLink) { notify?.('Your referral code has not been assigned yet.', 'warn'); return; }
+    navigator.clipboard.writeText(referralLink);
+    notify?.('Referral link copied!', 'success');
+  };
+
   if (features['Affiliate Program'] === false) return <AffiliateProgramDisabled />;
 
   return (
@@ -154,6 +166,29 @@ export function Referrals({ user, affiliateData, notify }) {
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--mu)', marginTop: 10 }}>
           Share it with experts to onboard them (7.5% lifetime), or with buyers at checkout (7.5% one-time).
+        </div>
+
+        {/* Shareable link — the easy path. Fills the code in for them. */}
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+            Your Referral Link
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{
+              flex: 1, minWidth: 180, fontFamily: 'monospace', fontSize: '0.82rem',
+              color: 'var(--sl)', background: '#fff', padding: '12px 16px',
+              borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', wordBreak: 'break-all',
+            }}>
+              {referralLink || 'Not assigned yet'}
+            </div>
+            <button className="btn btn-gh" style={{ padding: '12px 20px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={handleCopyLink} disabled={!referralLink}>
+              <LinkIcon size={15} /> Copy Link
+            </button>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--mu)', marginTop: 10 }}>
+            Anyone who signs up after following this link gets your code filled in for them — nothing to type or remember.
+          </div>
         </div>
       </div>
 

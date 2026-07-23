@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, ShoppingCart, ChevronRight } from 'lucide-react';
+import { Users, ShoppingCart, ChevronRight, Gift } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { normalizeHandle } from '../../services/handleService';
 import { resolveCouponCode } from '../../services/affiliateService';
+import { getStoredReferralCode, clearStoredReferralCode } from '../../services/referralService';
 
 function AuthShell({ children, nav }) {
   return (
@@ -150,10 +151,17 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
   const [pass, setPass] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const [couponCode, setCouponCode] = useState('');
-  // null | 'checking' | 'valid' | 'invalid' — an invalid code blocks submit
-  // until it's fixed or cleared, so no orphaned Auth account gets created on
-  // a doomed coupon (mirrors the username availability pre-check below).
+  // Pre-filled from a referral link (?ref=CODE, captured in App.jsx and held in
+  // localStorage for 30 days) so a referred visitor never types a code by hand.
+  // Still a plain editable field — they can clear or replace it.
+  const [couponCode, setCouponCode] = useState(() => getStoredReferralCode() || '');
+  // True only while the field still holds the value the link supplied. Drives
+  // the "referral applied" banner and the don't-block-on-bad-link rule below;
+  // any manual edit turns it off and the field behaves as hand-typed again.
+  const [fromLink, setFromLink] = useState(() => !!getStoredReferralCode());
+  // null | 'checking' | 'valid' | 'invalid' — a hand-typed invalid code blocks
+  // submit until it's fixed or cleared, so no orphaned Auth account gets
+  // created on a doomed coupon (mirrors the username availability pre-check).
   const [couponStatus, setCouponStatus] = useState(null);
 
   // Admin has no self-service signup — there is exactly one admin account,
@@ -175,13 +183,26 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
     const t = setTimeout(async () => {
       try {
         const resolved = await resolveCouponCode(couponCode);
-        setCouponStatus(resolved ? 'valid' : 'invalid');
+        if (resolved) { setCouponStatus('valid'); return; }
+        // A dead link (revoked code, typo'd share, deleted account) must never
+        // stand between the visitor and an account they came here to create —
+        // they didn't type this and can't be expected to fix it. Drop it
+        // silently and let signup proceed unattributed. A code the visitor
+        // typed themselves still surfaces the error and blocks submit.
+        if (fromLink) {
+          setCouponCode('');
+          setFromLink(false);
+          setCouponStatus(null);
+          clearStoredReferralCode();
+          return;
+        }
+        setCouponStatus('invalid');
       } catch {
         setCouponStatus(null);
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [couponCode]);
+  }, [couponCode, fromLink]);
 
   // Clients are handed a referral code at account creation. Surface it right
   // away so the earning side of the account isn't something they only discover
@@ -191,12 +212,28 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
     notify(`Your referral code: ${userDoc.couponCode} — share it to earn 7.5% commission on every expert you bring to mindGigs.`, 'success');
   };
 
+  // Only an expert signup consumes a referral code — it's what sets the
+  // lifetime onboarding link. Sending one on a buyer signup would achieve
+  // nothing and could fail the whole signup on a stale code, since signup()
+  // rejects a coupon it can't resolve.
+  const signupCoupon = () => (role === 'expert' ? couponCode.trim() || null : null);
+
+  // Expert: attribution is now permanent on the user doc, so drop the stored
+  // code — otherwise a later account in the same browser gets credited again.
+  // Buyer: keep it. Checkout is the only place their referral can pay out, and
+  // it stays valid for the rest of its 30-day window.
+  const consumeReferral = () => {
+    if (role === 'expert') clearStoredReferralCode();
+  };
+
   const handleSignup = async () => {
     if (!agreed) return notify('Please agree to terms first.', 'warn');
     if (!name || !email || !pass) return notify('Please fill all fields', 'warn');
     if (cfg.showHandle && !username) return notify('Please enter a username', 'warn');
-    if (couponStatus === 'invalid') return notify('That coupon code is invalid — fix it or clear it before continuing.', 'warn');
-    if (couponStatus === 'checking') return notify('Still checking your coupon code — one moment.', 'warn');
+    // Same reasoning as the submit button: only an expert signup consumes the
+    // code, so only an expert signup can be held up by it.
+    if (role === 'expert' && couponStatus === 'invalid') return notify('That coupon code is invalid — fix it or clear it before continuing.', 'warn');
+    if (role === 'expert' && couponStatus === 'checking') return notify('Still checking your coupon code — one moment.', 'warn');
 
     setLoading(true);
     try {
@@ -205,7 +242,8 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
         phone: phone.trim() || null,
         handle: username || normalizeHandle(name),
         onboardingComplete: role !== 'expert',
-      }, { expertId, couponCode: couponCode.trim() || null });
+      }, { expertId, couponCode: signupCoupon() });
+      consumeReferral();
       notify(cfg.successMsg);
       announceReferralCode(userDoc);
       nav(cfg.redirect);
@@ -276,7 +314,8 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
           if (!agreed) return notify('Please agree to terms first.', 'warn');
           setLoading(true);
           try {
-            const { userDoc, isNewAccount } = await loginWithGoogle(role || 'expert', { expertId, couponCode: couponCode.trim() || null });
+            const { userDoc, isNewAccount } = await loginWithGoogle(role || 'expert', { expertId, couponCode: signupCoupon() });
+            consumeReferral();
             notify(cfg.successMsg);
             // Existing users reaching this button are really just logging in —
             // don't re-announce a code they've had all along.
@@ -370,18 +409,49 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
         />
       </div>
 
+      {/* Expert signups only. A referral code entered by a BUYER changes
+          nothing at signup — buyers aren't attributed for life — so showing
+          them a field that silently does nothing would be a lie. Their
+          referral rides along to checkout instead, where it does pay out;
+          the banner below tells them so. */}
+      {role === 'expert' ? (
       <div className="field">
         <label className="label">Have a Referral Code? (Optional)</label>
         <input
           className="input"
           placeholder="e.g. an expert's username or a referral code"
           value={couponCode}
-          onChange={(e) => setCouponCode(e.target.value)}
+          onChange={(e) => { setCouponCode(e.target.value); setFromLink(false); }}
         />
+        {fromLink && couponStatus !== 'invalid' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
+            padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(26,184,160,0.07)', border: '1px solid rgba(26,184,160,0.2)',
+          }}>
+            <Gift size={14} color="var(--teal)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '.75rem', color: 'var(--sl)' }}>
+              Referral code applied automatically from the link you followed.
+            </span>
+          </div>
+        )}
         {couponStatus === 'checking' && <div style={{ fontSize: '.75rem', color: 'var(--mu)', marginTop: 6 }}>Checking code…</div>}
-        {couponStatus === 'valid' && <div style={{ fontSize: '.75rem', color: 'var(--teal)', marginTop: 6 }}>✓ Code applied</div>}
+        {couponStatus === 'valid' && !fromLink && <div style={{ fontSize: '.75rem', color: 'var(--teal)', marginTop: 6 }}>✓ Code applied</div>}
         {couponStatus === 'invalid' && <div style={{ fontSize: '.75rem', color: '#e84444', marginTop: 6 }}>Invalid code — fix it or clear the field to continue.</div>}
       </div>
+      ) : fromLink && couponStatus === 'valid' ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
+          padding: '10px 14px', borderRadius: 10,
+          background: 'rgba(26,184,160,0.07)', border: '1px solid rgba(26,184,160,0.2)',
+        }}>
+          <Gift size={16} color="var(--teal)" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '.78rem', color: 'var(--sl)' }}>
+            You were referred by <strong style={{ fontFamily: 'monospace' }}>{couponCode}</strong> — the code will be applied
+            automatically on your first purchase.
+          </span>
+        </div>
+      ) : null}
 
       <label className="checkbox-row" style={{ marginBottom: 20 }}>
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
@@ -390,10 +460,13 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
           <a href="#" style={{ color: 'var(--gb)' }}>Privacy Policy</a>
         </span>
       </label>
+        {/* Coupon state only gates the button where the coupon is actually used
+            — on a buyer signup it's ignored, so a code still resolving in the
+            background must not hold up the button. */}
         <button
           className="btn btn-gr w-full btn-lg"
           type="submit"
-          disabled={loading || couponStatus === 'invalid' || couponStatus === 'checking'}
+          disabled={loading || (role === 'expert' && (couponStatus === 'invalid' || couponStatus === 'checking'))}
         >
           {loading ? 'Creating Account...' : cfg.btnLabel}
         </button>
