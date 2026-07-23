@@ -58,6 +58,9 @@ export default function App() {
   // clicking an unrelated "Sign Up" link can't wrongly attribute a referral.
   const [signupExpertId, setSignupExpertId] = useState(() => window.history.state?.signupExpertId ?? null);
   const [loginEmailHint, setLoginEmailHint] = useState('');
+  // Carried over when a failed sign-in turns into "create an account" — saves
+  // retyping the address they just entered on the login form.
+  const [signupEmailHint, setSignupEmailHint] = useState('');
   const [preLoginPage, setPreLoginPage] = useState('landingboard');
   // A bare path like mindgigs.com/username is an expert's vanity URL, and
   // mindgigs.com/username/book-slug is a shareable link to one of their
@@ -269,6 +272,8 @@ export default function App() {
     }
     if (p === 'login' && ctx?.emailHint !== undefined) setLoginEmailHint(ctx.emailHint || '');
     else if (p !== 'login') setLoginEmailHint('');
+    if (p === 'signup' && ctx?.emailHint !== undefined) setSignupEmailHint(ctx.emailHint || '');
+    else if (p !== 'signup') setSignupEmailHint('');
     // No role default here — nav('signup') with nothing specified means "the
     // visitor hasn't chosen yet", and SignupPage renders its role chooser.
     // Only an explicit ctx.role (e.g. "Join as an Expert") skips that step.
@@ -336,7 +341,7 @@ export default function App() {
       {page === 'home' && <LandingPage nav={nav} onLogin={goToLogin} />}
       {page === 'landingboard' && <LandingBoard nav={nav} onLogin={goToLogin} experts={experts} />}
       {page === 'login' && <LoginPage nav={nav} notify={notify} emailHint={loginEmailHint} />}
-      {page === 'signup' && <SignupPage nav={nav} notify={notify} role={signupRole} expertId={signupExpertId} />}
+      {page === 'signup' && <SignupPage nav={nav} notify={notify} role={signupRole} expertId={signupExpertId} emailHint={signupEmailHint} />}
       {page === 'onboarding' && <OnboardingPage nav={nav} notify={notify} addExpert={e => setExperts(prev => [...prev, e])} />}
       {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={goToLogin} experts={experts} selectedCategory={activeCategory} />}
       {page === 'public-profile' && <PublicProfile nav={nav} notify={notify} expert={resolvedExpert} />}

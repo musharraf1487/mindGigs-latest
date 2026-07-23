@@ -138,7 +138,7 @@ function RoleChooser({ nav, expertId }) {
   );
 }
 
-export function SignupPage({ nav, notify, role: requestedRole = null, expertId = null }) {
+export function SignupPage({ nav, notify, role: requestedRole = null, expertId = null, emailHint = '' }) {
   const { signup, loginWithGoogle } = useAuth();
   // The affiliate portal was merged into the client one — an old link or stale
   // history entry asking for an affiliate signup lands on the buyer form,
@@ -146,7 +146,9 @@ export function SignupPage({ nav, notify, role: requestedRole = null, expertId =
   const role = requestedRole === 'affiliate' ? 'client' : requestedRole;
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  // Pre-filled when they arrived from a failed sign-in that offered to create
+  // an account instead — no point making them type the address twice.
+  const [email, setEmail] = useState(emailHint || '');
   const [phone, setPhone] = useState('');
   const [pass, setPass] = useState('');
   const [username, setUsername] = useState('');

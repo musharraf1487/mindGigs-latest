@@ -172,10 +172,15 @@ export function AuthProvider({ children }) {
     } else {
       // Called from the shared login form (no role given) by someone with no
       // account yet. Creating one here would have to guess expert vs client, so
-      // send them to signup — which asks — rather than silently picking.
+      // the login page catches this and asks which kind of profile they want.
+      // Unlike the email path, this is unambiguous — we looked their uid up in
+      // Firestore and there is genuinely no user doc.
       if (!expectedRole) {
         await signOut(auth);
-        throw new Error('No mindGigs account found for that Google account. Please sign up first.');
+        const err = new Error('No mindGigs account found for that Google account.');
+        err.code = 'mindgigs/no-account';
+        err.email = user.email || '';
+        throw err;
       }
       // Only experts claim a handle — clients have no public profile.
       const claimsHandle = expectedRole === 'expert';

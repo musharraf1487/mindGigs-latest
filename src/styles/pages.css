@@ -3854,11 +3854,68 @@
 .hero-3d-fade {
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(248, 250, 252, 0.7) 80%),
     linear-gradient(to bottom, #f8fafc 0%, transparent 20%, transparent 80%, #f8fafc 100%);
   pointer-events: none;
   z-index: 1;
+}
+
+/* --- Hero background expert-card fan (Experts-page carousel, softened) --- */
+.lb-hero-fan {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.20;
+  filter: saturate(0.9);
+  /* Fade the fan out toward the edges so it blends into the grid */
+  -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 28%, transparent 82%);
+  mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 28%, transparent 82%);
+}
+
+.lb-hero-fan-stage {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  height: 380px;
+  transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lb-hero-fan-card {
+  position: absolute;
+  width: 230px;
+  height: 340px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #2a2a2a;
+  transform-style: preserve-3d;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+/* Readability scrim so the hero copy stays crisp over the fan */
+.lb-hero-fan-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 52% at 50% 46%, rgba(244, 246, 249, 0.88) 0%, rgba(244, 246, 249, 0.5) 45%, rgba(244, 246, 249, 0) 74%),
+    linear-gradient(to bottom, rgba(244, 246, 249, 0.35) 0%, transparent 22%, transparent 78%, rgba(244, 246, 249, 0.55) 100%);
+}
+
+@media (max-width: 640px) {
+  .lb-hero-fan { opacity: 0.14; }
+  .lb-hero-fan-card { width: 170px; height: 250px; }
 }
 
 /* --- Floating Side Elements --- */

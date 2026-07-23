@@ -154,6 +154,61 @@ function NetworkCanvas() {
     return <canvas ref={canvasRef} className="lb-hero-canvas" aria-hidden="true" />;
 }
 
+/* ── Hero Background Fan — the same 3D expert card fan used on the Experts page, ── */
+/* rendered as a low-opacity backdrop behind the hero copy.                        */
+function HeroFanBackground({ experts }) {
+    const cards = experts.slice(0, 7);
+    if (cards.length === 0) return null;
+    const center = Math.floor(cards.length / 2);
+
+    return (
+        <div className="lb-hero-fan" aria-hidden="true">
+            <div className="lb-hero-fan-stage">
+                {cards.map((exp, i) => {
+                    const offset = i - center;
+                    const rotateY = offset * -15;
+                    const translateX = offset * 210;
+                    const translateZ = -Math.abs(offset) * 40;
+                    const scale = 1 - Math.abs(offset) * 0.05;
+                    const zIndex = 50 - Math.abs(offset) * 10;
+
+                    return (
+                        <div
+                            key={exp.id}
+                            className="lb-hero-fan-card"
+                            style={{
+                                transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+                                zIndex,
+                            }}
+                        >
+                            {exp.image ? (
+                                <img
+                                    src={exp.image}
+                                    alt=""
+                                    referrerPolicy="no-referrer"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                                />
+                            ) : (
+                                <div
+                                    style={{
+                                        width: '100%', height: '100%',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        background: `hsl(${((exp.name?.charCodeAt(0) || 65) * 67 + 160) % 360}, 40%, 55%)`,
+                                        color: 'rgba(255,255,255,0.9)', fontSize: '4rem', fontWeight: 900,
+                                        fontFamily: 'var(--fu)',
+                                    }}
+                                >
+                                    {exp.name?.charAt(0).toUpperCase() || 'E'}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 const SERVICES = [
     {
         category: "Experts",
@@ -478,6 +533,22 @@ export function LandingBoard({ nav, onLogin, experts }) {
     }, [experts]);
     const carouselLive = liveCarouselExperts.length > 0;
 
+    // Reorder the top experts into a pyramid so the highest-rated sits in the
+    // centre of the hero background fan (mirrors the Experts page carousel).
+    const heroFanExperts = useMemo(() => {
+        const top = liveCarouselExperts;
+        if (top.length === 0) return [];
+        const result = new Array(top.length);
+        const mid = Math.floor(top.length / 2);
+        result[mid] = top[0];
+        for (let i = 1; i < top.length; i++) {
+            const offset = Math.ceil(i / 2);
+            if (i % 2 === 1) result[mid - offset] = top[i];
+            else result[mid + offset] = top[i];
+        }
+        return result.filter(Boolean);
+    }, [liveCarouselExperts]);
+
     React.useEffect(() => {
         let lastScroll = window.scrollY;
         const onScroll = () => {
@@ -607,6 +678,10 @@ export function LandingBoard({ nav, onLogin, experts }) {
                     <div className="hero-3d-wall" />
                     <div className="hero-3d-fade" />
                 </div>
+
+                {/* Expert card fan (from the Experts page) as a soft backdrop */}
+                <HeroFanBackground experts={heroFanExperts} />
+                <div className="lb-hero-fan-scrim" aria-hidden="true" />
 
                 <div className="lb-hero-content">
                     <motion.div

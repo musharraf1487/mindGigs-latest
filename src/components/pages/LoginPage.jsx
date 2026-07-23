@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Users, ShoppingCart, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../config/firebase';
@@ -60,6 +61,12 @@ export function LoginPage({ nav, notify, emailHint }) {
   const [forgot, setForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  // Set when a sign-in attempt looks like "this person has no account yet".
+  // { email, certain } — `certain` is true only when we actually know no
+  // account exists (the Google path checks Firestore directly). On the email
+  // path Firebase's enumeration protection collapses "no such user" and "wrong
+  // password" into one error code, so we can't claim to know which it was.
+  const [noAccount, setNoAccount] = useState(null);
 
   // If emailHint changes (new account switch), update the email field
   React.useEffect(() => {
@@ -75,11 +82,92 @@ export function LoginPage({ nav, notify, emailHint }) {
       await login(email, pass);
     } catch (err) {
       console.error('Login Error:', err);
+      // 'auth/user-not-found' is definitive, but only surfaces on projects with
+      // email enumeration protection turned off. With it on (the default),
+      // Firebase returns 'auth/invalid-credential' for a missing account AND a
+      // wrong password alike — so offer account creation without asserting
+      // which one it was.
+      if (err.code === 'auth/user-not-found') {
+        setNoAccount({ email, certain: true });
+        return;
+      }
+      if (err.code === 'auth/invalid-credential') {
+        setNoAccount({ email, certain: false });
+        return;
+      }
       notify(err.message?.replace('Firebase: ', '') || 'Invalid credentials. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  // Carries the email across so they don't retype what they just typed.
+  const startSignup = (chosenRole) => nav('signup', { role: chosenRole, emailHint: noAccount?.email || email });
+
+  // Sign-in didn't find an account — ask what kind of profile to create rather
+  // than dead-ending on an error toast.
+  if (noAccount)
+    return (
+      <AuthShell nav={nav}>
+        <div className="slabel">{noAccount.certain ? 'No Account Found' : "Can't Sign In"}</div>
+        <h2 className="stitle" style={{ fontSize: '1.8rem' }}>
+          {noAccount.certain ? 'Create your account' : 'Create an account?'}
+        </h2>
+        <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginBottom: 8 }}>
+          {noAccount.certain
+            ? <>There's no mindGigs account for <strong>{noAccount.email}</strong> yet. Pick the kind of profile you'd like to create.</>
+            : <>We couldn't sign you in as <strong>{noAccount.email}</strong>. Either the password is wrong, or there's no account on that email yet.</>}
+        </p>
+        {!noAccount.certain && (
+          <p style={{ fontSize: '.8rem', color: 'var(--mu)', marginBottom: 24 }}>
+            If you meant to sign in, go back and try again — or reset your password.
+          </p>
+        )}
+
+        <div className="login-selector" style={{ marginTop: noAccount.certain ? 24 : 0 }}>
+          {[
+            { role: 'expert', icon: Users, title: 'Expert / Creator', sub: 'Sell sessions, products and subscriptions. Get your own public profile page.' },
+            { role: 'client', icon: ShoppingCart, title: 'Client / Buyer', sub: 'Book sessions and buy from experts — plus a referral code to earn commissions.' },
+          ].map((o) => (
+            <div
+              key={o.role}
+              className="login-option"
+              style={{ padding: '14px 16px', gap: 12 }}
+              onClick={() => startSignup(o.role)}
+            >
+              <div className="lp-icon-box" style={{ width: 44, height: 44, borderRadius: 10 }}>
+                <o.icon size={20} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="login-option-title" style={{ fontSize: '0.9rem' }}>{o.title}</div>
+                <div className="login-option-sub" style={{ fontSize: '0.75rem' }}>{o.sub}</div>
+              </div>
+              <ChevronRight size={18} className="login-option-arrow" />
+            </div>
+          ))}
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: 24, fontSize: '.82rem', color: 'var(--mu)' }}>
+          <span
+            style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
+            onClick={() => { setNoAccount(null); setPass(''); }}
+          >
+            ← Back to sign in
+          </span>
+          {!noAccount.certain && (
+            <>
+              {'  ·  '}
+              <span
+                style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => { setForgotEmail(noAccount.email); setNoAccount(null); setForgot(true); }}
+              >
+                Reset password
+              </span>
+            </>
+          )}
+        </p>
+      </AuthShell>
+    );
 
   if (forgot)
     return (
@@ -191,11 +279,16 @@ export function LoginPage({ nav, notify, emailHint }) {
           setLoading(true);
           try {
             // No expected role — signing in only, never creating an account.
-            // A Google identity with no user doc is rejected by AuthContext
-            // and told to sign up, where the role actually gets chosen.
+            // AuthContext rejects a Google identity with no user doc; we catch
+            // that below and ask which kind of profile they want instead.
             await loginWithGoogle();
           } catch (err) {
             console.error('Google Login Error:', err);
+            // Unambiguous here: AuthContext checked Firestore and found nothing.
+            if (err.code === 'mindgigs/no-account') {
+              setNoAccount({ email: err.email || '', certain: true });
+              return;
+            }
             notify(err.message?.replace('Firebase: ', '') || 'Failed to sign in with Google.', 'error');
           } finally {
             setLoading(false);
