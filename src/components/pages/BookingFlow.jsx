@@ -84,7 +84,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
     // Check authentication
     if (!currentUser) {
       notify('Please log in to book a session.', 'warn');
-      nav('login', { role: 'client' });
+      nav('login');
       return;
     }
 
@@ -141,7 +141,7 @@ export function BookingFlow({ nav, notify, expert, session }) {
   const handleFreeBooking = async () => {
     if (!currentUser) {
       notify('Please log in to book a call.', 'warn');
-      nav('login', { role: 'client' });
+      nav('login');
       return;
     }
 

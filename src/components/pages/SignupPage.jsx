@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Users, ShoppingCart, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { normalizeHandle } from '../../services/handleService';
 import { resolveCouponCode } from '../../services/affiliateService';
@@ -73,7 +74,70 @@ const ROLE_CONFIG = {
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function SignupPage({ nav, notify, role: requestedRole = 'expert', expertId = null }) {
+// Shown when signup is reached without a role — the generic "Sign Up" / "Create
+// one" entry points. Choosing here re-navigates with the role set, so the back
+// button returns to this step instead of leaving the flow entirely.
+//
+// Admin isn't offered: there is exactly one admin account and it's provisioned
+// out-of-band, never through self-service signup.
+function RoleChooser({ nav, expertId }) {
+  const roles = [
+    {
+      role: 'expert',
+      icon: Users,
+      title: 'Expert / Creator',
+      sub: 'Sell sessions, products and subscriptions. Get your own public profile page.',
+    },
+    {
+      role: 'client',
+      icon: ShoppingCart,
+      title: 'Client / Buyer',
+      sub: 'Book sessions and buy from experts — plus a referral code to earn commissions.',
+    },
+  ];
+
+  return (
+    <>
+      <div className="slabel">Create Your Account</div>
+      <h2 className="stitle" style={{ fontSize: '1.8rem' }}>How do you want to join?</h2>
+      <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginBottom: 24 }}>
+        Pick the account that fits you. You only choose this once — signing in later is the same for everyone.
+      </p>
+
+      <div className="login-selector">
+        {roles.map((o) => (
+          <div
+            key={o.role}
+            className="login-option"
+            style={{ padding: '14px 16px', gap: 12 }}
+            onClick={() => nav('signup', expertId ? { role: o.role, expertId } : { role: o.role })}
+          >
+            <div className="lp-icon-box" style={{ width: 44, height: 44, borderRadius: 10 }}>
+              <o.icon size={20} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="login-option-title" style={{ fontSize: '0.9rem' }}>{o.title}</div>
+              <div className="login-option-sub" style={{ fontSize: '0.75rem' }}>{o.sub}</div>
+            </div>
+            <ChevronRight size={18} className="login-option-arrow" />
+          </div>
+        ))}
+      </div>
+
+      <p style={{ textAlign: 'center', marginTop: 24, fontSize: '.82rem', color: 'var(--mu)' }}>
+        Already have an account?{' '}
+        <span
+          style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
+          onClick={() => nav('login')}
+        >
+          Sign in →
+        </span>
+      </p>
+    </>
+  );
+}
+
+export function SignupPage({ nav, notify, role: requestedRole = null, expertId = null }) {
   const { signup, loginWithGoogle } = useAuth();
   // The affiliate portal was merged into the client one — an old link or stale
   // history entry asking for an affiliate signup lands on the buyer form,
@@ -154,6 +218,16 @@ export function SignupPage({ nav, notify, role: requestedRole = 'expert', expert
   };
 
   if (role === 'admin') return null;
+
+  // No role chosen yet — ask before showing any form. Placed after every hook
+  // above so the hook order stays identical across both branches.
+  if (!role) {
+    return (
+      <AuthShell nav={nav}>
+        <RoleChooser nav={nav} expertId={expertId} />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell nav={nav}>
@@ -329,7 +403,7 @@ export function SignupPage({ nav, notify, role: requestedRole = 'expert', expert
         Already have an account?{' '}
         <span
           style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
-          onClick={() => nav('login', { role })}
+          onClick={() => nav('login')}
         >
           Log In →
         </span>

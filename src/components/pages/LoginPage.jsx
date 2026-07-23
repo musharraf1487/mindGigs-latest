@@ -2,14 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../config/firebase';
-import {
-  Users,
-  ShoppingCart,
-  ShieldCheck,
-  ChevronRight,
-  ArrowRight
-} from 'lucide-react';
-
 function AuthShell({ children, nav }) {
   return (
     <div
@@ -57,13 +49,12 @@ function AuthShell({ children, nav }) {
   );
 }
 
-export function LoginPage({ role: requestedRole, nav, onSwitchRole, notify, emailHint }) {
+// One shared login form for every kind of account. There is no portal to pick
+// and no expected role to match — whoever the credentials belong to is who you
+// are, and App.jsx routes to the right dashboard from the role on the account.
+// Picking a role is a SIGNUP-time question only (see SignupPage's chooser).
+export function LoginPage({ nav, notify, emailHint }) {
   const { login, loginWithGoogle } = useAuth();
-  // The affiliate portal was folded into the client one. An old bookmark or a
-  // saved-account entry still tagged `affiliate` opens the Client portal, and
-  // AuthContext accepts a legacy affiliate user doc there rather than
-  // bouncing them to a portal that no longer exists.
-  const role = requestedRole === 'affiliate' ? 'client' : requestedRole;
   const [email, setEmail] = React.useState(emailHint || '');
   const [pass, setPass] = useState('');
   const [forgot, setForgot] = useState(false);
@@ -75,30 +66,13 @@ export function LoginPage({ role: requestedRole, nav, onSwitchRole, notify, emai
     if (emailHint) setEmail(emailHint);
   }, [emailHint]);
 
-  const roleConfig = {
-    expert: { label: 'Expert Portal', color: 'var(--gb)', icon: Users, badge: 'role-expert' },
-    admin: { label: 'Admin Portal', color: 'var(--gold)', icon: ShieldCheck, badge: 'role-admin' },
-    client: {
-      label: 'Client / Buyer Portal',
-      color: 'var(--gl)',
-      icon: ShoppingCart,
-      badge: 'role-client',
-    },
-  };
-  const rc = roleConfig[role] || roleConfig.expert;
-
   const handleLogin = async () => {
     if (!email || !pass) return notify('Please enter email and password', 'error');
 
-    // Check for demo credentials
-    if (false) { // demo mode removed
-      notify('Demo login successful!', 'success');
-      return;
-    }
-
     setLoading(true);
     try {
-      await login(email, pass, role || 'expert');
+      // No expected role — any valid account signs in here.
+      await login(email, pass);
     } catch (err) {
       console.error('Login Error:', err);
       notify(err.message?.replace('Firebase: ', '') || 'Invalid credentials. Please try again.', 'error');
@@ -160,28 +134,12 @@ export function LoginPage({ role: requestedRole, nav, onSwitchRole, notify, emai
 
   return (
     <AuthShell nav={nav}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <div className="lp-icon-box" style={{ width: 44, height: 44 }}>
-          <rc.icon size={20} />
-        </div>
-        <div>
-          <div className="slabel" style={{ marginBottom: 0 }}>
-            {rc.label}
-          </div>
-        </div>
-        <button
-          className="btn btn-gh btn-sm"
-          style={{ marginLeft: 'auto' }}
-          onClick={onSwitchRole}
-        >
-          Switch Role
-        </button>
-      </div>
+      <div className="slabel">Sign In</div>
       <h2 className="stitle" style={{ fontSize: '1.8rem' }}>
         {emailHint ? 'Add Account' : 'Welcome Back'}
       </h2>
       <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginBottom: emailHint ? 16 : 24 }}>
-        Sign in to your {rc.label.replace(' Portal', '').toLowerCase()} account to continue.
+        Sign in to your mindGigs account to continue.
       </p>
 
       {/* Account-switching hint banner */}
@@ -202,69 +160,68 @@ export function LoginPage({ role: requestedRole, nav, onSwitchRole, notify, emai
         </div>
       )}
 
-      {role !== 'admin' && (
-        <>
-          <button
-            className="btn"
-            style={{
-              width: '100%',
-              background: 'var(--surface-color)',
-              color: 'var(--text-main)',
-              border: '1px solid var(--card-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              padding: '12px',
-              borderRadius: '8px',
-              fontWeight: 600,
-              marginBottom: 16,
-              boxShadow: 'var(--sc)',
-              transition: 'all 0.2s ease',
-              cursor: 'pointer',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'var(--bg-color)';
-              e.currentTarget.style.borderColor = '#19b5a6';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'var(--surface-color)';
-              e.currentTarget.style.borderColor = 'var(--card-border)';
-            }}
-            onClick={async () => {
-              setLoading(true);
-              try {
-                await loginWithGoogle(role || 'expert');
-              } catch (err) {
-                console.error('Google Login Error:', err);
-                notify(err.message?.replace('Firebase: ', '') || 'Failed to sign in with Google.', 'error');
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20 }} />
-            Sign in with Google
-          </button>
+      <button
+        className="btn"
+        style={{
+          width: '100%',
+          background: 'var(--surface-color)',
+          color: 'var(--text-main)',
+          border: '1px solid var(--card-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          padding: '12px',
+          borderRadius: '8px',
+          fontWeight: 600,
+          marginBottom: 16,
+          boxShadow: 'var(--sc)',
+          transition: 'all 0.2s ease',
+          cursor: 'pointer',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.background = 'var(--bg-color)';
+          e.currentTarget.style.borderColor = '#19b5a6';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.background = 'var(--surface-color)';
+          e.currentTarget.style.borderColor = 'var(--card-border)';
+        }}
+        onClick={async () => {
+          setLoading(true);
+          try {
+            // No expected role — signing in only, never creating an account.
+            // A Google identity with no user doc is rejected by AuthContext
+            // and told to sign up, where the role actually gets chosen.
+            await loginWithGoogle();
+          } catch (err) {
+            console.error('Google Login Error:', err);
+            notify(err.message?.replace('Firebase: ', '') || 'Failed to sign in with Google.', 'error');
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20 }} />
+        Sign in with Google
+      </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
-            <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
-            <span style={{ fontSize: '.75rem', color: 'var(--sl)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Or continue with email
-            </span>
-            <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
-          </div>
-        </>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
+        <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
+        <span style={{ fontSize: '.75rem', color: 'var(--sl)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Or continue with email
+        </span>
+        <div style={{ height: 1, flex: 1, background: 'rgba(37,52,63,0.1)' }} />
+      </div>
 
       <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
         <div className="field">
-          <label className="label">Username</label>
+          <label className="label">Email Address</label>
         <input
           className="input"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="your username"
+          placeholder="your@email.com"
         />
       </div>
       <div className="field">
@@ -298,21 +255,16 @@ export function LoginPage({ role: requestedRole, nav, onSwitchRole, notify, emai
           {loading ? 'Signing In...' : 'Sign In →'}
         </button>
       </form>
-      {role === 'admin' ? (
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: '.8rem', color: 'var(--mu)' }}>
-          Admin access is invite-only.
-        </p>
-      ) : (
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: '.82rem', color: 'var(--mu)' }}>
-          Don't have an account?{' '}
-          <span
-            style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => nav('signup', { role: role || 'expert' })}
-          >
-            Create one →
-          </span>
-        </p>
-      )}
+      {/* No role passed — signup asks which kind of account to create. */}
+      <p style={{ textAlign: 'center', marginTop: 20, fontSize: '.82rem', color: 'var(--mu)' }}>
+        Don't have an account?{' '}
+        <span
+          style={{ color: 'var(--gb)', cursor: 'pointer', fontWeight: 600 }}
+          onClick={() => nav('signup')}
+        >
+          Create one →
+        </span>
+      </p>
     </AuthShell>
   );
 }

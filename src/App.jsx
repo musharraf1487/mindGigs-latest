@@ -12,7 +12,6 @@ import { LandingBoard } from './components/pages/LandingBoard';
 import { ExpertDashboard } from './components/dashboards/expert/ExpertDashboard';
 import { AdminDashboard } from './components/dashboards/admin/AdminDashboard';
 import { ClientDashboard } from './components/dashboards/client/ClientDashboard';
-import { Users, ShoppingCart, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { db } from './config/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -39,46 +38,9 @@ function getPendingPathFromLocation() {
   return { handle, bookSlug: parts[1] ? parts[1].toLowerCase() : null };
 }
 
-function LoginSelectorModal({ onClose, onSelect }) {
-  // No affiliate entry — that portal was merged into the client one, which now
-  // carries referrals, commissions and payouts alongside bookings.
-  const roles = [
-    { role: 'expert', icon: Users, title: 'Expert / Creator', sub: 'Access your profile, bookings & earnings' },
-    { role: 'client', icon: ShoppingCart, title: 'Client / Buyer', sub: 'Bookings, purchases, referrals & commissions' },
-    { role: 'admin', icon: ShieldCheck, title: 'Administrator', sub: 'Platform management & oversight' },
-  ];
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>✕</button>
-        <div className="slabel">Access Your Account</div>
-        <h2 className="stitle" style={{ fontSize: '1.6rem' }}>Who are you logging in as?</h2>
-        <p style={{ fontSize: '.875rem', color: 'var(--sl)', marginTop: 8 }}>mindGigs has separate portals for experts, buyers, and administrators.</p>
-        <div className="login-selector">
-          {roles.map(o => (
-            <div key={o.role} className="login-option" onClick={() => onSelect(o.role)} style={{ padding: '12px 16px', gap: 12 }}>
-              <div className="lp-icon-box" style={{ width: 44, height: 44, borderRadius: 10 }}><o.icon size={20} /></div>
-              <div style={{ flex: 1 }}>
-                <div className="login-option-title" style={{ fontSize: '0.9rem' }}>{o.title}</div>
-                <div className="login-option-sub" style={{ fontSize: '0.75rem' }}>{o.sub}</div>
-              </div>
-              <ChevronRight size={18} className="login-option-arrow" />
-            </div>
-          ))}
-        </div>
-        <p style={{ textAlign: 'center', fontSize: '.8rem', color: 'var(--mu)', marginTop: 20 }}>
-          New to mindGigs? Choose your role above to sign in or create an account.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const { currentUser, userData, logout: firebaseLogout } = useAuth();
   const [page, setPage] = useState(() => window.history.state?.page || (getPendingPathFromLocation() ? 'resolving-handle' : 'landingboard'));
-  const [showLoginSelector, setShowLoginSelector] = useState(false);
-  const [loginRole, setLoginRole] = useState(null);
   const [notifs, setNotifs] = useState([]);
   const [experts, setExperts] = useState([]);
   const [activeExpert, setActiveExpert] = useState(null);
@@ -86,7 +48,9 @@ export default function App() {
   const [activeSession, setActiveSession] = useState(null);
   const [activeBook, setActiveBook] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
-  const [signupRole, setSignupRole] = useState('expert');
+  // null until the visitor picks Expert or Client on the signup role chooser —
+  // an explicit "Join as an Expert"-style CTA sets it directly via nav().
+  const [signupRole, setSignupRole] = useState(() => window.history.state?.signupRole ?? null);
   // Path A referral tracking: which expert's profile link a signup came
   // from. Always set explicitly by nav('signup', ctx) below — never
   // inherited from activeExpertId, so visiting an expert profile and later
@@ -132,12 +96,11 @@ export default function App() {
   // History state init + popstate handler
   useEffect(() => {
     if (!window.history.state?.page) {
-      window.history.replaceState({ page: 'landingboard', expertId: null, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null, showLoginSelector: false }, '', window.location.href);
+      window.history.replaceState({ page: 'landingboard', expertId: null, category: null, signupRole: null, signupExpertId: null, activeSession: null, activeBook: null }, '', window.location.href);
     }
     const handlePopState = (e) => {
       const s = e.state;
       if (!s) return;
-      setShowLoginSelector(!!s.showLoginSelector);
       setPage(s.page);
       if (s.expertId !== undefined) {
         setActiveExpertId(s.expertId);
@@ -145,7 +108,6 @@ export default function App() {
         if (found) setActiveExpert(found);
         else if (!s.expertId) setActiveExpert(null);
       }
-      if (s.loginRole !== undefined) setLoginRole(s.loginRole);
       if (s.signupRole !== undefined) setSignupRole(s.signupRole);
       if (s.signupExpertId !== undefined) setSignupExpertId(s.signupExpertId);
       if (s.category !== undefined) setActiveCategory(s.category);
@@ -191,14 +153,14 @@ export default function App() {
             setActiveBook(book);
             setPage('book-detail');
             window.history.replaceState(
-              { page: 'book-detail', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: book },
+              { page: 'book-detail', expertId: match.id, category: null, signupRole: null, signupExpertId: null, activeSession: null, activeBook: book },
               '',
               `/${pendingPath.handle}/${pendingPath.bookSlug}`
             );
           } else {
             setPage('public-profile');
             window.history.replaceState(
-              { page: 'public-profile', expertId: match.id, category: null, loginRole: null, signupRole: 'expert', signupExpertId: null, activeSession: null, activeBook: null },
+              { page: 'public-profile', expertId: match.id, category: null, signupRole: null, signupExpertId: null, activeSession: null, activeBook: null },
               '',
               '/' + pendingPath.handle
             );
@@ -217,10 +179,11 @@ export default function App() {
     return () => unsubscribe();
   }, [userData]);
 
-  // Redirect after login
+  // Redirect after login. Login is role-agnostic — one form for everyone — so
+  // the destination comes purely from the role on the account that just
+  // authenticated, with no expected-role to reconcile against.
   useEffect(() => {
     if (!userData || page !== 'login') return;
-    if (loginRole && userData.role !== loginRole) return;
     // Experts logging in from a public/marketing page stay right where they were —
     // the nav just swaps to a "Profile" button. Only an explicit dashboard visit
     // (or another role's portal) actually navigates to a dashboard screen.
@@ -236,7 +199,7 @@ export default function App() {
     const routes = { admin: 'admin-dashboard', affiliate: 'client-dashboard', client: 'client-dashboard' };
     const dest = routes[userData.role];
     if (dest) { setPage(dest); notify('Welcome back!'); }
-  }, [userData, page, loginRole, preLoginPage]);
+  }, [userData, page, preLoginPage]);
 
   // The affiliate dashboard was merged into the client one. A bookmark or
   // history entry still pointing at the retired route lands on the client
@@ -257,10 +220,11 @@ export default function App() {
     notify('Logged out successfully.');
   };
 
-  const openLoginSelector = () => {
-    setShowLoginSelector(true);
-    window.history.pushState({ page, expertId: activeExpertId, category: activeCategory, loginRole, signupRole, signupExpertId, activeSession, activeBook, showLoginSelector: true }, '', window.location.href);
-  };
+  // "Log In" goes straight to one shared login form — there is no portal to
+  // pick any more. Whichever role the account turns out to have is what the
+  // redirect effect above routes on. Choosing a role only matters at SIGNUP,
+  // where SignupPage asks (see its role chooser).
+  const goToLogin = () => nav('login');
 
   const nav = (p, ctx) => {
     if (p === 'login' && page !== 'login') setPreLoginPage(page);
@@ -282,10 +246,12 @@ export default function App() {
       setActiveExpertId(ctx.expertId);
       if (resolvedForNav) setActiveExpert(resolvedForNav);
     }
-    if (p === 'login' && ctx?.role) setLoginRole(ctx.role);
     if (p === 'login' && ctx?.emailHint !== undefined) setLoginEmailHint(ctx.emailHint || '');
     else if (p !== 'login') setLoginEmailHint('');
-    if (p === 'signup') setSignupRole(ctx?.role || 'expert');
+    // No role default here — nav('signup') with nothing specified means "the
+    // visitor hasn't chosen yet", and SignupPage renders its role chooser.
+    // Only an explicit ctx.role (e.g. "Join as an Expert") skips that step.
+    if (p === 'signup') setSignupRole(ctx?.role || null);
     // Explicit and never inherited from activeExpertId — a signup link only
     // carries a referral if this exact nav() call passed one.
     if (p === 'signup') setSignupExpertId(ctx?.expertId ?? null);
@@ -315,8 +281,7 @@ export default function App() {
       page: p,
       expertId: newExpertId,
       category: ctx?.category ?? activeCategory ?? null,
-      loginRole: p === 'login' ? (ctx?.role || loginRole) : loginRole,
-      signupRole: p === 'signup' ? (ctx?.role || signupRole) : signupRole,
+      signupRole: p === 'signup' ? (ctx?.role ?? null) : signupRole,
       signupExpertId: p === 'signup' ? (ctx?.expertId ?? null) : signupExpertId,
       activeSession: p === 'booking' ? (ctx?.session || activeSession) : null,
       activeBook: p === 'book-detail' ? (ctx?.book || activeBook) : null,
@@ -329,12 +294,6 @@ export default function App() {
   return (
     <>
       <Notifications notifs={notifs} />
-      {showLoginSelector && (
-        <LoginSelectorModal
-          onClose={() => { setShowLoginSelector(false); window.history.back(); }}
-          onSelect={role => { setShowLoginSelector(false); setLoginRole(role); nav('login', { role }); }}
-        />
-      )}
       {page === 'resolving-handle' && (
         <div style={{
           minHeight: '100vh',
@@ -353,12 +312,12 @@ export default function App() {
           </span>
         </div>
       )}
-      {page === 'home' && <LandingPage nav={nav} onLogin={openLoginSelector} />}
-      {page === 'landingboard' && <LandingBoard nav={nav} onLogin={openLoginSelector} experts={experts} />}
-      {page === 'login' && <LoginPage role={loginRole} nav={nav} onSwitchRole={openLoginSelector} notify={notify} emailHint={loginEmailHint} />}
+      {page === 'home' && <LandingPage nav={nav} onLogin={goToLogin} />}
+      {page === 'landingboard' && <LandingBoard nav={nav} onLogin={goToLogin} experts={experts} />}
+      {page === 'login' && <LoginPage nav={nav} notify={notify} emailHint={loginEmailHint} />}
       {page === 'signup' && <SignupPage nav={nav} notify={notify} role={signupRole} expertId={signupExpertId} />}
       {page === 'onboarding' && <OnboardingPage nav={nav} notify={notify} addExpert={e => setExperts(prev => [...prev, e])} />}
-      {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={openLoginSelector} experts={experts} selectedCategory={activeCategory} />}
+      {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={goToLogin} experts={experts} selectedCategory={activeCategory} />}
       {page === 'public-profile' && <PublicProfile nav={nav} notify={notify} expert={resolvedExpert} />}
       {page === 'booking' && <BookingFlow nav={nav} notify={notify} expert={resolvedExpert} session={activeSession} />}
       {page === 'book-detail' && <BookDetailPage nav={nav} notify={notify} expert={resolvedExpert} book={activeBook} />}

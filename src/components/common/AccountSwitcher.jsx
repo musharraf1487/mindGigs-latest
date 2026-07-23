@@ -85,16 +85,17 @@ export function AccountSwitcher({ user, role, logout, nav }) {
 
   const handleSwitchAccount = (account) => {
     if (account.uid === currentUid) { setOpen(false); return; }
-    // Log out current user and redirect to login page for this role portal
-    // The login page will receive the email as a hint
+    // Log out the current user and send them to the shared login form, which
+    // takes the email as a hint. No role is passed — login is role-agnostic and
+    // routes on whatever the account turns out to be.
     logout();
-    nav('login', { role, emailHint: account.email });
+    nav('login', { emailHint: account.email });
     setOpen(false);
   };
 
   const handleAddAccount = () => {
     logout();
-    nav('login', { role });
+    nav('login');
     setOpen(false);
   };
 

@@ -507,7 +507,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
     const handleBecomePartner = () => {
         setIsMenuOpen(false);
-        nav('login', { role: 'client' });
+        nav('login');
     };
 
     return (

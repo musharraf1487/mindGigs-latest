@@ -125,18 +125,21 @@ export function AuthProvider({ children }) {
     return role === 'affiliate' ? 'client' : role;
   }
 
+  // `expectedRole` is optional and normally omitted — the login form is shared
+  // by every kind of account and routes on whatever role the credentials turn
+  // out to carry. Pass one only to pin a login to a specific role.
   async function login(email, password, expectedRole) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    if (expectedRole) {
-      const snap = await getDoc(doc(db, 'users', cred.user.uid));
-      if (snap.exists()) {
-        const data = snap.data();
-        if (effectiveRole(data.role) !== effectiveRole(expectedRole)) {
-          await signOut(auth);
-          throw new Error(`Access denied. This account belongs to the ${data.role} portal.`);
-        }
-        saveAccountToStorage(cred.user.uid, data.name, cred.user.email, effectiveRole(data.role));
+    const snap = await getDoc(doc(db, 'users', cred.user.uid));
+    if (snap.exists()) {
+      const data = snap.data();
+      if (expectedRole && effectiveRole(data.role) !== effectiveRole(expectedRole)) {
+        await signOut(auth);
+        throw new Error(`Access denied. This account belongs to the ${data.role} portal.`);
       }
+      // Runs whether or not a role was expected, so the saved-accounts list in
+      // AccountSwitcher stays populated on the shared login form too.
+      saveAccountToStorage(cred.user.uid, data.name, cred.user.email, effectiveRole(data.role));
     }
     return cred;
   }
@@ -151,15 +154,23 @@ export function AuthProvider({ children }) {
 
     if (snap.exists()) {
       const data = snap.data();
-      if (effectiveRole(data.role) !== expectedRole) {
+      if (expectedRole && effectiveRole(data.role) !== expectedRole) {
         await signOut(auth);
         throw new Error(`This Google account is registered as a ${data.role}. Use the correct portal.`);
       }
       const normalized = { ...data, role: effectiveRole(data.role) };
       setUserRole(normalized.role);
       setUserData(normalized);
+      saveAccountToStorage(user.uid, normalized.name, user.email, normalized.role);
       return { cred, userDoc: normalized, isNewAccount: false };
     } else {
+      // Called from the shared login form (no role given) by someone with no
+      // account yet. Creating one here would have to guess expert vs client, so
+      // send them to signup — which asks — rather than silently picking.
+      if (!expectedRole) {
+        await signOut(auth);
+        throw new Error('No mindGigs account found for that Google account. Please sign up first.');
+      }
       // Only experts claim a handle — clients have no public profile.
       const claimsHandle = expectedRole === 'expert';
       const fallbackHandle = user.displayName
