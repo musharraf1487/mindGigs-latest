@@ -3869,22 +3869,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 1400px;
+  perspective: 1500px;
   perspective-origin: 50% 50%;
   overflow: hidden;
   pointer-events: none;
-  opacity: 0.20;
-  filter: saturate(0.9);
-  /* Fade the fan out toward the edges so it blends into the grid */
-  -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 28%, transparent 82%);
-  mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 28%, transparent 82%);
+  opacity: 0.55;
+  /* Fade the fan out only at the far left/right edges so it blends into the grid */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
 }
 
 .lb-hero-fan-stage {
   position: relative;
   width: 100%;
-  max-width: 1100px;
-  height: 380px;
+  max-width: 1240px;
+  height: 420px;
   transform-style: preserve-3d;
   display: flex;
   align-items: center;
@@ -3893,29 +3892,46 @@
 
 .lb-hero-fan-card {
   position: absolute;
-  width: 230px;
-  height: 340px;
-  border-radius: 22px;
+  width: 250px;
+  height: 370px;
+  border-radius: 24px;
   overflow: hidden;
   background: #2a2a2a;
   transform-style: preserve-3d;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 24px 55px rgba(15, 23, 42, 0.22);
 }
 
-/* Readability scrim so the hero copy stays crisp over the fan */
+/* Readability scrim: a clean, near-solid "spotlight" pocket behind the copy so
+   no muddy card fragments sit under the text, while the side cards stay vivid. */
 .lb-hero-fan-scrim {
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 60% 52% at 50% 46%, rgba(244, 246, 249, 0.88) 0%, rgba(244, 246, 249, 0.5) 45%, rgba(244, 246, 249, 0) 74%),
-    linear-gradient(to bottom, rgba(244, 246, 249, 0.35) 0%, transparent 22%, transparent 78%, rgba(244, 246, 249, 0.55) 100%);
+    radial-gradient(ellipse 50% 64% at 50% 50%,
+      rgba(244, 246, 249, 0.98) 0%,
+      rgba(244, 246, 249, 0.96) 40%,
+      rgba(244, 246, 249, 0.72) 60%,
+      rgba(244, 246, 249, 0) 80%),
+    linear-gradient(to bottom,
+      rgba(244, 246, 249, 0.85) 0%,
+      rgba(244, 246, 249, 0) 24%,
+      rgba(244, 246, 249, 0) 74%,
+      rgba(244, 246, 249, 0.9) 100%);
 }
 
-@media (max-width: 640px) {
-  .lb-hero-fan { opacity: 0.14; }
-  .lb-hero-fan-card { width: 170px; height: 250px; }
+@media (max-width: 900px) {
+  .lb-hero-fan { opacity: 0.32; }
+  .lb-hero-fan-card { width: 180px; height: 270px; }
+  .lb-hero-fan-scrim {
+    background:
+      radial-gradient(ellipse 62% 60% at 50% 50%,
+        rgba(244, 246, 249, 0.98) 0%,
+        rgba(244, 246, 249, 0.92) 40%,
+        rgba(244, 246, 249, 0) 80%),
+      linear-gradient(to bottom, rgba(244, 246, 249, 0.85) 0%, transparent 26%, transparent 72%, rgba(244, 246, 249, 0.9) 100%);
+  }
 }
 
 /* --- Floating Side Elements --- */
