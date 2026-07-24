@@ -160,14 +160,7 @@
 .mg-step p { color: #5A6B7A; font-size: 0.94rem; line-height: 1.6; }
 .mg-step .mg-rule { height: 3px; width: 52px; background: var(--teal); border-radius: 2px; margin-top: 22px; }
 
-/* ── 6. trust strip ── */
-.mg-trust-strip { padding: 64px 0; text-align: center; background: #fff; border-top: 1px solid #E2EAEA; border-bottom: 1px solid #E2EAEA; }
-.mg-trust-strip .mg-lbl { font-family: var(--fb); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #5A6B7A; margin-bottom: 26px; }
-.mg-trust-row { display: flex; justify-content: center; gap: 52px; flex-wrap: wrap; align-items: center; }
-.mg-trust-row div { font-family: var(--fb); font-weight: 700; font-size: 1.05rem; color: #0E1A2B; opacity: .35; transition: opacity .2s; }
-.mg-trust-row div:hover { opacity: .7; }
-
-/* ── 7. final cta ── */
+/* ── final cta ── */
 .mg-final { background: #0E1A2B; color: #fff; text-align: center; padding: 110px 24px; position: relative; overflow: hidden; }
 .mg-final::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 70% at 50% 100%, rgba(25,181,166,.2), transparent 65%); }
 .mg-final > * { position: relative; z-index: 1; }

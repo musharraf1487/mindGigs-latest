@@ -677,7 +677,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
 
     const handleJoinAsExpert = () => {
         setIsMenuOpen(false);
-        nav('home');
+        nav('signup', { role: 'expert' });
     };
 
     const handleBecomePartner = () => {
@@ -850,7 +850,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                             <p className="mg-intro">Your experience is the product. mindGigs handles booking, video, payments, and payouts so you can just show up and talk.</p>
                             <ul>
                                 <li>List your expertise for free and set your own rates</li>
-                                <li>Keep 70% of every sale, up to 80% on your own referrals</li>
+                                <li>Keep 70% of every sale, up to 77.5% on your own referrals</li>
                                 <li>Sell sessions, subscriptions, digital products, and books</li>
                                 <li>Get paid through Stripe with every transaction visible</li>
                             </ul>
@@ -899,7 +899,7 @@ export function LandingBoard({ nav, onLogin, experts }) {
                                 </div>
                                 <ul>
                                     <li>Free to list, free to set your rates</li>
-                                    <li>Keep 70% on every sale, 80% on self-referred bookings</li>
+                                    <li>Keep 70% on every sale, 77.5% on self-referred bookings</li>
                                     <li>No hidden fees and no exclusivity lock-in</li>
                                 </ul>
                             </div>
@@ -999,8 +999,8 @@ export function LandingBoard({ nav, onLogin, experts }) {
                         <button className="mg-btn mg-btn-amber" onClick={handleBecomePartner}>Become a Partner</button>
                     </div>
                     <div className="mg-aff-nums mg-reveal">
-                        <div className="mg-aff-num"><div className="mg-n">10%</div><p>On every sale your code drives, at signup or checkout</p></div>
-                        <div className="mg-aff-num"><div className="mg-n">80%</div><p>Experts keep up to this much on their own referrals</p></div>
+                        <div className="mg-aff-num"><div className="mg-n">7.5%</div><p>On every sale your code drives, at signup or checkout</p></div>
+                        <div className="mg-aff-num"><div className="mg-n">77.5%</div><p>Experts keep up to this much on their own referrals</p></div>
                         <div className="mg-aff-num"><div className="mg-n">$0</div><p>To join the program and get your code</p></div>
                         <div className="mg-aff-num"><div className="mg-n">∞</div><p>Lifetime earnings from experts you onboard</p></div>
                     </div>
@@ -1170,19 +1170,6 @@ export function LandingBoard({ nav, onLogin, experts }) {
                 </div>
             </section>
 
-            {/* ── Trust Strip ── */}
-            <section className="mg-trust-strip">
-                <div className="mg-wrap">
-                    <p className="mg-lbl">Trusted by founders, startups, and growing businesses</p>
-                    <div className="mg-trust-row">
-                        <div>Stripe Secured</div>
-                        <div>HD Video Rooms</div>
-                        <div>Verified Profiles</div>
-                        <div>Global Payouts</div>
-                        <div>GDPR Compliant</div>
-                    </div>
-                </div>
-            </section>
             {/* FAQs */}
             < section id="lb-faqs" className="lb-section lb-faqs" >
                 <div className="lb-container">
