@@ -25,6 +25,7 @@ import './styles/utilities.css';
 import './styles/layout.css';
 import './styles/components.css';
 import './styles/pages.css';
+import './styles/landing-sections.css';
 
 // A bare path like mindgigs.com/username is an expert's vanity URL, and
 // mindgigs.com/username/book-slug is a shareable link to one of their books.

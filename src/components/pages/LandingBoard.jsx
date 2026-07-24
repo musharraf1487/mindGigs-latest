@@ -209,83 +209,6 @@ function HeroFanBackground({ experts }) {
     );
 }
 
-const SERVICES = [
-    {
-        category: "Experts",
-        signupRole: "expert",
-        icon: Sparkles,
-        description: "Turn your knowledge into income.",
-        cta: "Join as an Expert",
-        items: [
-            "List your expertise for free",
-            "Sell consultations, coaching, courses and workshops",
-            "Let affiliates and influencers promote you",
-            "Focus on what you do best"
-        ]
-    },
-    {
-        category: "Learners",
-        signupRole: "client",
-        icon: GraduationCap,
-        description: "Learn directly from the world's experts.",
-        cta: "Find an Expert",
-        items: [
-            "Skip the guesswork with personalized advice",
-            "Speak one-on-one with authors and founders",
-            "Get time with executives and specialists",
-            "Compress years of learning into one conversation"
-        ]
-    },
-    {
-        category: "Publishers",
-        signupRole: "client",
-        icon: BookOpen,
-        description: "Turn every author into a recurring revenue stream.",
-        cta: "Partner with us",
-        items: [
-            "Go beyond book sales",
-            "Help authors monetize through coaching and consulting",
-            "Add speaking and courses to their catalogue",
-            "Earn ongoing revenue as your authors grow"
-        ]
-    },
-    {
-        category: "Authors",
-        signupRole: "expert",
-        icon: PenTool,
-        description: "Your book is just the beginning.",
-        cta: "Join as an Author",
-        items: [
-            "Turn readers into clients",
-            "Offer coaching, mentoring and consulting",
-            "Sell courses, speaking and exclusive experiences",
-            "Build a business beyond book royalties"
-        ]
-    },
-    {
-        category: "Influencers & Affiliates",
-        signupRole: "client",
-        icon: Megaphone,
-        description: "Earn passive income by connecting experts with the world.",
-        cta: "Start Earning Referrals",
-        items: [
-            "Introduce authors and experts to mindGigs",
-            "Earn lifetime commissions on everything they sell",
-            "Build an income stream that keeps growing",
-            "Get paid long after the introduction"
-        ]
-    }
-];
-
-const CTA_SERVICES = [
-    { title: "Advisory Session", icon: Users, desc: "Strategic long-term guidance." },
-    { title: "1:1 Paid Calls", icon: PhoneCall, desc: "Focused decision support." },
-    { title: "Expert-Led Communities", icon: MessageSquare, desc: "Direct access to peer networks." },
-    { title: "Digital Products", icon: Download, desc: "Playbooks and frameworks." },
-    { title: "Training", icon: BookOpen, desc: "Structured skill building." },
-    { title: "Workshops", icon: Presentation, desc: "Interactive group sessions." },
-];
-
 // Temporarily hidden on the landing page — re-enable by flipping this back to true.
 const SHOW_SUBSCRIPTIONS = false;
 
@@ -497,6 +420,179 @@ function FaqGroup({ group, collapsible }) {
 //     );
 // }
 
+/* ── Offers by Role — interactive "what would you sell" section ── */
+const OFFER_ROLES = {
+    author: {
+        label: 'For Authors', head: 'Ideas for authors',
+        title: 'Your readers already trust you. Let them book you.',
+        desc: 'Sell your book and the session that goes with it from one profile. The reader finishes chapter twelve and books chapter thirteen with you.',
+        price: '$450', priceNote: 'Manuscript strategy session', badge: 'Live session',
+        scene: 'linear-gradient(140deg,#2F4B6E,#152438 70%)',
+        ideas: [
+            { ic: '✍️', h: 'Manuscript review call', p: 'Sixty minutes on their draft, with notes they can act on that week.' },
+            { ic: '📚', h: 'Book plus session bundle', p: 'Package the book with a follow-up call and price the pair together.' },
+            { ic: '🎤', h: 'Author Q&A subscription', p: 'A recurring session for readers who want you monthly, not once.' },
+            { ic: '🗂️', h: 'Publishing roadmap toolkit', p: 'Sell the templates and checklists you already use with clients.' },
+        ],
+    },
+    coach: {
+        label: 'For Coaches', head: 'Ideas for coaches',
+        title: 'Stop chasing DMs. Let your calendar do the selling.',
+        desc: 'Set your rate, publish your slots, and let clients book and pay before they ever land in your inbox.',
+        price: '$299', priceNote: 'Discovery to breakthrough call', badge: 'Coaching room',
+        scene: 'linear-gradient(140deg,#1F5E58,#10202E 70%)',
+        ideas: [
+            { ic: '🎯', h: 'Single breakthrough session', p: 'One focused call for the client stuck on one specific decision.' },
+            { ic: '🔁', h: 'Monthly coaching plan', p: 'Recurring subscription with a set number of sessions each month.' },
+            { ic: '📋', h: 'Accountability check-ins', p: 'Short, high-frequency calls priced for clients who need momentum.' },
+            { ic: '🧰', h: 'Self-guided program', p: "Sell your framework as a digital product for clients who aren't ready to book." },
+        ],
+    },
+    founder: {
+        label: 'For Founders', head: 'Ideas for founders',
+        title: 'You already made the mistakes. Charge for the shortcut.',
+        desc: 'Someone is two years behind you and would pay real money to skip the part you got wrong. That conversation is a product.',
+        price: '$650', priceNote: 'Founder strategy session', badge: 'Strategy call',
+        scene: 'linear-gradient(140deg,#3A3C6E,#131E32 70%)',
+        ideas: [
+            { ic: '🚀', h: 'Zero-to-one teardown', p: 'Walk a first-time founder through the launch you already survived.' },
+            { ic: '💰', h: 'Fundraising prep call', p: 'Pitch review and investor questions from someone who has raised.' },
+            { ic: '🧭', h: 'Advisory retainer', p: 'A monthly subscription slot for a founder who needs you on call.' },
+            { ic: '📈', h: 'Growth playbook', p: 'Package the exact process that moved your numbers, as a product.' },
+        ],
+    },
+    consultant: {
+        label: 'For Consultants', head: 'Ideas for consultants',
+        title: 'Sell the insight without selling the retainer.',
+        desc: 'Not every client can afford a three-month engagement. Give them the ninety-minute version and keep the pipeline warm.',
+        price: '$499', priceNote: 'Diagnostic deep dive', badge: 'Client session',
+        scene: 'linear-gradient(140deg,#264C5E,#101F2E 70%)',
+        ideas: [
+            { ic: '🔍', h: 'Paid diagnostic call', p: 'Charge for the audit that used to be your free discovery call.' },
+            { ic: '📊', h: 'Second-opinion session', p: "Review a plan the client already has and tell them what's missing." },
+            { ic: '📁', h: 'Framework licensing', p: 'Sell the model and the spreadsheet, not just your hours.' },
+            { ic: '🤝', h: 'Fractional office hours', p: 'A subscription slot for clients who need you every fortnight.' },
+        ],
+    },
+    creator: {
+        label: 'For Creators', head: 'Ideas for creators',
+        title: 'Your audience wants more than a reply to their comment.',
+        desc: 'A fraction of your followers would pay to speak with you directly. mindGigs turns that fraction into revenue.',
+        price: '$349', priceNote: '1:1 creator session', badge: 'On air',
+        scene: 'linear-gradient(140deg,#5E3A56,#1A1F33 70%)',
+        ideas: [
+            { ic: '🎬', h: 'Portfolio and channel review', p: 'Look at their work live and tell them what you would change.' },
+            { ic: '💡', h: 'Content strategy call', p: 'One hour on positioning, hooks, and what to make next.' },
+            { ic: '🎓', h: 'Workshop or course', p: 'Teach the thing you get asked about most, once, and sell it forever.' },
+            { ic: '👥', h: 'Community subscription', p: 'Recurring group sessions for your most invested followers.' },
+        ],
+    },
+    academic: {
+        label: 'For Academics', head: 'Ideas for academics',
+        title: 'Your research has an audience outside the journal.',
+        desc: 'Students, professionals, and founders all need what you know. Sessions are how you reach them without a lecture hall.',
+        price: '$399', priceNote: 'Research consultation', badge: 'Consultation',
+        scene: 'linear-gradient(140deg,#3E4E6E,#141D2E 70%)',
+        ideas: [
+            { ic: '🎓', h: 'Thesis and research guidance', p: 'Direct feedback for students who need more than a supervisor slot.' },
+            { ic: '🔬', h: 'Expert opinion session', p: 'Companies pay well for a clear read on your field.' },
+            { ic: '📖', h: 'Concept masterclass', p: 'Sell a recorded deep dive on the topic you teach best.' },
+            { ic: '🗓️', h: 'Ongoing mentorship', p: 'A subscription for a student or team you support long term.' },
+        ],
+    },
+};
+
+const ROLE_TABS = [
+    { key: 'author', label: '📖 Authors' },
+    { key: 'coach', label: '🎯 Coaches' },
+    { key: 'founder', label: '🚀 Founders' },
+    { key: 'consultant', label: '📊 Consultants' },
+    { key: 'creator', label: '🎬 Creators' },
+    { key: 'academic', label: '🎓 Academics' },
+];
+
+function OffersByRole({ nav }) {
+    const [active, setActive] = React.useState('author');
+    const [seconds, setSeconds] = React.useState(2538);
+    const r = OFFER_ROLES[active];
+
+    React.useEffect(() => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const id = setInterval(() => setSeconds((s) => (s + 1) % 3600), 1000);
+        return () => clearInterval(id);
+    }, []);
+
+    const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const ss = String(seconds % 60).padStart(2, '0');
+
+    return (
+        <section className="mg-section mg-offers" id="mg-offers">
+            <div className="mg-wrap">
+                <div className="mg-head mg-reveal">
+                    <span className="mg-pill">Built around your expertise</span>
+                    <h2>What would <em>you</em> sell on mindGigs?</h2>
+                    <p>Pick what you do and see exactly how people like you turn experience into income.</p>
+                </div>
+
+                <div className="mg-roles" role="tablist">
+                    {ROLE_TABS.map((t) => (
+                        <button
+                            key={t.key}
+                            role="tab"
+                            aria-selected={active === t.key}
+                            className={`mg-role${active === t.key ? ' mg-on' : ''}`}
+                            onClick={() => setActive(t.key)}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mg-stage-grid">
+                    <div className="mg-stage" aria-hidden="true">
+                        <div className="mg-stage-scene" style={{ background: r.scene }} />
+                        <div className="mg-stage-glow" />
+                        <div className="mg-scan" />
+                        <div className="mg-stage-vig" />
+                        <div className="mg-stage-badge"><i /><span>{r.badge}</span></div>
+                        <div className="mg-stage-timer">{mm}:{ss}</div>
+                        <div className="mg-stage-body">
+                            <div className="mg-fade" key={active}>
+                                <p className="mg-stage-role">{r.label}</p>
+                                <h3>{r.title}</h3>
+                                <p>{r.desc}</p>
+                            </div>
+                            <div className="mg-stage-foot">
+                                <div className="mg-wave"><i /><i /><i /><i /><i /><i /><i /></div>
+                                <div className="mg-stage-price">{r.price}<small>{r.priceNote}</small></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="mg-ideas-head">{r.head}</p>
+                        <div className="mg-fade" key={active}>
+                            {r.ideas.map((i, idx) => (
+                                <div className="mg-idea" key={idx}>
+                                    <div className="mg-ic">{i.ic}</div>
+                                    <div>
+                                        <h4>{i.h}</h4>
+                                        <p>{i.p}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mg-ideas-cta">
+                            <button className="mg-btn mg-btn-teal" onClick={() => nav('signup', { role: 'expert' })}>Start selling on mindGigs</button>
+                            <span className="mg-note">Free to list. You set the price.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 const ROLE_DASHBOARD_ROUTE = {
     expert: 'expert-dashboard',
     client: 'client-dashboard',
@@ -509,7 +605,6 @@ export function LandingBoard({ nav, onLogin, experts }) {
     const { currentUser, userData } = useAuth();
     const isLoggedIn = !!currentUser && !!userData?.role;
     const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
-    const [activeCtaIndex, setActiveCtaIndex] = React.useState(0);
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [navHidden, setNavHidden] = React.useState(false);
     const [hoveredExpertId, setHoveredExpertId] = React.useState(null);
@@ -564,11 +659,20 @@ export function LandingBoard({ nav, onLogin, experts }) {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
+    // Reveal-on-scroll for the new (mg-) landing sections.
     React.useEffect(() => {
-        const timer = setInterval(() => {
-            setActiveCtaIndex((prev) => (prev + 1) % CTA_SERVICES.length);
-        }, 3000);
-        return () => clearInterval(timer);
+        const els = document.querySelectorAll('.mg-reveal');
+        if (!els.length) return;
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('mg-in');
+                    io.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.12 });
+        els.forEach((el) => io.observe(el));
+        return () => io.disconnect();
     }, []);
 
     const handleJoinAsExpert = () => {
@@ -721,109 +825,105 @@ export function LandingBoard({ nav, onLogin, experts }) {
             </section >
 
 
-            {/* Services Slider */}
-            < section id="lb-services" className="lb-section lb-section-white lb-services" >
-                <div className="lb-blob lb-blob-tr" />
-                <div className="lb-container lb-rel">
-                    <motion.div
-                        initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
-                        whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8 }}
-                        className="lb-services-header"
-                    >
-                        <h2 className="lb-section-title">Who is it for</h2>
-                        <p className="lb-section-sub">Whoever you are, there's a way to grow with mindGigs.</p>
-                    </motion.div>
-
-                    <Swiper
-                        modules={[Pagination, Autoplay, Navigation]}
-                        grabCursor={true}
-                        centeredSlides={true}
-                        loop={true}
-                        slidesPerView={1}
-                        spaceBetween={24}
-                        watchSlidesProgress={true}
-                        pagination={{ clickable: true }}
-                        navigation={true}
-                        autoplay={{ delay: 6000, disableOnInteraction: false }}
-                        breakpoints={{
-                            768: { slidesPerView: 2, spaceBetween: 28 },
-                            1024: { slidesPerView: 3, spaceBetween: 32 },
-                        }}
-                        className="lb-services-swiper"
-                    >
-                        {SERVICES.map((service, i) => (
-                            <SwiperSlide key={i}>
-                                <div className="lb-service-card">
-                                    <div className="lb-service-icon-wrap">
-                                        <service.icon className="lb-service-icon" />
-                                    </div>
-                                    <h3 className="lb-service-title">{service.category}</h3>
-                                    <p className="lb-service-desc">{service.description}</p>
-                                    <div className="lb-service-items">
-                                        {service.items.map((item, idx) => (
-                                            <button key={idx} className="lb-service-item">
-                                                <div className="lb-service-dot" />
-                                                <span>{item}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button
-                                        className="lb-service-cta"
-                                        onClick={() => nav('signup', { role: service.signupRole })}
-                                    >
-                                        {service.cta} <ArrowRight style={{ width: 20, height: 20 }} />
-                                    </button>
-                                </div>
-                            </SwiperSlide>
-                        ))}
-                    </Swiper>
-                </div>
-            </section >
-
-            {/* How It Works */}
-            < section id="lb-how" className="lb-section lb-section-white lb-how" >
-                <div className="lb-blob lb-blob-tl" />
-                <div className="lb-blob lb-blob-br" />
-
-                <div className="lb-container lb-rel">
-                    <motion.div
-                        initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
-                        whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8 }}
-                        className="lb-section-header"
-                    >
-                        <h2 className="lb-section-title">How It Works</h2>
-                    </motion.div>
-                    <div className="lb-how-grid">
-                        {[
-                            { step: "01", title: "Pick your expert", desc: "Browse verified experts with real reviews and trusted specialties." },
-                            { step: "02", title: "Book a time that works", desc: "Choose a slot, pay securely, and get an instant calendar invite." },
-                            { step: "03", title: "Meet face to face", desc: "Join a private video call, share your screen, and leave with clear answers." },
-                        ].map((item, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 30 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.2 }}
-                                whileHover={{ y: -20, scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="lb-how-card"
-                            >
-                                <div className="lb-how-step">{item.step}</div>
-                                <h3 className="lb-how-card-title">{item.title}</h3>
-                                <p className="lb-how-card-desc">{item.desc}</p>
-                            </motion.div>
-                        ))}
+            {/* ── Two Ways In ── */}
+            <section className="mg-section" id="lb-services">
+                <div className="mg-wrap">
+                    <div className="mg-head mg-reveal">
+                        <span className="mg-pill">Two ways in</span>
+                        <h2>Get expertise. Or <em>get paid for yours.</em></h2>
+                        <p>One platform where people find real answers and experts build real income.</p>
+                    </div>
+                    <div className="mg-two-grid">
+                        <div className="mg-aud mg-light mg-reveal">
+                            <h3>For Clients</h3>
+                            <p className="mg-intro">Skip the search results and the unanswered DMs. Talk directly to someone who has done the thing you're trying to do.</p>
+                            <ul>
+                                <li>Book 1:1 video sessions with verified experts</li>
+                                <li>Browse specialists across every category</li>
+                                <li>Subscribe for ongoing coaching, not one-off advice</li>
+                                <li>Buy courses, workshops, and books straight from the source</li>
+                            </ul>
+                            <button className="mg-btn mg-btn-navy" onClick={() => nav('experts')}>Find an Expert</button>
+                        </div>
+                        <div className="mg-aud mg-dark-card mg-reveal">
+                            <h3>For Experts</h3>
+                            <p className="mg-intro">Your experience is the product. mindGigs handles booking, video, payments, and payouts so you can just show up and talk.</p>
+                            <ul>
+                                <li>List your expertise for free and set your own rates</li>
+                                <li>Keep 70% of every sale, up to 80% on your own referrals</li>
+                                <li>Sell sessions, subscriptions, digital products, and books</li>
+                                <li>Get paid through Stripe with every transaction visible</li>
+                            </ul>
+                            <button className="mg-btn mg-btn-teal" onClick={handleJoinAsExpert}>Become an Expert</button>
+                        </div>
                     </div>
                 </div>
-            </section >
+            </section>
 
-           
+            {/* ── Why Choose ── */}
+            <section className="mg-section mg-why mg-dark">
+                <div className="mg-wrap">
+                    <div className="mg-head mg-reveal">
+                        <span className="mg-pill">Why people choose mindGigs</span>
+                        <h2>Judgment beats search results.</h2>
+                        <p>AI gives you information. Experts give you decisions. Connect with people who have lived the problem instead of chasing cold outreach.</p>
+                    </div>
+                    <div className="mg-why-grid">
+                        <div>
+                            <div className="mg-reason mg-reveal">
+                                <div className="mg-reason-top">
+                                    <h3><span className="mg-hl">100%</span> Verified</h3>
+                                    <p className="mg-desc">Every expert is manually reviewed before their profile goes live. No self-appointed gurus, no bots, no recycled advice.</p>
+                                </div>
+                                <ul>
+                                    <li>Credentials and track record checked by our team</li>
+                                    <li>Real reviews from real sessions</li>
+                                    <li>Specialties you can actually filter by</li>
+                                </ul>
+                            </div>
+                            <div className="mg-reason mg-reveal">
+                                <div className="mg-reason-top">
+                                    <h3>Face to <span className="mg-hl">Face</span></h3>
+                                    <p className="mg-desc">Private HD video rooms with an instant calendar invite. You get undivided attention for the full session, not a rushed reply.</p>
+                                </div>
+                                <ul>
+                                    <li>Secure video sessions, no downloads required</li>
+                                    <li>Calendar invite the moment you book</li>
+                                    <li>Follow up with subscriptions if one call isn't enough</li>
+                                </ul>
+                            </div>
+                            <div className="mg-reason mg-reveal">
+                                <div className="mg-reason-top">
+                                    <h3>Start <span className="mg-hl">Earning</span></h3>
+                                    <p className="mg-desc">Turn years of experience into a new revenue line. Listing costs nothing and you keep total control over your price and calendar.</p>
+                                </div>
+                                <ul>
+                                    <li>Free to list, free to set your rates</li>
+                                    <li>Keep 70% on every sale, 80% on self-referred bookings</li>
+                                    <li>No hidden fees and no exclusivity lock-in</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="mg-mock mg-reveal" aria-hidden="true">
+                            <div className="mg-mock-bar"><i /><i /><i /><div className="mg-url">mindgigs.com/session</div></div>
+                            <div className="mg-mock-screen">
+                                <div className="mg-mock-video">
+                                    <span className="mg-mock-live">Live session</span>
+                                    <div className="mg-mock-name">Ali Abdal<small>Executive Performance Strategist</small></div>
+                                </div>
+                                <div className="mg-mock-row">
+                                    <div className="mg-mock-price">$450<small>60-minute session</small></div>
+                                    <span className="mg-mock-join">Join session</span>
+                                </div>
+                                <div className="mg-mock-tags"><span>Verified</span><span>4.9 ★</span><span>Calendar synced</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
+            {/* ── Offers by Role ── */}
+            <OffersByRole nav={nav} />
             {/* Subscriptions */}
             {SHOW_SUBSCRIPTIONS && (
             < section id="lb-subscriptions" className="lb-section lb-section-white" >
@@ -889,40 +989,23 @@ export function LandingBoard({ nav, onLogin, experts }) {
             </section >
             )}
 
-            {/* Affiliate Advantage */}
-            < section id="lb-affiliate" className="lb-section lb-section-white" >
-                <div className="lb-container lb-affiliate-layout">
-                    <div className="lb-affiliate-left">
-                        <h2 className="lb-section-title">Affiliate-Driven Growth Model</h2>
-                        <p className="lb-affiliate-sub">
-                            We grow through people, not ads. Refer experts or clients and earn real commissions on every sale.
-                        </p>
-                        <div className="lb-affiliate-stats">
-                            <div className="lb-affiliate-stat">
-                                <div className="lb-aff-pct">7.5%</div>
-                                <p>Lifetime commission on every sale by experts you onboard</p>
-                            </div>
-                            <div className="lb-affiliate-stat">
-                                <div className="lb-aff-pct">7.5%</div>
-                                <p>Commission on every sale you personally refer</p>
-                            </div>
-                        </div>
-                        <button className="lb-btn-primary-sm" onClick={handleBecomePartner}>Become a Partner</button>
+            {/* ── Affiliate Band ── */}
+            <section className="mg-section mg-aff" id="lb-affiliate">
+                <div className="mg-wrap mg-aff-grid">
+                    <div className="mg-reveal">
+                        <span className="mg-pill">Affiliate Program</span>
+                        <h2>We grow through <em>people, not ads.</em></h2>
+                        <p className="mg-lede">Get your own coupon code, share it anywhere, and earn on every sale it drives. Onboard an expert and keep earning for as long as they sell.</p>
+                        <button className="mg-btn mg-btn-amber" onClick={handleBecomePartner}>Become a Partner</button>
                     </div>
-                    <div className="lb-affiliate-card">
-                        <div className="lb-rel" style={{ zIndex: 10 }}>
-                            <h3 className="lb-affiliate-card-title">Growth is driven by alignment, not ad spend.</h3>
-                            <ul className="lb-affiliate-list">
-                                <li><CheckCircle2 className="lb-aff-check" /> Onboard an expert, earn for as long as they sell.</li>
-                                <li><CheckCircle2 className="lb-aff-check" /> Refer a sale directly, earn on that sale.</li>
-                                <li><CheckCircle2 className="lb-aff-check" /> Do both, and your commissions stack.</li>
-                            </ul>
-                        </div>
-                        <div className="lb-affiliate-blob" />
+                    <div className="mg-aff-nums mg-reveal">
+                        <div className="mg-aff-num"><div className="mg-n">10%</div><p>On every sale your code drives, at signup or checkout</p></div>
+                        <div className="mg-aff-num"><div className="mg-n">80%</div><p>Experts keep up to this much on their own referrals</p></div>
+                        <div className="mg-aff-num"><div className="mg-n">$0</div><p>To join the program and get your code</p></div>
+                        <div className="mg-aff-num"><div className="mg-n">∞</div><p>Lifetime earnings from experts you onboard</p></div>
                     </div>
                 </div>
-            </section >
-
+            </section>
             {/* Featured Experts */}
             {liveCarouselExperts.length > 0 && (
             < section id="lb-experts" className="lb-section lb-experts" >
@@ -1072,88 +1155,34 @@ export function LandingBoard({ nav, onLogin, experts }) {
             </section >
             )}
 
-             {/* Strategic Support CTA */}
-            < section className="lb-section lb-cta-section" >
-                <div className="lb-container">
-                    <div className="lb-cta-card">
-                        {/* Left */}
-                        <div className="lb-cta-left">
-                            <h2 className="lb-cta-title">Need Strategic Support to Grow?</h2>
-                            <p className="lb-cta-sub">Get matched with the right expert to keep building and marketing your project.</p>
-                            <button className="lb-btn-white" onClick={() => nav('experts')}>Find an expert</button>
-                        </div>
-
-                        {/* Right graphic */}
-                        <div className="lb-cta-right">
-                            <div className="lb-cta-blob lb-cta-blob-1" />
-                            <div className="lb-cta-blob lb-cta-blob-2" />
-
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9, x: 20 }}
-                                whileInView={{ opacity: 1, scale: 1, x: 0 }}
-                                className="lb-cta-widget"
-                            >
-                                <div className="lb-cta-dots">
-                                    <div className="lb-dot" />
-                                    <div className="lb-dot" />
-                                    <div className="lb-dot" />
-                                </div>
-
-                                <div className="lb-cta-services-wrap">
-                                    <div className="lb-cta-services-inner">
-                                        {CTA_SERVICES.map((service, idx) => (
-                                            <motion.div
-                                                key={idx}
-                                                initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                                animate={{
-                                                    opacity: activeCtaIndex === idx ? 1 : 0,
-                                                    y: activeCtaIndex === idx ? 0 : 20,
-                                                    scale: activeCtaIndex === idx ? 1 : 0.9,
-                                                    zIndex: activeCtaIndex === idx ? 20 : 0
-                                                }}
-                                                transition={{ duration: 0.5 }}
-                                                className="lb-cta-service-item"
-                                            >
-                                                <div className="lb-cta-service-icon-wrap">
-                                                    <service.icon className="lb-cta-service-icon" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="lb-cta-service-title">{service.title}</h4>
-                                                    <p className="lb-cta-service-desc">{service.desc}</p>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                    <div className="lb-cta-indicators">
-                                        {CTA_SERVICES.map((_, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`lb-cta-dot ${activeCtaIndex === idx ? 'lb-cta-dot-active' : ''}`}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                animate={{ y: [0, -15, 0] }}
-                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                className="lb-float-icon lb-float-top"
-                            >
-                                <PhoneCall style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} />
-                            </motion.div>
-                            <motion.div
-                                animate={{ y: [0, 15, 0] }}
-                                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                                className="lb-float-icon lb-float-bottom"
-                            >
-                                <Presentation style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} />
-                            </motion.div>
-                        </div>
+             {/* ── How It Works ── */}
+            <section className="mg-section" id="lb-how">
+                <div className="mg-wrap">
+                    <div className="mg-head mg-reveal">
+                        <span className="mg-pill">How it works</span>
+                        <h2>From stuck to sorted in <em>three steps.</em></h2>
+                    </div>
+                    <div className="mg-steps">
+                        <div className="mg-step mg-reveal"><div className="mg-n">STEP 01</div><h3>Pick your expert</h3><p>Browse verified experts with real reviews and trusted specialties.</p><div className="mg-rule" /></div>
+                        <div className="mg-step mg-reveal"><div className="mg-n">STEP 02</div><h3>Book your session</h3><p>Choose a time, pay securely, and get an instant calendar invite.</p><div className="mg-rule" /></div>
+                        <div className="mg-step mg-reveal"><div className="mg-n">STEP 03</div><h3>Get clear answers</h3><p>Join the private video room and leave with something you can act on today.</p><div className="mg-rule" /></div>
                     </div>
                 </div>
-            </section >
+            </section>
 
+            {/* ── Trust Strip ── */}
+            <section className="mg-trust-strip">
+                <div className="mg-wrap">
+                    <p className="mg-lbl">Trusted by founders, startups, and growing businesses</p>
+                    <div className="mg-trust-row">
+                        <div>Stripe Secured</div>
+                        <div>HD Video Rooms</div>
+                        <div>Verified Profiles</div>
+                        <div>Global Payouts</div>
+                        <div>GDPR Compliant</div>
+                    </div>
+                </div>
+            </section>
             {/* FAQs */}
             < section id="lb-faqs" className="lb-section lb-faqs" >
                 <div className="lb-container">
@@ -1178,6 +1207,15 @@ export function LandingBoard({ nav, onLogin, experts }) {
                 </div>
             </section >
 
+            {/* ── Final CTA ── */}
+            <section className="mg-final">
+                <h2>Stop guessing. <span>Start asking.</span></h2>
+                <p>The answer you've been circling for weeks is one session away.</p>
+                <div className="mg-final-ctas">
+                    <button className="mg-btn mg-btn-teal" onClick={() => nav('experts')}>Book an Expert</button>
+                    <button className="mg-btn mg-btn-outline" onClick={handleJoinAsExpert}>Become an Expert</button>
+                </div>
+            </section>
             {/* Footer */}
             < footer className="lb-footer" >
                 <div className="lb-footer-overlay" />
