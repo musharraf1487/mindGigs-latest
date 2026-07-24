@@ -503,12 +503,12 @@ const OFFER_ROLES = {
 };
 
 const ROLE_TABS = [
-    { key: 'author', label: '📖 Authors' },
-    { key: 'coach', label: '🎯 Coaches' },
-    { key: 'founder', label: '🚀 Founders' },
-    { key: 'consultant', label: '📊 Consultants' },
-    { key: 'creator', label: '🎬 Creators' },
-    { key: 'academic', label: '🎓 Academics' },
+    { key: 'author', label: 'Authors' },
+    { key: 'coach', label: 'Coaches' },
+    { key: 'founder', label: 'Founders' },
+    { key: 'consultant', label: 'Consultants' },
+    { key: 'creator', label: 'Creators' },
+    { key: 'academic', label: 'Academics' },
 ];
 
 function OffersByRole({ nav }) {
@@ -574,11 +574,8 @@ function OffersByRole({ nav }) {
                         <div className="mg-fade" key={active}>
                             {r.ideas.map((i, idx) => (
                                 <div className="mg-idea" key={idx}>
-                                    <div className="mg-ic">{i.ic}</div>
-                                    <div>
-                                        <h4>{i.h}</h4>
-                                        <p>{i.p}</p>
-                                    </div>
+                                    <h4>{i.h}</h4>
+                                    <p>{i.p}</p>
                                 </div>
                             ))}
                         </div>
