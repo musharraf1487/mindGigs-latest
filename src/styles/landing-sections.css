@@ -189,8 +189,46 @@
   .mg-two-grid, .mg-steps { grid-template-columns: 1fr; }
   .mg-section { padding: 78px 0; }
 }
-@media (max-width: 600px) {
+
+/* ── phones ── */
+@media (max-width: 640px) {
+  .mg-section { padding: 60px 0; }
+  .mg-wrap { padding: 0 18px; }
+  .mg-head { margin-bottom: 38px; }
+  .mg-head p { font-size: 0.96rem; }
+
+  /* two ways cards */
+  .mg-aud { padding: 28px 22px; }
+  .mg-aud h3 { font-size: 1.25rem; }
+
+  /* why choose */
+  .mg-reason { padding: 24px 0; }
+  .mg-reason h3 { font-size: 1.45rem; }
+  .mg-reason .mg-desc { font-size: 0.9rem; }
+
+  /* offers: give the stage room and drop the description to stop text overlap */
+  .mg-roles { gap: 6px; margin-bottom: 32px; }
+  .mg-role { font-size: 0.8rem; padding: 9px 15px; }
+  .mg-stage { aspect-ratio: 4 / 3.5; }
+  .mg-stage-body { padding: 16px 16px 14px; }
+  .mg-stage-role { margin-bottom: 6px; }
+  .mg-stage-body h3 { font-size: 1.1rem; }
+  .mg-stage-body p { display: none; }
+  .mg-stage-foot { margin-top: 12px; }
+  .mg-stage-price { font-size: 1rem; }
+  .mg-stage-price small { font-size: 0.68rem; }
+
+  /* affiliate: keep numbers as a compact 2×2 */
+  .mg-aff-nums { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mg-aff-num { padding: 20px 18px; }
+  .mg-aff-num .mg-n { font-size: 1.8rem; }
+
+  /* final cta */
+  .mg-final { padding: 74px 20px; }
+  .mg-final p { font-size: 0.96rem; }
+}
+
+@media (max-width: 400px) {
   .mg-aff-nums { grid-template-columns: 1fr; }
-  .mg-aud { padding: 32px 26px; }
-  .mg-stage-body { padding: 20px 18px 16px; }
+  .mg-idea { padding: 16px 18px 16px 22px; }
 }
