@@ -13,8 +13,15 @@ service cloud.firestore {
     // by an update (no legitimate client flow needs to change it, so this
     // blocks self-escalation as well as accidental/malicious demotion).
     match /users/{uid} {
+      // Any expert doc is publicly readable — not just published ones. The
+      // experts directory now lists experts who've signed up but haven't
+      // finished onboarding (so a referred sign-up appears right away), which
+      // means an unauthenticated list query on role=='expert' must be provably
+      // allowed for the mid-onboarding docs too. This extends the existing
+      // public exposure of published expert docs (email, zeroed earnings
+      // fields, etc.) to experts still setting up; both chose the expert role.
       allow read: if (request.auth != null && request.auth.uid == uid) ||
-        (resource.data.role == 'expert' && resource.data.onboardingComplete == true) ||
+        (resource.data.role == 'expert') ||
         (request.auth != null && resource.data.referredByExpertId == request.auth.uid) ||
         (request.auth != null && resource.data.onboardedByAffiliateId == request.auth.uid);
       allow create: if request.auth != null && request.auth.uid == uid &&

@@ -44,6 +44,8 @@ export default function App() {
   const [page, setPage] = useState(() => window.history.state?.page || (getPendingPathFromLocation() ? 'resolving-handle' : 'landingboard'));
   const [notifs, setNotifs] = useState([]);
   const [experts, setExperts] = useState([]);
+  // Signed-up-but-not-yet-published experts, shown only in the experts directory.
+  const [pendingExperts, setPendingExperts] = useState([]);
   const [activeExpert, setActiveExpert] = useState(null);
   const [activeExpertId, setActiveExpertId] = useState(() => window.history.state?.expertId || null);
   const [activeSession, setActiveSession] = useState(null);
@@ -203,6 +205,33 @@ export default function App() {
     return () => unsubscribe();
   }, [userData]);
 
+  // Experts who've signed up but not yet finished onboarding. Kept as a
+  // SEPARATE list from the published `experts` above on purpose: the experts
+  // directory shows these (so a referred sign-up appears immediately, even
+  // before they publish), but marketing surfaces — LandingBoard's featured
+  // carousel, the directory's top-rated fan display — must keep showing only
+  // real, finished profiles. Passing this only to ExpertsDirectory keeps the
+  // blast radius to that one grid.
+  useEffect(() => {
+    const q = query(collection(db, 'users'), where('role', '==', 'expert'), where('onboardingComplete', '==', false));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const live = snap.docs.map(d => {
+        const e = { ...d.data(), id: d.id, isLive: true, isSettingUp: true };
+        const hasRealImage = e.image && !e.image.includes('placeholder') && !e.image.includes('ui-avatars.com');
+        return hasRealImage ? e : { ...e, image: null };
+      });
+      // Same admin off-switch as published experts — a hidden profile stays
+      // hidden whether or not onboarding is done.
+      setPendingExperts(live.filter(e => e.profileActive !== false));
+    }, (err) => {
+      // A denied read here (e.g. rules not yet deployed) must not take down the
+      // directory — just fall back to showing published experts only.
+      console.error('Error fetching setting-up experts:', err);
+      setPendingExperts([]);
+    });
+    return () => unsubscribe();
+  }, [userData]);
+
   // Redirect after login. Login is role-agnostic — one form for everyone — so
   // the destination comes purely from the role on the account that just
   // authenticated, with no expected-role to reconcile against.
@@ -343,7 +372,7 @@ export default function App() {
       {page === 'login' && <LoginPage nav={nav} notify={notify} emailHint={loginEmailHint} />}
       {page === 'signup' && <SignupPage nav={nav} notify={notify} role={signupRole} expertId={signupExpertId} emailHint={signupEmailHint} />}
       {page === 'onboarding' && <OnboardingPage nav={nav} notify={notify} addExpert={e => setExperts(prev => [...prev, e])} />}
-      {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={goToLogin} experts={experts} selectedCategory={activeCategory} />}
+      {page === 'experts' && <ExpertsDirectory nav={nav} notify={notify} onLogin={goToLogin} experts={experts} pendingExperts={pendingExperts} selectedCategory={activeCategory} />}
       {page === 'public-profile' && <PublicProfile nav={nav} notify={notify} expert={resolvedExpert} />}
       {page === 'booking' && <BookingFlow nav={nav} notify={notify} expert={resolvedExpert} session={activeSession} />}
       {page === 'book-detail' && <BookDetailPage nav={nav} notify={notify} expert={resolvedExpert} book={activeBook} />}

@@ -135,6 +135,20 @@ function ExpertGridCard({ expert, nav }) {
                 ) : (
                     <span>{expert.name?.charAt(0).toUpperCase() || 'E'}</span>
                 )}
+                {/* Marks a newly joined expert who hasn't published their full
+                    profile yet — sets the visitor's expectation before they
+                    click into a sparse page. */}
+                {expert.isSettingUp && (
+                    <span style={{
+                        position: 'absolute', top: 10, left: 10,
+                        background: 'rgba(255,255,255,0.92)', color: '#0d8a7f',
+                        padding: '3px 10px', borderRadius: '99px',
+                        fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.02em',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                    }}>
+                        Setting up
+                    </span>
+                )}
                 {/* Tags on hover */}
                 <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -231,7 +245,7 @@ const ROLE_DASHBOARD_ROUTE = {
     admin: 'admin-dashboard',
 };
 
-export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
+export function ExpertsDirectory({ nav, onLogin, experts, pendingExperts = [], selectedCategory }) {
     const { currentUser, userData } = useAuth();
     const isLoggedIn = !!currentUser && !!userData?.role;
     const dashboardRoute = ROLE_DASHBOARD_ROUTE[userData?.role];
@@ -246,8 +260,15 @@ export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
         }
     }, [selectedCategory]);
 
+    // Published experts first, then those still setting up (never in the
+    // rating carousel — that stays real-profiles-only via `experts` below).
+    const allListable = useMemo(
+        () => [...(experts || []), ...(pendingExperts || [])],
+        [experts, pendingExperts]
+    );
+
     const filtered = useMemo(() => {
-        return (experts || []).filter((e) => {
+        return allListable.filter((e) => {
             const catMapping = {
                 'AI': 'Tech',
                 'Developers': 'Tech', 'Development': 'Tech',
@@ -272,7 +293,7 @@ export function ExpertsDirectory({ nav, onLogin, experts, selectedCategory }) {
 
             return matchCat && matchSearch;
         });
-    }, [search, activeCategory, experts]);
+    }, [search, activeCategory, allListable]);
 
     /* ─── Carousel Logic: Highest Rating at Center ─── */
     const carouselExperts = useMemo(() => {
